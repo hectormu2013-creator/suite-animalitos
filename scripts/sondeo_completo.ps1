@@ -357,10 +357,12 @@ Write-Output "[1/7] Enfocando y maximizando Premier Pluss..."
 Start-Sleep -Milliseconds 600
 
 # Limpiar pantalla previa por seguridad
-[System.Windows.Forms.SendKeys]::SendWait("n")
-Start-Sleep -Milliseconds 300
-[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-Start-Sleep -Milliseconds 200
+try {
+    [System.Windows.Forms.SendKeys]::SendWait("n")
+    Start-Sleep -Milliseconds 300
+    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+    Start-Sleep -Milliseconds 200
+} catch {}
 
 # =====================================================================
 # SELECCION OBLIGATORIA DE MONEDA: BS (BOLIVARES)
