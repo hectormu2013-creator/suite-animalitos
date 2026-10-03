@@ -1,0 +1,19 @@
+# Dependencias
+node_modules/
+
+# Binarios y ejecutables descargados
+cloudflared.exe
+
+# Archivos de logs y temporales
+*.log
+tunnel.log
+tunnel_url.txt
+capturas_depuracion/
+capturas_sondeo/
+test_*.png
+temp_*.png
+
+# Archivos de sistema y SO
+Thumbs.db
+Desktop.ini
+.DS_Store

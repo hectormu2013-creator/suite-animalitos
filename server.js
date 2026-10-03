@@ -1,0 +1,899 @@
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+const { spawn, exec } = require('child_process');
+
+const app = express();
+const PORT = process.env.PORT || 4500;
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Estado en memoria
+let logsQueue = [];
+let executionHistory = [];
+
+function log(msg, level = 'log-info') {
+  const timestamp = new Date().toLocaleTimeString();
+  const entry = { time: timestamp, msg, level };
+  console.log(`[${level.toUpperCase()}] ${msg}`);
+  logsQueue.push(entry);
+  if (logsQueue.length > 100) logsQueue.shift();
+}
+
+// Cargar Configuración
+function getConfig() {
+  try {
+    if (!fs.existsSync(CONFIG_PATH)) return null;
+    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    log(`Error leyendo config.json: ${e.message}`, 'log-danger');
+    return null;
+  }
+}
+
+// Guardar Configuración
+function saveConfig(cfg) {
+  try {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    log(`Error guardando config.json: ${e.message}`, 'log-danger');
+    return false;
+  }
+}
+
+const { execFile } = require('child_process');
+
+// Helper para sincronizar la tarea programada de Windows
+function syncScheduledTask(hora, activo = true) {
+  return new Promise((resolve) => {
+    const psScript = path.join(__dirname, 'update_task_time.ps1');
+    execFile('powershell', ['-ExecutionPolicy', 'Bypass', '-File', psScript, '-Hora', hora || '07:00', '-Activo', activo ? 'true' : 'false'], (err, stdout, stderr) => {
+      if (err) {
+        log(`Aviso al sincronizar tarea de Windows: ${err.message}`, 'log-warn');
+        return resolve({ ok: false, message: err.message });
+      }
+      try {
+        const parsed = JSON.parse(stdout);
+        resolve(parsed);
+      } catch (e) {
+        resolve({ ok: true, raw: stdout });
+      }
+    });
+  });
+}
+
+// API: Obtener Config
+app.get('/api/config', (req, res) => {
+  const cfg = getConfig();
+  res.json(cfg || {});
+});
+
+// API: Guardar Config
+app.post('/api/config', async (req, res) => {
+  const newCfg = req.body;
+  const success = saveConfig(newCfg);
+  if (success) {
+    log('Configuración actualizada y guardada con éxito.', 'log-success');
+
+    // Sincronizar tarea de Windows si viene en general
+    if (newCfg.general && newCfg.general.horaActivacionDiaria !== undefined) {
+      const taskRes = await syncScheduledTask(
+        newCfg.general.horaActivacionDiaria,
+        newCfg.general.activacionDiariaActiva !== false
+      );
+      if (taskRes.ok) {
+        log(`⏰ [TAREA PROGRAMADA] ${taskRes.message}`, 'log-info');
+      }
+    }
+
+    res.json({ ok: true, message: 'Guardado correctamente' });
+  } else {
+    res.status(500).json({ ok: false, message: 'Error al guardar archivo config.json' });
+  }
+});
+
+// API: Obtener información de la Tarea Programada de Windows
+app.get('/api/schedule/info', (req, res) => {
+  const cfg = getConfig() || {};
+  const hora = (cfg.general && cfg.general.horaActivacionDiaria) || '07:00';
+  const activo = (cfg.general && cfg.general.activacionDiariaActiva !== false);
+
+  execFile('powershell', ['-Command', `
+    $task = Get-ScheduledTask -TaskName "Suite_Bloqueador_Animalitos_7AM" -ErrorAction SilentlyContinue
+    $info = Get-ScheduledTaskInfo -TaskName "Suite_Bloqueador_Animalitos_7AM" -ErrorAction SilentlyContinue
+    if ($task) {
+      @{
+        exists = $true
+        state = $task.State.ToString()
+        nextRun = if ($info) { $info.NextRunTime.ToString() } else { "No disponible" }
+      } | ConvertTo-Json
+    } else {
+      @{ exists = $false } | ConvertTo-Json
+    }
+  `], (err, stdout) => {
+    let taskData = { exists: false };
+    try {
+      taskData = JSON.parse(stdout);
+    } catch (e) {}
+
+    res.json({
+      ok: true,
+      hora,
+      activo,
+      task: taskData
+    });
+  });
+});
+
+// API: Actualizar Tarea Programada directamente
+app.post('/api/schedule/update', async (req, res) => {
+  const { hora, activo } = req.body;
+  const cfg = getConfig();
+  if (cfg) {
+    if (!cfg.general) cfg.general = {};
+    if (hora) cfg.general.horaActivacionDiaria = hora;
+    if (activo !== undefined) cfg.general.activacionDiariaActiva = !!activo;
+    saveConfig(cfg);
+  }
+
+  const result = await syncScheduledTask(hora, activo !== false);
+  if (result.ok) {
+    log(`⏰ [TAREA PROGRAMADA ACTUALIZADA] ${result.message}`, 'log-success');
+  }
+  res.json(result);
+});
+
+// --- GESTIÓN DE TÚNEL CLOUDFLARE PARA ACCESO REMOTO (MÓVIL / CUALQUIER LUGAR) ---
+let currentTunnelUrl = null;
+let tunnelProcess = null;
+
+function startCloudflareTunnel() {
+  const exePath = path.join(__dirname, 'cloudflared.exe');
+  if (!fs.existsSync(exePath)) return;
+
+  if (tunnelProcess) {
+    try { tunnelProcess.kill(); } catch (e) {}
+  }
+
+  log('🌐 [TÚNEL REMOTO] Conectando con red segura de Cloudflare...', 'log-info');
+  try {
+    tunnelProcess = spawn(exePath, ['tunnel', '--url', 'http://127.0.0.1:4500'], {
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    const urlRegex = /https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/;
+    const handleOutput = (data) => {
+      const text = data.toString();
+      const match = text.match(urlRegex);
+      if (match && match[0]) {
+        currentTunnelUrl = match[0];
+        try {
+          fs.writeFileSync(path.join(__dirname, 'tunnel_url.txt'), currentTunnelUrl, 'utf8');
+        } catch (e) {}
+        log(`🌐 [TÚNEL REMOTO ACTIVO] Enlace público seguro: ${currentTunnelUrl}`, 'log-success');
+      }
+    };
+
+    tunnelProcess.stderr.on('data', handleOutput);
+    tunnelProcess.stdout.on('data', handleOutput);
+
+    tunnelProcess.on('exit', (code) => {
+      log(`🌐 [TÚNEL REMOTO] Desconectado (código ${code})`, 'log-warn');
+      currentTunnelUrl = null;
+    });
+  } catch (err) {
+    log(`⚠️ Error iniciando Cloudflare Tunnel: ${err.message}`, 'log-warn');
+  }
+}
+
+app.get('/api/tunnel/info', (req, res) => {
+  res.json({
+    ok: true,
+    active: !!currentTunnelUrl,
+    url: currentTunnelUrl
+  });
+});
+
+app.post('/api/tunnel/restart', (req, res) => {
+  startCloudflareTunnel();
+  res.json({ ok: true, message: 'Reiniciando túnel seguro...' });
+});
+
+// API: Estado y Logs
+app.get('/api/status', (req, res) => {
+  const historyMgr = require('./history_manager');
+  const persistentHistory = historyMgr.getHistory();
+  const logsToSend = [...logsQueue];
+  logsQueue = []; // Vaciar buffer para polling
+  res.json({
+    ok: true,
+    history: persistentHistory.length > 0 ? persistentHistory : executionHistory,
+    logs: logsToSend
+  });
+});
+
+// API: Consulta Histórica Filtrada
+app.get('/api/history', (req, res) => {
+  const historyMgr = require('./history_manager');
+  const { loteria, fecha } = req.query;
+  const records = historyMgr.getHistory({ loteria, fecha });
+  res.json({ ok: true, count: records.length, records });
+});
+
+// API: Descargar Reporte Histórico en Excel CSV
+app.get('/api/history/export-csv', (req, res) => {
+  const historyMgr = require('./history_manager');
+  if (fs.existsSync(historyMgr.CSV_PATH)) {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="reportes_agotados_premier.csv"');
+    fs.createReadStream(historyMgr.CSV_PATH).pipe(res);
+  } else {
+    res.status(404).send('Aún no existen reportes históricos generados.');
+  }
+});
+
+// API: Consulta de Animales Más Atrasados (Predictivo Visual-FX)
+app.get('/api/predictive/delayed', (req, res) => {
+  const predictive = require('./predictive_service');
+  const loteriaId = req.query.loteriaId || 'la_granjita';
+  const limit = parseInt(req.query.limit, 10) || 5;
+  const delayed = predictive.getMostDelayedNumbers(loteriaId, limit);
+  res.json({ ok: true, loteriaId, count: delayed.length, delayed });
+});
+
+// API: Estadísticas de Trofeos (Golpes de Banca Evitados)
+app.get('/api/trophies/stats', (req, res) => {
+  const historyMgr = require('./history_manager');
+  const stats = historyMgr.getTrophyStats();
+  res.json({ ok: true, stats });
+});
+
+// API: Obtener Registros de Auditoría y Trofeos
+app.get('/api/trophies/records', (req, res) => {
+  const historyMgr = require('./history_manager');
+  const { soloTrofeos, loteria, fecha } = req.query;
+  const records = historyMgr.getHistory({
+    soloTrofeos: soloTrofeos === 'true',
+    loteria,
+    fecha
+  });
+  res.json({ ok: true, count: records.length, records });
+});
+
+// API: Verificar Número Ganador de un Sorteo (Confirmar Trofeo)
+app.post('/api/trophies/verify', (req, res) => {
+  const historyMgr = require('./history_manager');
+  const { recordId, winnerNumber, winnerName } = req.body;
+  if (!recordId || winnerNumber === undefined || winnerNumber === '') {
+    return res.status(400).json({ ok: false, message: 'Falta recordId o número ganador' });
+  }
+
+  const result = historyMgr.verifyRecordWinner(recordId, winnerNumber, winnerName);
+  if (result.ok && result.bloqueoAcertado) {
+    log(`🏆 [TROFEO CONFIRMADO] ${result.mensaje}`, 'log-success');
+  } else if (result.ok) {
+    log(`[SORTEO VERIFICADO] Número ganador ${winnerNumber} registrado (No estaba bloqueado).`, 'log-info');
+  }
+  res.json(result);
+});
+
+// API: Sincronizar Resultados con Visual-FX
+app.post('/api/trophies/sync', (req, res) => {
+  const historyMgr = require('./history_manager');
+  const syncRes = historyMgr.syncResultsWithVisualFx();
+  log(`[SINCRONIZACIÓN] ${syncRes.message}`, syncRes.trophiesCount > 0 ? 'log-success' : 'log-info');
+  res.json(syncRes);
+});
+
+// API: Simular Golpe Evitado (Para demostración y pruebas inmediatas de UI)
+app.post('/api/trophies/simulate', (req, res) => {
+  const historyMgr = require('./history_manager');
+  const records = historyMgr.getHistory();
+  if (records.length === 0) {
+    return res.status(400).json({ ok: false, message: 'No hay registros de sondeo aún. Realiza un sondeo primero.' });
+  }
+  const targetRec = records[records.length - 1];
+  let luckyNumber = '17';
+  if (targetRec.rojos && targetRec.rojos.length > 0) {
+    luckyNumber = targetRec.rojos[0];
+  }
+  const result = historyMgr.verifyRecordWinner(targetRec.id, luckyNumber);
+  log(`🏆 [SIMULACIÓN DE TROFEO] ¡Golpe evitado confirmado para el número ${luckyNumber}! Tarjeta resaltada con franja verde.`, 'log-success');
+  res.json(result);
+});
+
+// API: Disparar Chequeo de Prueba
+app.post('/api/trigger-test', async (req, res) => {
+  const cfg = getConfig();
+  const targetId = req.body && req.body.loteriaId;
+  let loteria = cfg.loterias.find(l => l.id === targetId) || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
+
+  log(`Iniciando ejecución de sondeo manual en PremierPluss para ${loteria.nombre}...`, 'log-warn');
+  
+  try {
+    const robot = require('./premier_robot');
+    const result = await robot.ejecutarSondeoPremier(cfg, loteria.id);
+    
+    // Consolidar lista de bloqueos (1. Premier + 2. Números Fijos + 3. Visual-FX + 4. Sistema Aleatorio)
+    const predictive = require('./predictive_service');
+    const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, result);
+
+    const descFijos = (consolidated.fijosSeleccionados || []).map(f => `${f.numero} ${f.nombre}`).join(', ');
+    const descPredictivos = (consolidated.predictivosSeleccionados || []).map(p => `${p.numero} ${p.nombre} (${p.sorteosAtraso}s)`).join(', ');
+    const descAleatorios = (consolidated.aleatoriosSeleccionados || []).map(a => `${a.numero} ${a.nombre}`).join(', ');
+
+    log(`🎯 [ESTRATEGIA 4-VÍAS] 🔴 Premier Cupo 0: [${consolidated.rojosPremier.join(', ') || 'Ninguno'}] | 📌 Fijos: [${descFijos || 'Ninguno'}] | 🔮 Visual-FX Atrasados: [${descPredictivos || 'Ninguno'}] | 🎲 Sistema Aleatorio (${consolidated.aleatoriosSeleccionados.length} máx 3): [${descAleatorios || 'Ninguno'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}`, 'log-info');
+
+    // Registrar en historial persistente (JSON DB + Excel CSV)
+    const historyMgr = require('./history_manager');
+    const persistentRecord = historyMgr.recordScan({
+      loteria: loteria.nombre,
+      sorteo: result.sorteo || 'Próximo Sorteo',
+      montoSondeo: loteria.montoSondeo || 3000,
+      totalAnimalesAnalizados: result.totalAnimalesAnalizados || 38,
+      rojos: consolidated.listaFinalNumeros,
+      rojosPremier: consolidated.rojosPremier,
+      numFijos: consolidated.numFijos,
+      fijosSeleccionados: consolidated.fijosSeleccionados,
+      predictivosVisualFx: consolidated.predictivosSeleccionados,
+      aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+      t7Status: cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado',
+      t7Blocked: false
+    });
+
+    const record = persistentRecord || {
+      horaSorteo: result.sorteo || 'Próximo Sorteo',
+      loteria: loteria.nombre,
+      rojos: consolidated.listaFinalNumeros,
+      rojosPremier: consolidated.rojosPremier,
+      numFijos: consolidated.numFijos,
+      fijosSeleccionados: consolidated.fijosSeleccionados,
+      predictivosVisualFx: consolidated.predictivosSeleccionados,
+      aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+      t7Status: cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado',
+      t7Blocked: false,
+      timestamp: new Date().toISOString()
+    };
+    
+    executionHistory.push(record);
+    if (executionHistory.length > 50) executionHistory.shift();
+
+    // Si Triple 7 está habilitado y hay números para bloquear
+    if (cfg.general.triple7.enabled && consolidated.listaFinalNumeros.length > 0) {
+      log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para bloqueo (Premier: ${consolidated.rojosPremier.length}, Fijos: ${consolidated.fijosSeleccionados.length}, Visual-FX: ${consolidated.predictivosSeleccionados.length}, Aleatorios: ${consolidated.aleatoriosSeleccionados.length})...`, 'log-info');
+      try {
+        const t7 = require('./triple7_robot');
+        const t7Res = await t7.bloquearNumeros(cfg, loteria.nombre, result.sorteo, consolidated.listaFinalNumeros);
+        record.t7Blocked = t7Res.ok;
+        record.t7Status = t7Res.ok ? `Bloqueados (${consolidated.listaFinalNumeros.length})` : `Error: ${t7Res.message}`;
+      } catch (t7Err) {
+        record.t7Status = `Error T7: ${t7Err.message}`;
+        log(`Error en Triple 7: ${t7Err.message}`, 'log-danger');
+      }
+    }
+
+    // Notificar Telegram si está habilitado
+    if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
+      const fijosText = consolidated.fijosSeleccionados.length > 0 ? `\n📌 *Números Fijos:* ${descFijos}` : '';
+      const predText = consolidated.predictivosSeleccionados.length > 0 ? `\n🔮 *Visual-FX Atrasados:* ${descPredictivos}` : '';
+      const aleatText = consolidated.aleatoriosSeleccionados.length > 0 ? `\n🎲 *Sistema Aleatorio:* ${descAleatorios}` : '';
+      enviarTelegram(cfg, `🦜 *${loteria.nombre} - Sorteo ${record.horaSorteo}*\n\n❌ *Premier Agotados (Cupo 0):* ${consolidated.rojosPremier.join(', ') || 'Ninguno'}${fijosText}${predText}${aleatText}\n🛡️ *Bloqueo Total:* ${consolidated.listaFinalNumeros.join(', ') || 'Ninguno'}\n🛡️ *Triple 7:* ${record.t7Status}`);
+    }
+
+    res.json({ ok: true, message: 'Chequeo completado', result, consolidated });
+  } catch (err) {
+    log(`Falla en ejecución de sondeo: ${err.message}`, 'log-danger');
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// API: Obtener Estado y Sorteos Activos en Triple 7
+app.get('/api/triple7/status', async (req, res) => {
+  const cfg = getConfig();
+  try {
+    const t7 = require('./triple7_robot');
+    const estado = await t7.obtenerEstadoBloqueos(cfg);
+    res.json(estado);
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// API: Bloqueo Manual en Triple 7
+app.post('/api/triple7/bloquear', async (req, res) => {
+  const cfg = getConfig();
+  const { loteria, sorteo, numeros } = req.body;
+  if (!loteria || !sorteo || !numeros || !Array.isArray(numeros) || numeros.length === 0) {
+    return res.status(400).json({ ok: false, message: 'Faltan parámetros requeridos: loteria, sorteo, numeros (array)' });
+  }
+  log(`[TRIPLE 7 MANUAL] Solicitud de bloqueo para ${loteria} (${sorteo}): [${numeros.join(', ')}]...`, 'log-info');
+  try {
+    const t7 = require('./triple7_robot');
+    const result = await t7.bloquearNumeros(cfg, loteria, sorteo, numeros);
+    if (result.ok) {
+      log(`✅ [TRIPLE 7 MANUAL] ${result.message}`, 'log-success');
+    } else {
+      log(`⚠️ [TRIPLE 7 MANUAL] ${result.message}`, 'log-warn');
+    }
+    res.json(result);
+  } catch (err) {
+    log(`❌ [TRIPLE 7 ERROR] ${err.message}`, 'log-danger');
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// API: Reincorporar (Desbloquear) Manualmente en Triple 7
+app.post('/api/triple7/reincorporar', async (req, res) => {
+  const cfg = getConfig();
+  const { loteria, sorteo } = req.body;
+  if (!loteria || !sorteo) {
+    return res.status(400).json({ ok: false, message: 'Faltan parámetros requeridos: loteria, sorteo' });
+  }
+  log(`[TRIPLE 7 REINCORPORAR] Solicitud para ${loteria} (${sorteo})...`, 'log-info');
+  try {
+    const t7 = require('./triple7_robot');
+    const result = await t7.reincorporarAnimalitos(cfg, loteria, sorteo);
+    if (result.ok) {
+      log(`✅ [TRIPLE 7 REINCORPORAR] ${result.message}`, 'log-success');
+    } else {
+      log(`⚠️ [TRIPLE 7 REINCORPORAR] ${result.message}`, 'log-warn');
+    }
+    res.json(result);
+  } catch (err) {
+    log(`❌ [TRIPLE 7 ERROR] ${err.message}`, 'log-danger');
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// API: Estado de Control y Seguridad
+app.get('/api/control-status', (req, res) => {
+  const robot = require('./premier_robot');
+  const status = robot.getEstadoControl();
+  res.json({ ok: true, ...status });
+});
+
+// API: Pausar Automatización
+app.post('/api/pause', (req, res) => {
+  const robot = require('./premier_robot');
+  robot.pausarSondeo();
+  log('⏸️ [CONTROL] Automatización pausada por el usuario.', 'log-warn');
+  res.json({ ok: true, message: 'Automatización pausada' });
+});
+
+// API: Continuar / Reanudar Automatización
+app.post('/api/resume', (req, res) => {
+  const robot = require('./premier_robot');
+  robot.reanudarSondeo();
+  log('▶️ [CONTROL] Reanudando automatización...', 'log-info');
+  res.json({ ok: true, message: 'Automatización reanudada' });
+});
+
+// API: Detener por Completo (Emergency Stop / Kill Switch)
+app.post('/api/stop', (req, res) => {
+  const robot = require('./premier_robot');
+  robot.detenerSondeo();
+  log('🛑 [CONTROL] ¡Detención total ejecutada! Proceso cancelado.', 'log-danger');
+  res.json({ ok: true, message: 'Automatización detenida por completo' });
+});
+
+// API: Reiniciar Proceso
+app.post('/api/restart', async (req, res) => {
+  const robot = require('./premier_robot');
+  log('🔄 [CONTROL] Reiniciando proceso de sondeo...', 'log-warn');
+  robot.detenerSondeo();
+
+  // Breve espera para que el proceso anterior muera limpiamente
+  setTimeout(async () => {
+    const cfg = getConfig();
+    const targetId = req.body && req.body.loteriaId;
+    let loteria = cfg.loterias.find(l => l.id === targetId) || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
+    
+    log(`Iniciando nuevo ciclo de sondeo para ${loteria.nombre}...`, 'log-info');
+    try {
+      robot.ejecutarSondeoPremier(cfg, loteria.id);
+    } catch (e) {
+      log(`Error reiniciando: ${e.message}`, 'log-danger');
+    }
+  }, 1000);
+
+  res.json({ ok: true, message: 'Proceso reiniciado desde cero' });
+});
+
+// API: Enviar Test a Telegram
+app.post('/api/test-telegram', (req, res) => {
+  const cfg = getConfig();
+  if (!cfg.general.telegram.botToken || !cfg.general.telegram.chatId) {
+    return res.status(400).json({ ok: false, message: 'Falta Token o Chat ID de Telegram' });
+  }
+
+  enviarTelegram(cfg, '🚀 *Pronosticador de Animalitos*\nConexión de prueba exitosa con la Suite.', (ok, err) => {
+    if (ok) res.json({ ok: true, message: 'Enviado con éxito' });
+    else res.status(500).json({ ok: false, message: err });
+  });
+});
+
+// Enviar mensaje Telegram
+function enviarTelegram(cfg, texto, cb) {
+  const token = cfg.general.telegram.botToken;
+  const chatId = cfg.general.telegram.chatId;
+  const postData = JSON.stringify({
+    chat_id: chatId,
+    text: texto,
+    parse_mode: 'Markdown'
+  });
+
+  const options = {
+    hostname: 'api.telegram.org',
+    path: `/bot${token}/sendMessage`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
+    }
+  };
+
+  const req = https.request(options, (res) => {
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', () => {
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.ok) {
+          log('Notificación enviada a Telegram con éxito.', 'log-success');
+          if (cb) cb(true);
+        } else {
+          log(`Falla de Telegram API: ${parsed.description}`, 'log-danger');
+          if (cb) cb(false, parsed.description);
+        }
+      } catch (e) {
+        if (cb) cb(false, e.message);
+      }
+    });
+  });
+
+  req.on('error', (e) => {
+    log(`Error conectando a Telegram: ${e.message}`, 'log-danger');
+    if (cb) cb(false, e.message);
+  });
+
+  req.write(postData);
+  req.end();
+}
+
+// Planificador / Scheduler Automático (Revisa cada 30 segundos)
+// Control de tareas programadas y de revisión de resultados en Visual-FX
+let ultimoSorteoEjecutado = '';
+const tareasEjecutadas = new Set(); // Formato: "YYYY-MM-DD_loteriaId_HH:MM_tarea"
+const revisionesRealizadas = new Set(); // Formato: "YYYY-MM-DD_loteriaId_HH:MM_intento"
+
+setInterval(async () => {
+  const cfg = getConfig();
+  if (!cfg || !cfg.general.autoStartScheduler) return;
+
+  const now = new Date();
+  const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayStr = now.toISOString().slice(0, 10);
+
+  for (const lot of cfg.loterias) {
+    if (!lot.activo) continue;
+
+    for (const hStr of (lot.horarios || [])) {
+      const [h, m] = hStr.split(':').map(Number);
+      const drawMinutes = h * 60 + m;
+
+      // =========================================================================
+      // 1. DISPARO DE BLOQUEO DE NÚMEROS FIJOS (100% Independiente)
+      // =========================================================================
+      if (lot.bloqueoFijos !== false && (lot.numerosFijos || []).length > 0) {
+        const fijosMinutesBefore = lot.minutosAntesFijos || 50;
+        const targetFijosMinutes = drawMinutes - fijosMinutesBefore;
+        const diffFijos = currentTotalMinutes - targetFijosMinutes;
+        const keyFijos = `${todayStr}_${lot.id}_${hStr}_fijos`;
+
+        if (diffFijos >= 0 && diffFijos < 2 && !tareasEjecutadas.has(keyFijos)) {
+          tareasEjecutadas.add(keyFijos);
+          log(`📌 [ALARMA NÚMEROS FIJOS] Activando bloqueo de fijos (${fijosMinutesBefore}m antes) para ${lot.nombre} (${hStr})...`, 'log-info');
+
+          try {
+            const predictive = require('./predictive_service');
+            const historyMgr = require('./history_manager');
+            const t7 = require('./triple7_robot');
+
+            const fijosParaBloquear = predictive.getFixedBlockNumbers(cfg, lot.id);
+            const numerosParaBloquear = fijosParaBloquear.map(f => f.numero);
+
+            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+            let t7Blocked = false;
+
+            if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
+              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${numerosParaBloquear.length} números fijos a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
+              try {
+                const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
+                t7Blocked = t7Res.ok;
+                t7Status = t7Res.ok ? `Bloqueados (${numerosParaBloquear.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+              } catch (t7Err) {
+                t7Status = `Error T7: ${t7Err.message}`;
+                log(`Error en auto-bloqueo Triple 7 (Fijos): ${t7Err.message}`, 'log-danger');
+              }
+            }
+
+            const rec = historyMgr.recordScan({
+              loteria: lot.nombre,
+              sorteo: hStr,
+              montoSondeo: lot.montoSondeo || 3000,
+              totalAnimalesAnalizados: lot.totalAnimales || 38,
+              rojos: numerosParaBloquear,
+              numFijos: numerosParaBloquear,
+              fijosSeleccionados: fijosParaBloquear,
+              t7Status,
+              t7Blocked
+            });
+
+            const descFijos = fijosParaBloquear.map(f => `${f.numero} ${f.nombre}`).join(', ');
+            log(`✅ [NÚMEROS FIJOS BLOQUEADOS] ${lot.nombre} (${hStr}): [${descFijos}] -> Triple 7: ${t7Status}`, 'log-success');
+
+            if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
+              enviarTelegram(cfg, `📌 *BLOQUEO NÚMEROS FIJOS*\n*${lot.nombre} - Sorteo ${hStr} (${fijosMinutesBefore}m antes)*\nFijos: ${descFijos}\nTriple 7: ${t7Status}`);
+            }
+          } catch (e) {
+            log(`Error en bloqueo independiente de números fijos: ${e.message}`, 'log-danger');
+          }
+        }
+      }
+
+      // =========================================================================
+      // 2. DISPARO DE BLOQUEO ALEATORIO DEL SISTEMA (100% Independiente)
+      // =========================================================================
+      if (lot.bloqueoAleatorioSistema !== false && (lot.cantidadAleatoriosABloquear || 0) > 0) {
+        const aleatMinutesBefore = lot.minutosAntesAleatorios || 45;
+        const targetAleatMinutes = drawMinutes - aleatMinutesBefore;
+        const diffAleat = currentTotalMinutes - targetAleatMinutes;
+        const keyAleat = `${todayStr}_${lot.id}_${hStr}_aleat`;
+
+        if (diffAleat >= 0 && diffAleat < 2 && !tareasEjecutadas.has(keyAleat)) {
+          tareasEjecutadas.add(keyAleat);
+          log(`🎲 [ALARMA SISTEMA ALEATORIO] Activando cobertura aleatoria (${aleatMinutesBefore}m antes) para ${lot.nombre} (${hStr})...`, 'log-info');
+
+          try {
+            const historyMgr = require('./history_manager');
+            const predictive = require('./predictive_service');
+            const t7 = require('./triple7_robot');
+
+            // Obtener números ya bloqueados en este sorteo hoy para no repetir
+            const existingHistory = historyMgr.getHistory({ fecha: todayStr });
+            const existingRec = existingHistory.find(r => 
+              (r.loteria || '').toLowerCase().includes(lot.nombre.toLowerCase().slice(0, 5)) &&
+              (r.sorteo === hStr || r.horaSorteo === hStr)
+            );
+            const yaBloqueados = existingRec ? (existingRec.rojos || []) : [];
+
+            const aleatorios = predictive.getRandomSystemBlockNumbers(lot.id, lot.cantidadAleatoriosABloquear, yaBloqueados);
+            const numerosParaBloquear = aleatorios.map(a => a.numero);
+
+            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+            let t7Blocked = false;
+
+            if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
+              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${numerosParaBloquear.length} números aleatorios a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
+              try {
+                const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
+                t7Blocked = t7Res.ok;
+                t7Status = t7Res.ok ? `Bloqueados (${numerosParaBloquear.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+              } catch (t7Err) {
+                t7Status = `Error T7: ${t7Err.message}`;
+                log(`Error en auto-bloqueo Triple 7 (Aleatorios): ${t7Err.message}`, 'log-danger');
+              }
+            }
+
+            const rec = historyMgr.recordScan({
+              loteria: lot.nombre,
+              sorteo: hStr,
+              montoSondeo: lot.montoSondeo || 3000,
+              totalAnimalesAnalizados: lot.totalAnimales || 38,
+              rojos: numerosParaBloquear,
+              numAleatorios: numerosParaBloquear,
+              aleatoriosSistema: aleatorios,
+              t7Status,
+              t7Blocked
+            });
+
+            const descAleatorios = aleatorios.map(a => `${a.numero} ${a.nombre}`).join(', ');
+            log(`✅ [SISTEMA ALEATORIO BLOQUEADO] ${lot.nombre} (${hStr}): [${descAleatorios}] -> Triple 7: ${t7Status}`, 'log-success');
+
+            if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
+              enviarTelegram(cfg, `🎲 *BLOQUEO COBERTURA ALEATORIA*\n*${lot.nombre} - Sorteo ${hStr} (${aleatMinutesBefore}m antes)*\nNúmeros seleccionados: ${descAleatorios}\nTriple 7: ${t7Status}`);
+            }
+          } catch (e) {
+            log(`Error en cobertura aleatoria independiente: ${e.message}`, 'log-danger');
+          }
+        }
+      }
+
+      // =========================================================================
+      // 3. DISPARO DE BLOQUEO PREDICTIVO VISUAL-FX (100% Independiente)
+      // =========================================================================
+      if (lot.bloqueoPredictivosAtrasados !== false && (lot.cantidadPredictivosABloquear || 0) > 0) {
+        const vfxMinutesBefore = lot.minutosAntesVisualFx || 40;
+        const targetVfxMinutes = drawMinutes - vfxMinutesBefore;
+        const diffVfx = currentTotalMinutes - targetVfxMinutes;
+        const keyVfx = `${todayStr}_${lot.id}_${hStr}_visualfx`;
+
+        if (diffVfx >= 0 && diffVfx < 2 && !tareasEjecutadas.has(keyVfx)) {
+          tareasEjecutadas.add(keyVfx);
+          log(`🔮 [ALARMA VISUAL-FX] Activando bloqueo de ${lot.cantidadPredictivosABloquear} atrasados (${vfxMinutesBefore}m antes) para ${lot.nombre} (${hStr})...`, 'log-info');
+
+          try {
+            const predictive = require('./predictive_service');
+            const historyMgr = require('./history_manager');
+            const t7 = require('./triple7_robot');
+
+            const atrasados = predictive.getMostDelayedNumbers(lot.id, lot.cantidadPredictivosABloquear);
+            const numerosParaBloquear = atrasados.map(a => a.numero);
+
+            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+            let t7Blocked = false;
+
+            if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
+              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${numerosParaBloquear.length} números atrasados (Visual-FX) a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
+              try {
+                const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
+                t7Blocked = t7Res.ok;
+                t7Status = t7Res.ok ? `Bloqueados (${numerosParaBloquear.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+              } catch (t7Err) {
+                t7Status = `Error T7: ${t7Err.message}`;
+                log(`Error en auto-bloqueo Triple 7 (Visual-FX): ${t7Err.message}`, 'log-danger');
+              }
+            }
+
+            const rec = historyMgr.recordScan({
+              loteria: lot.nombre,
+              sorteo: hStr,
+              montoSondeo: lot.montoSondeo || 3000,
+              totalAnimalesAnalizados: lot.totalAnimales || 38,
+              rojos: numerosParaBloquear,
+              predictivosVisualFx: atrasados,
+              numPredictivos: numerosParaBloquear,
+              t7Status,
+              t7Blocked
+            });
+
+            const descAtrasados = atrasados.map(a => `${a.numero} ${a.nombre} (${a.sorteosAtraso}s)`).join(', ');
+            log(`✅ [VISUAL-FX BLOQUEADO] ${lot.nombre} (${hStr}): [${descAtrasados}] -> Triple 7: ${t7Status}`, 'log-success');
+
+            if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
+              enviarTelegram(cfg, `🔮 *BLOQUEO PREDICTIVO VISUAL-FX*\n*${lot.nombre} - Sorteo ${hStr} (${vfxMinutesBefore}m antes)*\nAnimales atrasados: ${descAtrasados}\nTriple 7: ${t7Status}`);
+            }
+          } catch (e) {
+            log(`Error en bloqueo independiente Visual-FX: ${e.message}`, 'log-danger');
+          }
+        }
+      }
+
+      // =========================================================================
+      // 4. DISPARO DE SONDEO Y BLOQUEO EN PREMIER PLUSS (100% Independiente)
+      // =========================================================================
+      if (lot.bloqueoPremierAgotados !== false) {
+        const premierMinutesBefore = lot.minutosAntesPremier || lot.minutosAntes || 35;
+        const targetPremMinutes = drawMinutes - premierMinutesBefore;
+        const diffPrem = currentTotalMinutes - targetPremMinutes;
+        const keyPrem = `${todayStr}_${lot.id}_${hStr}_premier`;
+
+        if (diffPrem >= 0 && diffPrem < 2 && !tareasEjecutadas.has(keyPrem)) {
+          tareasEjecutadas.add(keyPrem);
+          log(`🔴 [ALARMA PREMIER PLUSS] Activando sondeo de cupo cero (${premierMinutesBefore}m antes) para ${lot.nombre} (Sorteo ${hStr})...`, 'log-warn');
+
+          try {
+            const robot = require('./premier_robot');
+            const historyMgr = require('./history_manager');
+            const t7 = require('./triple7_robot');
+
+            const result = await robot.ejecutarSondeoPremier(cfg, lot.id);
+            const rojosPremier = (result && result.rojos) || [];
+
+            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+            let t7Blocked = false;
+
+            if (cfg.general.triple7.enabled && rojosPremier.length > 0) {
+              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${rojosPremier.length} números agotados en Premier a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
+              try {
+                const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, result.sorteo || hStr, rojosPremier);
+                t7Blocked = t7Res.ok;
+                t7Status = t7Res.ok ? `Bloqueados (${rojosPremier.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+              } catch (t7Err) {
+                t7Status = `Error T7: ${t7Err.message}`;
+                log(`Error en auto-bloqueo Triple 7 (Premier): ${t7Err.message}`, 'log-danger');
+              }
+            }
+
+            const rec = historyMgr.recordScan({
+              loteria: lot.nombre,
+              sorteo: result.sorteo || hStr,
+              montoSondeo: lot.montoSondeo || 3000,
+              totalAnimalesAnalizados: result.totalAnimalesAnalizados || 38,
+              rojosPremier: rojosPremier,
+              t7Status,
+              t7Blocked
+            });
+
+            log(`✅ [PREMIER PLUSS SONDEO COMPLETADO] ${lot.nombre} (${hStr}): Agotados detectados: [${rojosPremier.join(', ') || 'Ninguno'}] -> Triple 7: ${t7Status}`, 'log-success');
+
+            if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
+              enviarTelegram(cfg, `🔴 *SONDEO PREMIER PLUSS REALIZADO*\n*${lot.nombre} - Sorteo ${hStr} (${premierMinutesBefore}m antes)*\n❌ Agotados (Cupo 0): ${rojosPremier.join(', ') || 'Ninguno'}\nTriple 7: ${t7Status}`);
+            }
+          } catch (e) {
+            log(`Error en sondeo independiente Premier Pluss: ${e.message}`, 'log-danger');
+          }
+        }
+      }
+
+      // 2. REGLA ESTRICTA DE REVISIÓN DE RESULTADOS EN VISUAL-FX:
+      // - Intento 1: A los 5 minutos después del sorteo (+5 min)
+      // - Intento 2: A los 10 minutos después del sorteo (+10 min, si el 1 no lo consiguió)
+      // - Si no lo consigue tras el 2do intento, PARA por completo (máx 2 intentos por sorteo horario)
+      const diffMinutes = currentTotalMinutes - drawMinutes;
+
+      const keyIntento1 = `${todayStr}_${lot.id}_${hStr}_intento1`;
+      const keyIntento2 = `${todayStr}_${lot.id}_${hStr}_intento2`;
+      const keyResuelto = `${todayStr}_${lot.id}_${hStr}_resuelto`;
+      const keyParado = `${todayStr}_${lot.id}_${hStr}_parado`;
+
+      // INTENTO 1 (+5 MINUTOS TRAS EL SORTEO: ventana entre +5 y +9 minutos)
+      if (diffMinutes >= 5 && diffMinutes < 10 && !revisionesRealizadas.has(keyIntento1) && !revisionesRealizadas.has(keyResuelto)) {
+        revisionesRealizadas.add(keyIntento1);
+        log(`🔍 [REVISIÓN RESULTADOS] Intento 1 (+5 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando Visual-FX...`, 'log-info');
+        
+        try {
+          const historyMgr = require('./history_manager');
+          const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 1);
+          if (syncRes.found) {
+            revisionesRealizadas.add(keyResuelto);
+            log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
+            
+            if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
+              enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
+            }
+          } else {
+            log(`⏳ [RESULTADO PENDIENTE] Intento 1 (+5 min) para ${lot.nombre} (${hStr}): Aún no publicado en Visual-FX. Se reintentará al minuto +10.`, 'log-warn');
+          }
+        } catch (err) {
+          log(`Aviso al consultar resultado intento 1: ${err.message}`, 'log-warn');
+        }
+      }
+
+      // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ)
+      if (diffMinutes >= 10 && diffMinutes < 60 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
+        revisionesRealizadas.add(keyIntento2);
+        log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando Visual-FX...`, 'log-info');
+        
+        try {
+          const historyMgr = require('./history_manager');
+          const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 2);
+          if (syncRes.found) {
+            revisionesRealizadas.add(keyResuelto);
+            log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
+            
+            if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
+              enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 2do intento (+10 min)!`);
+            }
+          } else {
+            revisionesRealizadas.add(keyParado);
+            log(`🛑 [DETENIENDO CONSULTAS] Intento 2 (+10 min) para ${lot.nombre} (${hStr}): No publicado en Visual-FX. Se detienen las consultas para este sorteo (máximo 2 intentos alcanzado).`, 'log-warn');
+          }
+        } catch (err) {
+          log(`Aviso al consultar resultado intento 2: ${err.message}`, 'log-warn');
+        }
+      }
+    }
+  }
+}, 30000);
+
+app.listen(PORT, () => {
+  log(`🚀 Servidor de la Suite activo en http://localhost:${PORT}`, 'log-success');
+  startCloudflareTunnel();
+});

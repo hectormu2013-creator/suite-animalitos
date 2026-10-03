@@ -1,0 +1,140 @@
+{
+  "general": {
+    "suitePort": 4500,
+    "autoStartScheduler": true,
+    "horaActivacionDiaria": "07:00",
+    "activacionDiariaActiva": true,
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "chatId": ""
+    },
+    "premierPluss": {
+      "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+      "user": "TCOP102",
+      "password": "123",
+      "keepOpen": true
+    },
+    "triple7": {
+      "enabled": true,
+      "loginUrl": "https://ny7.undo.it/index.php",
+      "url": "https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php",
+      "user": "AREYES",
+      "password": "220126"
+    },
+    "mantenimientoVentas": {
+      "activo": true,
+      "maxTicketsDia": 2,
+      "montoPorTicketBs": 10,
+      "horariosVenta": [
+        "11:00",
+        "16:00"
+      ],
+      "ticketsEmitidosHoy": 0
+    }
+  },
+  "loterias": [
+    {
+      "id": "guacharo_activo",
+      "nombre": "GUACHARO ACTIVO",
+      "activo": true,
+      "minutosAntes": 35,
+      "minutosAntesPremier": 35,
+      "minutosAntesVisualFx": 40,
+      "minutosAntesAleatorios": 45,
+      "minutosAntesFijos": 50,
+      "montoSondeo": 3000,
+      "totalAnimales": 77,
+      "bloquearSoloRojos": true,
+      "bloqueoPremierAgotados": true,
+      "bloqueoFijos": true,
+      "numerosFijos": [
+        "75"
+      ],
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadPredictivosABloquear": 2,
+      "bloqueoAleatorioSistema": true,
+      "cantidadAleatoriosABloquear": 2,
+      "horarios": [
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ]
+    },
+    {
+      "id": "lotto_activo",
+      "nombre": "LOTTO ACTIVO",
+      "activo": true,
+      "minutosAntes": 35,
+      "minutosAntesPremier": 35,
+      "minutosAntesVisualFx": 40,
+      "minutosAntesAleatorios": 45,
+      "minutosAntesFijos": 35,
+      "montoSondeo": 3000,
+      "totalAnimales": 38,
+      "bloquearSoloRojos": true,
+      "bloqueoPremierAgotados": true,
+      "bloqueoFijos": true,
+      "numerosFijos": [],
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadPredictivosABloquear": 2,
+      "bloqueoAleatorioSistema": true,
+      "cantidadAleatoriosABloquear": 2,
+      "horarios": [
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ]
+    },
+    {
+      "id": "la_granjita",
+      "nombre": "LA GRANJITA",
+      "activo": true,
+      "minutosAntes": 30,
+      "minutosAntesPremier": 30,
+      "minutosAntesVisualFx": 40,
+      "minutosAntesAleatorios": 45,
+      "minutosAntesFijos": 35,
+      "montoSondeo": 3000,
+      "totalAnimales": 38,
+      "bloquearSoloRojos": true,
+      "bloqueoPremierAgotados": true,
+      "bloqueoFijos": true,
+      "numerosFijos": [],
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadPredictivosABloquear": 2,
+      "bloqueoAleatorioSistema": true,
+      "cantidadAleatoriosABloquear": 2,
+      "horarios": [
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ]
+    }
+  ],
+  "historial": []
+}

@@ -1,0 +1,12 @@
+{
+  "name": "pronosticador-animalitos-suite",
+  "version": "1.0.0",
+  "description": "Suite de automatización, monitoreo y gestión de riesgo para venta de animalitos (PremierPluss 2.0 a Triple 7)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
