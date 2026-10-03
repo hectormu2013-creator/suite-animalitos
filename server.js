@@ -9,7 +9,13 @@ const PORT = process.env.PORT || 4500;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 
 // Estado en memoria
 let logsQueue = [];
