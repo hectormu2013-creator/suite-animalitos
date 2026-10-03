@@ -85,7 +85,15 @@
       "bloqueoAcertado": true,
       "origenAcierto": "PREMIER",
       "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 17 (Pavo) y estaba BLOQUEADO por Premier Pluss (Cupo 0).",
-      "fechaVerificacion": "2026-10-02T20:21:24.872Z"
+      "fechaVerificacion": "2026-10-02T20:21:24.872Z",
+      "metodosAcierto": [
+        {
+          "id": "PREMIER",
+          "tag": "🔴 Premier Cupo 0",
+          "nombre": "Premier Pluss (Cupo 0)"
+        }
+      ],
+      "origenTexto": "🔴 Premier Cupo 0"
     }
   },
   {
@@ -175,7 +183,15 @@
       "bloqueoAcertado": true,
       "origenAcierto": "ALEATORIO",
       "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 22 (Camello) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
-      "fechaVerificacion": "2026-10-02T20:33:16.782Z"
+      "fechaVerificacion": "2026-10-02T20:33:16.782Z",
+      "metodosAcierto": [
+        {
+          "id": "ALEATORIO",
+          "tag": "🎲 Sistema Autónomo",
+          "nombre": "Cobertura Aleatoria"
+        }
+      ],
+      "origenTexto": "🎲 Sistema Autónomo"
     }
   },
   {
@@ -648,7 +664,15 @@
       "bloqueoAcertado": true,
       "origenAcierto": "ALEATORIO",
       "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 19 (Chivo) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
-      "fechaVerificacion": "2026-10-03T01:10:21.837Z"
+      "fechaVerificacion": "2026-10-03T01:10:21.837Z",
+      "metodosAcierto": [
+        {
+          "id": "ALEATORIO",
+          "tag": "🎲 Sistema Autónomo",
+          "nombre": "Cobertura Aleatoria"
+        }
+      ],
+      "origenTexto": "🎲 Sistema Autónomo"
     },
     "revision": {
       "estado": "RESUELTO",
@@ -839,7 +863,15 @@
       "bloqueoAcertado": true,
       "origenAcierto": "ALEATORIO",
       "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 45 (Garza) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
-      "fechaVerificacion": "2026-10-03T01:10:21.857Z"
+      "fechaVerificacion": "2026-10-03T01:10:21.857Z",
+      "metodosAcierto": [
+        {
+          "id": "ALEATORIO",
+          "tag": "🎲 Sistema Autónomo",
+          "nombre": "Cobertura Aleatoria"
+        }
+      ],
+      "origenTexto": "🎲 Sistema Autónomo"
     },
     "revision": {
       "estado": "RESUELTO",
@@ -984,7 +1016,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 46 (Puma) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.229Z"
+      "fechaVerificacion": "2026-10-03T23:10:29.868Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -1111,7 +1143,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 25 (Gallina) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.252Z"
+      "fechaVerificacion": "2026-10-03T23:10:29.922Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -1238,7 +1270,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 09 (Aguila) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.272Z"
+      "fechaVerificacion": "2026-10-03T23:10:29.954Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -1383,7 +1415,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 61 (Panda) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.291Z"
+      "fechaVerificacion": "2026-10-03T23:10:29.991Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -1510,7 +1542,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 06 (Rana) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.314Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.023Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -1637,7 +1669,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 01 (Carnero) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.332Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.065Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -1774,7 +1806,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 47 (Pavo Real) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.352Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.089Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -1893,7 +1925,15 @@
       "bloqueoAcertado": true,
       "origenAcierto": "ALEATORIO",
       "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 00 (Delfin) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
-      "fechaVerificacion": "2026-10-03T22:13:18.473Z"
+      "fechaVerificacion": "2026-10-03T22:13:18.473Z",
+      "metodosAcierto": [
+        {
+          "id": "ALEATORIO",
+          "tag": "🎲 Sistema Autónomo",
+          "nombre": "Cobertura Aleatoria"
+        }
+      ],
+      "origenTexto": "🎲 Sistema Autónomo"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2020,7 +2060,15 @@
       "bloqueoAcertado": true,
       "origenAcierto": "ALEATORIO",
       "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 07 (Perico) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
-      "fechaVerificacion": "2026-10-03T22:13:18.483Z"
+      "fechaVerificacion": "2026-10-03T22:13:18.483Z",
+      "metodosAcierto": [
+        {
+          "id": "ALEATORIO",
+          "tag": "🎲 Sistema Autónomo",
+          "nombre": "Cobertura Aleatoria"
+        }
+      ],
+      "origenTexto": "🎲 Sistema Autónomo"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2186,7 +2234,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 31 (Lapa) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.372Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.158Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2327,7 +2375,20 @@
       "bloqueoAcertado": true,
       "origenAcierto": "AMBOS",
       "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 08 (Ratón) y coincidió en MÚLTIPLES modelos de bloqueo.",
-      "fechaVerificacion": "2026-10-03T22:13:18.510Z"
+      "fechaVerificacion": "2026-10-03T22:13:18.510Z",
+      "metodosAcierto": [
+        {
+          "id": "PREMIER",
+          "tag": "🔴 Premier Cupo 0",
+          "nombre": "Premier Pluss (Cupo 0)"
+        },
+        {
+          "id": "ALEATORIO",
+          "tag": "🎲 Sistema Autónomo",
+          "nombre": "Cobertura Aleatoria"
+        }
+      ],
+      "origenTexto": "🔴 Premier Cupo 0 • 🎲 Sistema Autónomo"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2468,7 +2529,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 31 (Lapa) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.386Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.221Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2634,7 +2695,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 22 (Camello) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.408Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.258Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2775,7 +2836,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:36.435Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.304Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2916,7 +2977,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:06.211Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.340Z"
     },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
@@ -2955,7 +3016,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 22 (Camello) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:06.328Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.385Z"
     }
   },
   {
@@ -2989,7 +3050,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T22:40:06.475Z"
+      "fechaVerificacion": "2026-10-03T23:10:30.424Z"
     }
   },
   {

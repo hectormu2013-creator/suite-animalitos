@@ -471,11 +471,23 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
     let origenAcierto = 'NO_BLOQUEADO';
     let mensaje = `El número ${normWinner} (${resolvedName}) salió premiado, pero no estaba en la lista de bloqueos.`;
 
-    const aciertosCount = (esPremier ? 1 : 0) + (esFijo ? 1 : 0) + (esPredictivo ? 1 : 0) + (esAleatorio ? 1 : 0) + (esMemoria ? 1 : 0);
+    const metodosAcierto = [];
+    if (esPremier) metodosAcierto.push({ id: 'PREMIER', nombre: 'Premier Pluss (Cupo 0)', tag: '🔴 Premier Cupo 0', icono: '🔴' });
+    if (esFijo) metodosAcierto.push({ id: 'FIJO', nombre: 'Número Fijo Permanente', tag: '📌 Número Fijo', icono: '📌' });
+    if (esPredictivo) metodosAcierto.push({ id: 'PREDICTIVO', nombre: 'Modelo Predictivo Visual-FX', tag: '🔮 Visual-FX Atrasados', icono: '🔮' });
+    if (esAleatorio) metodosAcierto.push({ id: 'ALEATORIO', nombre: 'Sistema Autónomo (Cobertura Aleatoria)', tag: '🎲 Cobertura Aleatoria', icono: '🎲' });
+    if (esMemoria) metodosAcierto.push({ id: 'MEMORIA_CUPO_0', nombre: 'Memoria Cupo Cero Premier', tag: '🧠 Memoria Cupo 0', icono: '🧠' });
+    if (metodosAcierto.length === 0 && salioBloqueado) {
+      metodosAcierto.push({ id: 'GENERAL', nombre: 'Lista de Bloqueo', tag: '🛡️ Bloqueo Blindado', icono: '🛡️' });
+    }
+
+    const origenTexto = metodosAcierto.map(m => m.tag).join(' • ') || 'No bloqueado';
+
+    const aciertosCount = metodosAcierto.length;
 
     if (aciertosCount > 1) {
       origenAcierto = 'AMBOS';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y coincidió en MÚLTIPLES modelos de bloqueo.`;
+      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y coincidió en MÚLTIPLES modelos de bloqueo: ${origenTexto}.`;
     } else if (esPremier) {
       origenAcierto = 'PREMIER';
       mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por Premier Pluss (Cupo 0).`;
@@ -492,8 +504,8 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
       origenAcierto = 'MEMORIA_CUPO_0';
       mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por la Memoria de Cupo Cero Premier (Arrastre Preventivo).`;
     } else if (salioBloqueado) {
-      origenAcierto = 'PREMIER';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO.`;
+      origenAcierto = 'GENERAL';
+      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO (${origenTexto}).`;
     }
 
     // Auto-liberar de la memoria de cupo cero si este número estaba en persistencia
@@ -509,6 +521,8 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
       nombre: resolvedName,
       bloqueoAcertado: salioBloqueado,
       origenAcierto,
+      origenTexto,
+      metodosAcierto,
       mensaje,
       fechaVerificacion: new Date().toISOString()
     };

@@ -1214,7 +1214,8 @@ function renderHistoryTable(history) {
     if (hasWinner) {
       if (isHit) {
         resultadoTdClass = 'class="result-cell-trophy"';
-        resultadoHtml = `<span class="tag tag-winner-trophy" title="¡GOLPE DE BANCA EVITADO! El número ganador estaba bloqueado.">🏆 ${item.ganador.numero} - ${item.ganador.nombre}</span>`;
+        const primerMetodo = (item.ganador && item.ganador.metodosAcierto && item.ganador.metodosAcierto[0]) ? item.ganador.metodosAcierto[0].tag : (item.ganador.origenTexto || (item.ganador.origenAcierto === 'PREMIER' ? '🔴 Premier' : '🛡️ Bloqueado'));
+        resultadoHtml = `<span class="tag tag-winner-trophy" title="¡GOLPE DE BANCA EVITADO! Bloqueado por: ${item.ganador.origenTexto || primerMetodo}">🏆 ${item.ganador.numero} - ${item.ganador.nombre} <small style="font-weight:800; opacity:0.95; margin-left:3px; background:rgba(0,0,0,0.25); padding:1px 4px; border-radius:3px;">[${primerMetodo}]</small></span>`;
       } else {
         resultadoHtml = `<span class="tag tag-winner-normal" title="Resultado oficial">${item.ganador.numero} - ${item.ganador.nombre}</span>`;
       }
@@ -1535,21 +1536,59 @@ function renderTrophyCards(records, filter = 'all') {
 
     // Ribbon banner de victoria si es trofeo
     let ribbonHtml = '';
-    if (isTrophy) {
-      let descOrigen = '🔴 Premier Pluss (Cupo 0)';
-      if (rec.ganador.origenAcierto === 'FIJO') descOrigen = '📌 Número Fijo Permanente';
-      else if (rec.ganador.origenAcierto === 'PREDICTIVO') descOrigen = '🔮 Modelo Predictivo Visual-FX';
-      else if (rec.ganador.origenAcierto === 'ALEATORIO') descOrigen = '🎲 Cobertura Aleatoria del Sistema Autónomo';
-      else if (rec.ganador.origenAcierto === 'MEMORIA_CUPO_0') descOrigen = '🧠 Memoria de Cupo Cero Premier (Arrastre Preventivo)';
-      else if (rec.ganador.origenAcierto === 'AMBOS') descOrigen = '🔥 Múltiple Coincidencia de Bloqueo';
+    const winNorm = winnerNum ? String(winnerNum).padStart(2, '0') : null;
+    const winVal = winnerNum ? parseInt(winnerNum, 10) : null;
 
+    const isBlockedPremier = isTrophy && (rec.rojosPremier || []).some(n => String(n).padStart(2, '0') === winNorm || parseInt(n, 10) === winVal);
+    const isBlockedFijo = isTrophy && (rec.numFijos || (rec.fijosSeleccionados || []).map(f => typeof f === 'object' ? f.numero : f)).some(n => String(n).padStart(2, '0') === winNorm || parseInt(n, 10) === winVal);
+    const isBlockedPredictivo = isTrophy && (rec.numPredictivos || (rec.predictivosVisualFx || []).map(p => typeof p === 'object' ? p.numero : p)).some(n => String(n).padStart(2, '0') === winNorm || parseInt(n, 10) === winVal);
+    const isBlockedAleatorio = isTrophy && (rec.numAleatorios || (rec.aleatoriosSistema || []).map(a => typeof a === 'object' ? a.numero : a)).some(n => String(n).padStart(2, '0') === winNorm || parseInt(n, 10) === winVal);
+    const isBlockedMemoria = isTrophy && (rec.numMemoriaCupoCero || (rec.memoriaCupoCero || []).map(m => typeof m === 'object' ? m.numero : m)).some(n => String(n).padStart(2, '0') === winNorm || parseInt(n, 10) === winVal);
+
+    let metodosExitosos = [];
+    if (isBlockedPremier) metodosExitosos.push({ tag: '🔴 Premier Cupo 0', desc: 'Agotado en Taquilla Premier', color: '#f43f5e', bg: 'rgba(244,63,94,0.18)', border: '#f43f5e' });
+    if (isBlockedFijo) metodosExitosos.push({ tag: '📌 Número Fijo', desc: 'Bloqueo Fijo Permanente', color: '#818cf8', bg: 'rgba(99,102,241,0.18)', border: '#818cf8' });
+    if (isBlockedPredictivo) metodosExitosos.push({ tag: '🔮 Visual-FX Atrasados', desc: 'Modelo Predictivo', color: '#c084fc', bg: 'rgba(192,132,252,0.18)', border: '#c084fc' });
+    if (isBlockedAleatorio) metodosExitosos.push({ tag: '🎲 Sistema Autónomo', desc: 'Cobertura Aleatoria', color: '#38bdf8', bg: 'rgba(56,189,248,0.18)', border: '#38bdf8' });
+    if (isBlockedMemoria) metodosExitosos.push({ tag: '🧠 Memoria Cupo 0', desc: 'Arrastre Preventivo', color: '#f472b6', bg: 'rgba(244,114,182,0.18)', border: '#f472b6' });
+
+    if (metodosExitosos.length === 0 && rec.ganador && Array.isArray(rec.ganador.metodosAcierto) && rec.ganador.metodosAcierto.length > 0) {
+      metodosExitosos = rec.ganador.metodosAcierto.map(m => {
+        let color = '#10b981', bg = 'rgba(16,185,129,0.18)', border = '#10b981';
+        if (m.id === 'PREMIER') { color = '#f43f5e'; bg = 'rgba(244,63,94,0.18)'; border = '#f43f5e'; }
+        else if (m.id === 'FIJO') { color = '#818cf8'; bg = 'rgba(99,102,241,0.18)'; border = '#818cf8'; }
+        else if (m.id === 'PREDICTIVO') { color = '#c084fc'; bg = 'rgba(192,132,252,0.18)'; border = '#c084fc'; }
+        else if (m.id === 'ALEATORIO') { color = '#38bdf8'; bg = 'rgba(56,189,248,0.18)'; border = '#38bdf8'; }
+        else if (m.id === 'MEMORIA_CUPO_0') { color = '#f472b6'; bg = 'rgba(244,114,182,0.18)'; border = '#f472b6'; }
+        return { tag: m.tag || m.nombre, desc: m.nombre, color, bg, border };
+      });
+    }
+
+    if (isTrophy && metodosExitosos.length === 0) {
+      if (rec.ganador && rec.ganador.origenAcierto === 'PREMIER') {
+        metodosExitosos.push({ tag: '🔴 Premier Cupo 0', desc: 'Agotado en Taquilla Premier', color: '#f43f5e', bg: 'rgba(244,63,94,0.18)', border: '#f43f5e' });
+      } else if (rec.ganador && rec.ganador.origenAcierto === 'ALEATORIO') {
+        metodosExitosos.push({ tag: '🎲 Sistema Autónomo', desc: 'Cobertura Aleatoria', color: '#38bdf8', bg: 'rgba(56,189,248,0.18)', border: '#38bdf8' });
+      } else if (rec.ganador && rec.ganador.origenAcierto === 'PREDICTIVO') {
+        metodosExitosos.push({ tag: '🔮 Visual-FX Atrasados', desc: 'Modelo Predictivo', color: '#c084fc', bg: 'rgba(192,132,252,0.18)', border: '#c084fc' });
+      } else if (rec.ganador && rec.ganador.origenAcierto === 'FIJO') {
+        metodosExitosos.push({ tag: '📌 Número Fijo', desc: 'Bloqueo Fijo Permanente', color: '#818cf8', bg: 'rgba(99,102,241,0.18)', border: '#818cf8' });
+      } else {
+        metodosExitosos.push({ tag: '🛡️ Bloqueo Blindado', desc: 'Protección de Riesgo', color: '#10b981', bg: 'rgba(16,185,129,0.18)', border: '#10b981' });
+      }
+    }
+
+    if (isTrophy) {
       ribbonHtml = `
         <div class="trophy-ribbon-banner">
           <div class="ribbon-left">
             <span class="ribbon-icon">🏆</span>
             <div class="ribbon-text">
               <strong>¡GOLPE DE BANCA EVITADO! SALIÓ EL N° ${winnerNum} (${winnerName ? winnerName.toUpperCase() : 'ANIMAL'})</strong>
-              <span>Origen del Bloqueo: <b>${descOrigen}</b> • Banca Protegida de Pago Mayor</span>
+              <div style="margin-top:4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span style="font-size:12px; color:#cbd5e1; font-weight:600;">🎯 Método(s) que logró el bloqueo:</span>
+                ${metodosExitosos.map(m => `<span style="background:${m.bg}; color:${m.color}; border:1px solid ${m.border}; padding:2px 8px; border-radius:4px; font-weight:800; font-size:11px; display:inline-flex; align-items:center; gap:3px;">${m.tag}</span>`).join(' ')}
+              </div>
             </div>
           </div>
           <span class="ribbon-shield-pill">🛡️ SALVADO</span>
@@ -1572,14 +1611,21 @@ function renderTrophyCards(records, filter = 'all') {
     if (isVerified) {
       const winnerWasBlocked = isTrophy;
       resultSectionHtml = `
-        <div class="draw-result-box">
+        <div class="draw-result-box ${winnerWasBlocked ? 'winner-trophy-highlight-box' : ''}">
           <div class="draw-winner-display">
             <div class="winner-num-badge ${winnerWasBlocked ? 'winner-was-blocked' : ''}">
               ${winnerNum}
             </div>
             <div class="winner-info-text">
               <strong>${winnerName || 'Animal Oficial'}</strong>
-              <span>${winnerWasBlocked ? '🌟 ¡Estaba Bloqueado! Se evitó el pago mayor' : '⚪ Número premiado no estaba en lista de bloqueos'}</span>
+              ${winnerWasBlocked ? `
+                <div style="margin-top:4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <span style="font-size:12px; color:#34d399; font-weight:700;">🌟 ¡Estaba Bloqueado! Método:</span>
+                  ${metodosExitosos.map(m => `<span style="background:${m.bg}; color:${m.color}; border:1px solid ${m.border}; padding:2px 7px; border-radius:4px; font-weight:700; font-size:11px;">${m.tag}</span>`).join(' ')}
+                </div>
+              ` : `
+                <span style="color:var(--text-muted); font-size:12px;">⚪ Número premiado no estaba en lista de bloqueos</span>
+              `}
             </div>
           </div>
           <button class="btn btn-sm btn-secondary btn-edit-winner" data-id="${rec.id}" style="padding:4px 10px; font-size:11px;">

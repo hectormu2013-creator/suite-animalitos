@@ -153,6 +153,177 @@ function updateMachinesInConfig(config, newMachinesList) {
   return config;
 }
 
+const http = require('http');
+const https = require('https');
+
+/**
+ * Ping rápido a un nodo remoto para comprobar si está en línea (timeout 3000ms)
+ */
+function pingNode(url) {
+  return new Promise((resolve) => {
+    try {
+      if (!url || typeof url !== 'string') return resolve(false);
+      const parsed = new URL(url);
+      const client = parsed.protocol === 'https:' ? https : http;
+      const req = client.get(`${url.replace(/\/$/, '')}/api/tunnel/info`, { timeout: 3000 }, (res) => {
+        resolve(res.statusCode >= 200 && res.statusCode < 400);
+      });
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+      req.on('error', () => resolve(false));
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * Solicitar ejecución remota de pesca a un nodo de la red
+ */
+function requestRemoteScan(url, loteriaId) {
+  return new Promise((resolve, reject) => {
+    try {
+      const parsed = new URL(url);
+      const client = parsed.protocol === 'https:' ? https : http;
+      const postData = JSON.stringify({ loteriaId });
+
+      const req = client.request({
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: '/api/trigger-test',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        },
+        timeout: 90000 // El sondeo completo puede tomar hasta 60s
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const parsedRes = JSON.parse(data);
+            resolve(parsedRes);
+          } catch (e) {
+            reject(new Error(`Respuesta no válida del nodo remoto: ${data.slice(0, 100)}`));
+          }
+        });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error(`Tiempo de espera agotado al consultar nodo remoto (${url})`));
+      });
+
+      req.on('error', (err) => reject(err));
+      req.write(postData);
+      req.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+/**
+ * MOTOR DE CASCADA DE PESCA MULTI-MÁQUINAS:
+ * 1. Intenta pescar con la máquina de Prioridad 1 (Principal).
+ * 2. Si la máquina no está en línea o no puede acceder a la taquilla, pasa automáticamente a la Prioridad 2.
+ * 3. Continúa sucesivamente con todas las máquinas activas habilitadas en el pool.
+ * 4. Si todas las máquinas fallan, la protección WEB (Fijos, Visual-FX, Aleatorios y Memoria)
+ *    permanece 100% activa para proteger la banca en Triple 7.
+ */
+async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log) {
+  const list = getMachinesList(config)
+    .filter(m => m.activa !== false)
+    .sort((a, b) => (a.prioridad || 99) - (b.prioridad || 99));
+
+  if (list.length === 0) {
+    logFn('⚠️ [CASCADA PESCA] No hay máquinas activas configuradas para la pesca.', 'log-warn');
+    return { sorteo: 'Próximo Sorteo', rojos: [], failoverAgotado: true };
+  }
+
+  const localId = (config.general && config.general.maquinaLocalId) || 'maquina_2';
+  let intento = 0;
+
+  for (const maquina of list) {
+    intento++;
+    const esLocal = (maquina.id === localId);
+    logFn(`🎣 [CASCADA PESCA: INTENTO ${intento}/${list.length}] Evaluando ${maquina.nombre} (Prioridad ${maquina.prioridad || intento}, Modo: ${esLocal ? 'Local' : 'Remoto'})...`, 'log-info');
+
+    if (esLocal) {
+      // 1. Ejecutar en taquilla local en esta computadora
+      try {
+        const robot = require('./premier_robot');
+        // Configurar credenciales específicas de esta máquina para el intento
+        const tempConfig = JSON.parse(JSON.stringify(config));
+        if (!tempConfig.general) tempConfig.general = {};
+        tempConfig.general.premierPluss = {
+          user: maquina.usuarioPremier,
+          password: maquina.clavePremier,
+          executablePath: maquina.executablePath,
+          keepOpen: maquina.keepOpen !== false
+        };
+
+        const result = await robot.ejecutarSondeoPremier(tempConfig, loteriaId);
+        if (result && !result.cancelado) {
+          logFn(`✅ [PESCA EXITOSA] ${maquina.nombre} completó el sondeo en taquilla local. Cupo 0 detectados: [${(result.rojos || []).join(', ') || 'Ninguno'}]`, 'log-success');
+          return {
+            ...result,
+            maquinaUsadaId: maquina.id,
+            maquinaUsadaNombre: maquina.nombre,
+            intentoCascada: intento,
+            failoverActivado: intento > 1
+          };
+        } else {
+          logFn(`⚠️ [FALLO EN TAQUILLA] ${maquina.nombre} no obtuvo resultado de taquilla. Pasando a la siguiente máquina...`, 'log-warn');
+        }
+      } catch (err) {
+        logFn(`⚠️ [FALLO EN TAQUILLA] ${maquina.nombre} no pudo acceder a la taquilla: ${err.message}. Activando de inmediato la siguiente máquina de respaldo...`, 'log-warn');
+      }
+    } else {
+      // 2. Ejecutar en nodo remoto
+      const targetUrl = maquina.ipOUrl;
+      if (!targetUrl) {
+        logFn(`⚠️ [NODO SIN URL] ${maquina.nombre} no tiene IP/URL configurada. Saltando a la siguiente máquina...`, 'log-warn');
+        continue;
+      }
+
+      const isOnline = await pingNode(targetUrl);
+      if (!isOnline) {
+        logFn(`⚠️ [NODO REMOTO OFFLINE] ${maquina.nombre} (${targetUrl}) no responde o está apagada. Saltando a la siguiente opción en cascada...`, 'log-warn');
+        continue;
+      }
+
+      logFn(`📡 [DELEGANDO PESCA REMOTA] Nodo ${maquina.nombre} está EN LÍNEA. Disparando sondeo remoto en ${targetUrl}...`, 'log-info');
+      try {
+        const remoteRes = await requestRemoteScan(targetUrl, loteriaId);
+        if (remoteRes && remoteRes.ok) {
+          logFn(`✅ [PESCA REMOTA EXITOSA] ${maquina.nombre} completó el sondeo remotamente.`, 'log-success');
+          return {
+            ...(remoteRes.result || remoteRes),
+            maquinaUsadaId: maquina.id,
+            maquinaUsadaNombre: maquina.nombre,
+            intentoCascada: intento,
+            failoverActivado: intento > 1
+          };
+        } else {
+          logFn(`⚠️ [NODO REMOTO FALLÓ] ${maquina.nombre} respondió con error: ${remoteRes ? remoteRes.message : 'Falla'}. Pasando a la siguiente máquina...`, 'log-warn');
+        }
+      } catch (remErr) {
+        logFn(`⚠️ [ERROR NODO REMOTO] ${maquina.nombre}: ${remErr.message}. Pasando a la siguiente máquina...`, 'log-warn');
+      }
+    }
+  }
+
+  // 3. Si todas las máquinas del pool fallaron:
+  logFn(`⚠️ [CASCADA DE PESCA AGOTADA] Ninguna máquina de pesca pudo consultar la taquilla en este sorteo. La protección WEB autónoma (Fijos, Visual-FX, Aleatorios y Memoria) continúa protegiendo la banca al 100% en Triple 7.`, 'log-warn');
+  return {
+    sorteo: 'Próximo Sorteo',
+    rojos: [],
+    fallaronTodasLasMaquinas: true,
+    intentoCascada: intento
+  };
+}
+
 module.exports = {
   PLATAFORMAS_DISPONIBLES,
   getMachinesList,
@@ -161,5 +332,8 @@ module.exports = {
   isLocalMachineVerifier,
   setVerifierMachine,
   setLocalMachineId,
-  updateMachinesInConfig
+  updateMachinesInConfig,
+  pingNode,
+  requestRemoteScan,
+  ejecutarPescaEnCascada
 };

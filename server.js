@@ -539,8 +539,8 @@ app.post('/api/trigger-test', async (req, res) => {
   log(`Iniciando ejecución de sondeo manual en PremierPluss para ${loteria.nombre}...`, 'log-warn');
   
   try {
-    const robot = require('./premier_robot');
-    const result = await robot.ejecutarSondeoPremier(cfg, loteria.id);
+    const machinesMgr = require('./machines_manager');
+    const result = await machinesMgr.ejecutarPescaEnCascada(cfg, loteria.id, log);
     
     // Consolidar lista de bloqueos (1. Premier + 2. Números Fijos + 3. Visual-FX + 4. Sistema Aleatorio + 5. Memoria Cupo 0)
     const predictive = require('./predictive_service');
@@ -1048,11 +1048,11 @@ setInterval(async () => {
           log(`🔴 [ALARMA PREMIER PLUSS] Activando sondeo de cupo cero (${premierMinutesBefore}m antes) para ${lot.nombre} (Sorteo ${hStr})...`, 'log-warn');
 
           try {
-            const robot = require('./premier_robot');
+            const machinesMgr = require('./machines_manager');
             const historyMgr = require('./history_manager');
             const t7 = require('./triple7_robot');
 
-            const result = await robot.ejecutarSondeoPremier(cfg, lot.id);
+            const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log);
             const rojosPremier = (result && result.rojos) || [];
 
             let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
