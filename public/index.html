@@ -186,6 +186,25 @@
           </div>
         </div>
 
+        <!-- Banner en Vivo: Memoria de Cupo Cero Premier (Arrastre Preventivo) -->
+        <div class="memory-live-banner" id="memory-live-banner" style="display:none;">
+          <div class="mem-title">
+            <span style="font-size:20px;">🧠</span>
+            <div>
+              <span>Memoria de Cupo Cero Premier (Arrastre Preventivo Activo)</span>
+              <div style="font-size:11px; font-weight:400; color:var(--text-muted);">
+                Números agotados pescados en Premier pre-bloqueados para sorteos siguientes. Se auto-liberan si salen premiados.
+              </div>
+            </div>
+          </div>
+          <div class="mem-chips" id="memory-chips-container">
+            <!-- Chips de números activos en persistencia -->
+          </div>
+          <button class="btn btn-sm btn-secondary" id="btn-clear-memory" title="Reiniciar memoria de persistencia" style="padding:4px 10px; font-size:11px;">
+            <span>🧹 Resetear Memoria</span>
+          </button>
+        </div>
+
         <!-- Secciones Grid: Historial de Bloqueos + Consola de Logs -->
         <div class="dashboard-grid">
           <!-- Historial de Sorteos -->
@@ -333,6 +352,7 @@
             <span class="legend-item"><span class="legend-dot origin-dot-fijo"></span> 📌 Fijos (Siempre)</span>
             <span class="legend-item"><span class="legend-dot origin-dot-predictive"></span> 🔮 Visual-FX (Atrasado)</span>
             <span class="legend-item"><span class="legend-dot origin-dot-aleatorio"></span> 🎲 Sistema (Aleatorio)</span>
+            <span class="legend-item"><span class="legend-dot origin-dot-memoria"></span> 🧠 Memoria (Arrastre)</span>
             <span class="legend-item"><span class="legend-dot origin-dot-trophy"></span> 🏆 Golpe Evitado</span>
           </div>
         </div>

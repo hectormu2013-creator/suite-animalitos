@@ -408,6 +408,18 @@ body {
 .tag-blue { background-color: rgba(14, 165, 233, 0.15); color: #38bdf8; }
 .tag-emerald { background-color: rgba(16, 185, 129, 0.15); color: #34d399; }
 .tag-purple { background-color: rgba(168, 85, 247, 0.15); color: #c084fc; }
+.tag-memoria {
+  background: rgba(236, 72, 153, 0.18);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  font-family: var(--font-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tag-memoria:hover {
+  background: rgba(236, 72, 153, 0.28);
+}
 
 /* Resaltado de Aciertos y Trofeos (Amarillo Dorado) */
 .tag-trophy-acierto {
@@ -1315,6 +1327,46 @@ body {
   background: rgba(245, 158, 11, 0.18);
   border: 1px solid rgba(245, 158, 11, 0.45);
   color: #fde68a;
+}
+
+/* Origen: Memoria Cupo Cero Premier (Arrastre Preventivo) */
+.chip-memoria {
+  background: rgba(236, 72, 153, 0.18);
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  color: #f472b6;
+}
+.chip-memoria:hover {
+  background: rgba(236, 72, 153, 0.3);
+  transform: translateY(-1px);
+}
+.origin-dot-memoria { background-color: #ec4899; box-shadow: 0 0 6px #ec4899; }
+
+/* Banner de Estado de Memoria en Vivo */
+.memory-live-banner {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(30, 27, 75, 0.6));
+  border: 1px solid rgba(236, 72, 153, 0.35);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.memory-live-banner .mem-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #f472b6;
+}
+.memory-live-banner .mem-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Número Ganador Bloqueado (Estilo Corona y Resplandor) */

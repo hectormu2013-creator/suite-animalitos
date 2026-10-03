@@ -1,10 +1,10 @@
 {
-    "status":  "ERROR",
+    "status":  "PAUSED",
     "requestedAction":  "NONE",
-    "details":  "Premier Pluss 2.0 no esta abierto",
+    "details":  "Pausado automaticamente por perdida de foco de ventana",
     "loteria":  "LA GRANJITA",
     "currentAnimal":  "",
     "progress":  "",
-    "pid":  34932,
-    "updatedAt":  "2026-10-03 15:30:02"
+    "pid":  39856,
+    "updatedAt":  "2026-10-03 18:30:10"
 }

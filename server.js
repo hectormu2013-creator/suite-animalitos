@@ -249,6 +249,67 @@ app.get('/api/history/export-csv', (req, res) => {
   }
 });
 
+// --- API: MEMORIA DE CUPO CERO PREMIER (Persistencia y Arrastre de Agotados) ---
+app.get('/api/memory/status', (req, res) => {
+  const cupoMem = require('./cupo_cero_memory');
+  const fecha = req.query.fecha || new Date().toISOString().slice(0, 10);
+  const summary = cupoMem.getMemorySummary(fecha);
+  res.json({ ok: true, fecha, summary });
+});
+
+app.post('/api/memory/clear', (req, res) => {
+  const cupoMem = require('./cupo_cero_memory');
+  cupoMem.saveMemory({ items: [] });
+  log('🧹 [MEMORIA CUPO CERO] Memoria de persistencia reiniciada por el usuario.', 'log-warn');
+  res.json({ ok: true, message: 'Memoria de cupo cero reseteada con éxito' });
+});
+
+app.post('/api/memory/release-animal', async (req, res) => {
+  const { loteriaId, numero, reincorporarTriple7 } = req.body;
+  if (!loteriaId || !numero) {
+    return res.status(400).json({ ok: false, message: 'Falta loteriaId o número' });
+  }
+
+  const cupoMem = require('./cupo_cero_memory');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const memory = cupoMem.loadMemory();
+  const norm = String(numero).padStart(2, '0');
+  let encontrado = false;
+  let sorteosLiberados = [];
+
+  memory.items.forEach(item => {
+    if (item.loteriaId === loteriaId && item.numero === norm && item.estado === 'ACTIVO') {
+      item.estado = 'LIBERADO_MANUAL';
+      item.sorteosRestantes = 0;
+      sorteosLiberados = item.sorteosPrebloqueados || [];
+      encontrado = true;
+    }
+  });
+
+  if (encontrado) {
+    cupoMem.saveMemory(memory);
+    log(`🔓 [MEMORIA CUPO CERO] Número ${norm} liberado manualmente para ${loteriaId}.`, 'log-info');
+
+    if (reincorporarTriple7 && sorteosLiberados.length > 0) {
+      const cfg = getConfig();
+      const t7 = require('./triple7_robot');
+      const lot = (cfg.loterias || []).find(l => l.id === loteriaId);
+      const lotNombre = lot ? lot.nombre : loteriaId;
+
+      for (const sHora of sorteosLiberados) {
+        try {
+          await t7.reincorporarAnimalitos(cfg, lotNombre, sHora);
+          log(`🔓 [TRIPLE 7 LIBERACIÓN MANUAL] Reincorporado ${lotNombre} (${sHora})`, 'log-success');
+        } catch (e) {}
+      }
+    }
+
+    res.json({ ok: true, message: `Número ${norm} liberado de la persistencia`, sorteosLiberados });
+  } else {
+    res.json({ ok: false, message: `El número ${norm} no estaba activo en memoria para hoy` });
+  }
+});
+
 // API: Consulta de Animales Más Atrasados (Predictivo Visual-FX)
 app.get('/api/predictive/delayed', (req, res) => {
   const predictive = require('./predictive_service');
@@ -278,7 +339,7 @@ app.get('/api/trophies/records', (req, res) => {
 });
 
 // API: Verificar Número Ganador de un Sorteo (Confirmar Trofeo)
-app.post('/api/trophies/verify', (req, res) => {
+app.post('/api/trophies/verify', async (req, res) => {
   const historyMgr = require('./history_manager');
   const { recordId, winnerNumber, winnerName } = req.body;
   if (!recordId || winnerNumber === undefined || winnerNumber === '') {
@@ -291,6 +352,38 @@ app.post('/api/trophies/verify', (req, res) => {
   } else if (result.ok) {
     log(`[SORTEO VERIFICADO] Número ganador ${winnerNumber} registrado (No estaba bloqueado).`, 'log-info');
   }
+
+  // Auto-liberar de la memoria y reincorporar sorteos futuros en Triple 7 si estaban pre-bloqueados
+  try {
+    const cupoMem = require('./cupo_cero_memory');
+    const rec = result.record || {};
+    const normWinner = String(winnerNumber).padStart(2, '0');
+    const liberados = cupoMem.verificarYAutoLiberarPorGanador(rec.loteria, normWinner, winnerName, rec.sorteo, rec.fecha);
+
+    if (liberados && liberados.length > 0) {
+      const cfg = getConfig();
+      const t7 = require('./triple7_robot');
+      for (const item of liberados) {
+        const sorteosALiberar = item.sorteosFuturosPendientes || [];
+        if (sorteosALiberar.length > 0) {
+          log(`🏆🎉 [AUTO-LIBERACIÓN POR TROFEO] ¡El animal ${item.numero} (${item.nombre}) salió premiado! Liberando en Triple 7 los sorteos siguientes: [${sorteosALiberar.join(', ')}]`, 'log-success');
+          if (cfg.general.triple7.enabled) {
+            for (const sHora of sorteosALiberar) {
+              try {
+                await t7.reincorporarAnimalitos(cfg, item.loteriaNombre || rec.loteria, sHora);
+                log(`🔓 [TRIPLE 7 DESBLOQUEO] Reincorporado exitosamente ${item.loteriaNombre || rec.loteria} (${sHora})`, 'log-success');
+              } catch (eReinc) {
+                log(`Aviso al reincorporar ${sHora} en Triple 7: ${eReinc.message}`, 'log-warn');
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (eAutoLib) {
+    log(`Aviso en auto-liberación de memoria: ${eAutoLib.message}`, 'log-warn');
+  }
+
   res.json(result);
 });
 
@@ -331,15 +424,16 @@ app.post('/api/trigger-test', async (req, res) => {
     const robot = require('./premier_robot');
     const result = await robot.ejecutarSondeoPremier(cfg, loteria.id);
     
-    // Consolidar lista de bloqueos (1. Premier + 2. Números Fijos + 3. Visual-FX + 4. Sistema Aleatorio)
+    // Consolidar lista de bloqueos (1. Premier + 2. Números Fijos + 3. Visual-FX + 4. Sistema Aleatorio + 5. Memoria Cupo 0)
     const predictive = require('./predictive_service');
     const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, result);
 
     const descFijos = (consolidated.fijosSeleccionados || []).map(f => `${f.numero} ${f.nombre}`).join(', ');
     const descPredictivos = (consolidated.predictivosSeleccionados || []).map(p => `${p.numero} ${p.nombre} (${p.sorteosAtraso}s)`).join(', ');
     const descAleatorios = (consolidated.aleatoriosSeleccionados || []).map(a => `${a.numero} ${a.nombre}`).join(', ');
+    const descMemoria = (consolidated.memoriaSeleccionados || []).map(m => `${m.numero} ${m.nombre} (${m.sorteosRestantes}s)`).join(', ');
 
-    log(`🎯 [ESTRATEGIA 4-VÍAS] 🔴 Premier Cupo 0: [${consolidated.rojosPremier.join(', ') || 'Ninguno'}] | 📌 Fijos: [${descFijos || 'Ninguno'}] | 🔮 Visual-FX Atrasados: [${descPredictivos || 'Ninguno'}] | 🎲 Sistema Aleatorio (${consolidated.aleatoriosSeleccionados.length} máx 3): [${descAleatorios || 'Ninguno'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}`, 'log-info');
+    log(`🎯 [ESTRATEGIA 5-VÍAS] 🔴 Premier Cupo 0: [${consolidated.rojosPremier.join(', ') || 'Ninguno'}] | 📌 Fijos: [${descFijos || 'Ninguno'}] | 🔮 Visual-FX: [${descPredictivos || 'Ninguno'}] | 🎲 Aleatorios: [${descAleatorios || 'Ninguno'}] | 🧠 Memoria Persistente: [${descMemoria || 'Ninguna'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}`, 'log-info');
 
     // Registrar en historial persistente (JSON DB + Excel CSV)
     const historyMgr = require('./history_manager');
@@ -354,6 +448,8 @@ app.post('/api/trigger-test', async (req, res) => {
       fijosSeleccionados: consolidated.fijosSeleccionados,
       predictivosVisualFx: consolidated.predictivosSeleccionados,
       aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+      memoriaCupoCero: consolidated.memoriaSeleccionados,
+      numMemoriaCupoCero: consolidated.numMemoria,
       t7Status: cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado',
       t7Blocked: false
     });
@@ -367,6 +463,8 @@ app.post('/api/trigger-test', async (req, res) => {
       fijosSeleccionados: consolidated.fijosSeleccionados,
       predictivosVisualFx: consolidated.predictivosSeleccionados,
       aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+      memoriaCupoCero: consolidated.memoriaSeleccionados,
+      numMemoriaCupoCero: consolidated.numMemoria,
       t7Status: cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado',
       t7Blocked: false,
       timestamp: new Date().toISOString()
@@ -375,9 +473,9 @@ app.post('/api/trigger-test', async (req, res) => {
     executionHistory.push(record);
     if (executionHistory.length > 50) executionHistory.shift();
 
-    // Si Triple 7 está habilitado y hay números para bloquear
+    // Si Triple 7 está habilitado y hay números para bloquear en el sorteo actual
     if (cfg.general.triple7.enabled && consolidated.listaFinalNumeros.length > 0) {
-      log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para bloqueo (Premier: ${consolidated.rojosPremier.length}, Fijos: ${consolidated.fijosSeleccionados.length}, Visual-FX: ${consolidated.predictivosSeleccionados.length}, Aleatorios: ${consolidated.aleatoriosSeleccionados.length})...`, 'log-info');
+      log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para sorteo actual ${result.sorteo}...`, 'log-info');
       try {
         const t7 = require('./triple7_robot');
         const t7Res = await t7.bloquearNumeros(cfg, loteria.nombre, result.sorteo, consolidated.listaFinalNumeros);
@@ -389,15 +487,47 @@ app.post('/api/trigger-test', async (req, res) => {
       }
     }
 
+    // GESTIÓN DE MEMORIA PREMIER CUPO 0: Pre-bloqueo inmediato de sorteos siguientes
+    let siguientesSorteos = [];
+    if (loteria.memoriaCupoCero && loteria.memoriaCupoCero.activo !== false && (consolidated.rojosPremier || []).length > 0) {
+      try {
+        const cupoMem = require('./cupo_cero_memory');
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const persistencia = Math.min(Math.max(parseInt(loteria.memoriaCupoCero.sorteosPersistencia, 10) || 3, 1), 5);
+        siguientesSorteos = cupoMem.obtenerSiguientesSorteos(loteria.horarios || [], result.sorteo, persistencia);
+
+        if (siguientesSorteos.length > 0) {
+          log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia (${persistencia} sorteos). Pre-bloqueando [${consolidated.rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}...`, 'log-info');
+          cupoMem.registrarAgotadosPremier(loteria.id, loteria.nombre, result.sorteo, todayStr, consolidated.rojosPremier, persistencia, siguientesSorteos);
+
+          if (cfg.general.triple7.enabled) {
+            const t7 = require('./triple7_robot');
+            for (const sFuturo of siguientesSorteos) {
+              try {
+                log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: Enviando [${consolidated.rojosPremier.join(', ')}]...`, 'log-info');
+                const t7FuturoRes = await t7.bloquearNumeros(cfg, loteria.nombre, sFuturo, consolidated.rojosPremier);
+                log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: ${t7FuturoRes.ok ? 'Bloqueado con éxito' : t7FuturoRes.message}`, t7FuturoRes.ok ? 'log-success' : 'log-warn');
+              } catch (eFuturo) {
+                log(`Aviso al pre-bloquear ${sFuturo} en Triple 7: ${eFuturo.message}`, 'log-danger');
+              }
+            }
+          }
+        }
+      } catch (errMem) {
+        log(`Aviso en pre-bloqueo de memoria: ${errMem.message}`, 'log-warn');
+      }
+    }
+
     // Notificar Telegram si está habilitado
     if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
       const fijosText = consolidated.fijosSeleccionados.length > 0 ? `\n📌 *Números Fijos:* ${descFijos}` : '';
       const predText = consolidated.predictivosSeleccionados.length > 0 ? `\n🔮 *Visual-FX Atrasados:* ${descPredictivos}` : '';
       const aleatText = consolidated.aleatoriosSeleccionados.length > 0 ? `\n🎲 *Sistema Aleatorio:* ${descAleatorios}` : '';
-      enviarTelegram(cfg, `🦜 *${loteria.nombre} - Sorteo ${record.horaSorteo}*\n\n❌ *Premier Agotados (Cupo 0):* ${consolidated.rojosPremier.join(', ') || 'Ninguno'}${fijosText}${predText}${aleatText}\n🛡️ *Bloqueo Total:* ${consolidated.listaFinalNumeros.join(', ') || 'Ninguno'}\n🛡️ *Triple 7:* ${record.t7Status}`);
+      const memText = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';
+      enviarTelegram(cfg, `🦜 *${loteria.nombre} - Sorteo ${record.horaSorteo}*\n\n❌ *Premier Agotados (Cupo 0):* ${consolidated.rojosPremier.join(', ') || 'Ninguno'}${fijosText}${predText}${aleatText}${memText}\n🛡️ *Bloqueo Total:* ${consolidated.listaFinalNumeros.join(', ') || 'Ninguno'}\n🛡️ *Triple 7:* ${record.t7Status}`);
     }
 
-    res.json({ ok: true, message: 'Chequeo completado', result, consolidated });
+    res.json({ ok: true, message: 'Chequeo completado', result, consolidated, siguientesSorteosPrebloqueados: siguientesSorteos });
   } catch (err) {
     log(`Falla en ejecución de sondeo: ${err.message}`, 'log-danger');
     res.status(500).json({ ok: false, message: err.message });
@@ -810,6 +940,7 @@ setInterval(async () => {
             let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
             let t7Blocked = false;
 
+            // Bloqueo en Triple 7 para el sorteo actual
             if (cfg.general.triple7.enabled && rojosPremier.length > 0) {
               log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${rojosPremier.length} números agotados en Premier a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
               try {
@@ -819,6 +950,35 @@ setInterval(async () => {
               } catch (t7Err) {
                 t7Status = `Error T7: ${t7Err.message}`;
                 log(`Error en auto-bloqueo Triple 7 (Premier): ${t7Err.message}`, 'log-danger');
+              }
+            }
+
+            // GESTIÓN DE MEMORIA PREMIER CUPO 0: Pre-bloqueo inmediato para los siguientes N sorteos
+            let siguientesSorteos = [];
+            if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
+              try {
+                const cupoMem = require('./cupo_cero_memory');
+                const persistencia = Math.min(Math.max(parseInt(lot.memoriaCupoCero.sorteosPersistencia, 10) || 3, 1), 5);
+                siguientesSorteos = cupoMem.obtenerSiguientesSorteos(lot.horarios || [], result.sorteo || hStr, persistencia);
+
+                if (siguientesSorteos.length > 0) {
+                  log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia activa (${persistencia} sorteos). Pre-bloqueando [${rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}...`, 'log-info');
+                  cupoMem.registrarAgotadosPremier(lot.id, lot.nombre, result.sorteo || hStr, todayStr, rojosPremier, persistencia, siguientesSorteos);
+
+                  if (cfg.general.triple7.enabled) {
+                    for (const sFuturo of siguientesSorteos) {
+                      try {
+                        log(`🧠 [PRE-BLOQUEO TRIPLE 7] Bloqueando ${lot.nombre} (${sFuturo}): [${rojosPremier.join(', ')}]...`, 'log-info');
+                        const t7FuturoRes = await t7.bloquearNumeros(cfg, lot.nombre, sFuturo, rojosPremier);
+                        log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: ${t7FuturoRes.ok ? 'Bloqueado con éxito' : t7FuturoRes.message}`, t7FuturoRes.ok ? 'log-success' : 'log-warn');
+                      } catch (eFuturo) {
+                        log(`Aviso al pre-bloquear ${sFuturo} en Triple 7: ${eFuturo.message}`, 'log-danger');
+                      }
+                    }
+                  }
+                }
+              } catch (errMem) {
+                log(`Aviso en pre-bloqueo de memoria: ${errMem.message}`, 'log-warn');
               }
             }
 
@@ -835,7 +995,8 @@ setInterval(async () => {
             log(`✅ [PREMIER PLUSS SONDEO COMPLETADO] ${lot.nombre} (${hStr}): Agotados detectados: [${rojosPremier.join(', ') || 'Ninguno'}] -> Triple 7: ${t7Status}`, 'log-success');
 
             if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
-              enviarTelegram(cfg, `🔴 *SONDEO PREMIER PLUSS REALIZADO*\n*${lot.nombre} - Sorteo ${hStr} (${premierMinutesBefore}m antes)*\n❌ Agotados (Cupo 0): ${rojosPremier.join(', ') || 'Ninguno'}\nTriple 7: ${t7Status}`);
+              const memMsg = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';
+              enviarTelegram(cfg, `🔴 *SONDEO PREMIER PLUSS REALIZADO*\n*${lot.nombre} - Sorteo ${hStr} (${premierMinutesBefore}m antes)*\n❌ Agotados (Cupo 0): ${rojosPremier.join(', ') || 'Ninguno'}${memMsg}\nTriple 7: ${t7Status}`);
             }
           } catch (e) {
             log(`Error en sondeo independiente Premier Pluss: ${e.message}`, 'log-danger');
@@ -843,16 +1004,64 @@ setInterval(async () => {
         }
       }
 
-      // 2. REGLA ESTRICTA DE REVISIÓN DE RESULTADOS EN VISUAL-FX:
+      // =========================================================================
+      // 5. DESCUENTO DE SORTEO EN MEMORIA DE PERSISTENCIA CUPO 0
+      // =========================================================================
+      const diffMinutes = currentTotalMinutes - drawMinutes;
+      const keyDescuentoMemoria = `${todayStr}_${lot.id}_${hStr}_descuento_memoria`;
+      if (diffMinutes >= 1 && !tareasEjecutadas.has(keyDescuentoMemoria)) {
+        tareasEjecutadas.add(keyDescuentoMemoria);
+        try {
+          const cupoMem = require('./cupo_cero_memory');
+          const { cambios, expirados } = cupoMem.descontarSorteo(lot.id, hStr, todayStr);
+          if (expirados && expirados.length > 0) {
+            log(`🧠 [MEMORIA CUPO CERO] Cumplieron sus sorteos de persistencia: ${expirados.map(e => `${e.numero} ${e.nombre}`).join(', ')}`, 'log-info');
+          }
+        } catch (eDesc) {}
+      }
+
+      // =========================================================================
+      // 6. REGLA ESTRICTA DE REVISIÓN DE RESULTADOS EN VISUAL-FX:
       // - Intento 1: A los 5 minutos después del sorteo (+5 min)
       // - Intento 2: A los 10 minutos después del sorteo (+10 min, si el 1 no lo consiguió)
       // - Si no lo consigue tras el 2do intento, PARA por completo (máx 2 intentos por sorteo horario)
-      const diffMinutes = currentTotalMinutes - drawMinutes;
-
+      // =========================================================================
       const keyIntento1 = `${todayStr}_${lot.id}_${hStr}_intento1`;
       const keyIntento2 = `${todayStr}_${lot.id}_${hStr}_intento2`;
       const keyResuelto = `${todayStr}_${lot.id}_${hStr}_resuelto`;
       const keyParado = `${todayStr}_${lot.id}_${hStr}_parado`;
+
+      // Helper para manejar auto-liberación en Triple 7 cuando un número sale premiado
+      async function procesarAutoLiberacionGanador(loteriaId, loteriaNombre, sorteo, ganadorNum, ganadorNom) {
+        try {
+          const cupoMem = require('./cupo_cero_memory');
+          const liberados = cupoMem.verificarYAutoLiberarPorGanador(loteriaId, ganadorNum, ganadorNom, sorteo, todayStr);
+          if (liberados && liberados.length > 0) {
+            const t7 = require('./triple7_robot');
+            for (const item of liberados) {
+              const sorteosALiberar = item.sorteosFuturosPendientes || [];
+              if (sorteosALiberar.length > 0) {
+                log(`🏆🎉 [AUTO-LIBERACIÓN POR TROFEO] ¡El animal ${item.numero} (${item.nombre}) salió ganador en ${sorteo}! Liberando en Triple 7 los sorteos siguientes: [${sorteosALiberar.join(', ')}]`, 'log-success');
+                if (cfg.general.triple7.enabled) {
+                  for (const sHora of sorteosALiberar) {
+                    try {
+                      await t7.reincorporarAnimalitos(cfg, loteriaNombre, sHora);
+                      log(`🔓 [TRIPLE 7 DESBLOQUEO AUTOMÁTICO] Reincorporado exitosamente ${loteriaNombre} (${sHora})`, 'log-success');
+                    } catch (eReinc) {
+                      log(`Aviso al reincorporar ${sHora} en Triple 7: ${eReinc.message}`, 'log-warn');
+                    }
+                  }
+                }
+                if (cfg.general.telegram.enabled) {
+                  enviarTelegram(cfg, `🏆🎉 *¡AUTO-LIBERACIÓN POR GANADOR!*\n*${loteriaNombre} - Sorteo ${sorteo}*\nEl animal *${item.numero} (${item.nombre})* salió premiado. Se liberó inmediatamente en memoria y se reincorporó en Triple 7 para los sorteos siguientes: [${sorteosALiberar.join(', ')}].`);
+                }
+              }
+            }
+          }
+        } catch (eAuto) {
+          log(`Aviso procesando auto-liberación: ${eAuto.message}`, 'log-warn');
+        }
+      }
 
       // INTENTO 1 (+5 MINUTOS TRAS EL SORTEO: ventana entre +5 y +9 minutos)
       if (diffMinutes >= 5 && diffMinutes < 10 && !revisionesRealizadas.has(keyIntento1) && !revisionesRealizadas.has(keyResuelto)) {
@@ -866,6 +1075,9 @@ setInterval(async () => {
             revisionesRealizadas.add(keyResuelto);
             log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
             
+            // Auto-liberar sorteos futuros si estaba en memoria
+            await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
+
             if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
               enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
             }
@@ -889,6 +1101,9 @@ setInterval(async () => {
             revisionesRealizadas.add(keyResuelto);
             log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
             
+            // Auto-liberar sorteos futuros si estaba en memoria
+            await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
+
             if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
               enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 2do intento (+10 min)!`);
             }

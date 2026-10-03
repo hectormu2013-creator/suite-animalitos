@@ -172,25 +172,46 @@ function recordScan(scanData) {
     });
     const numAleatorios = detalleAleatorios.map(a => a.numero);
 
-    // 5. Lista final consolidada de números bloqueados con origen (4 Vías de Riesgo)
-    const todosNumeros = Array.from(new Set([...rojosPremier, ...numFijos, ...numPredictivos, ...numAleatorios]));
+    // 5. Números heredados por Memoria de Cupo Cero Premier (Arrastre Preventivo)
+    const rawMemoria = scanData.numMemoriaCupoCero || scanData.memoriaCupoCero || [];
+    const detalleMemoria = rawMemoria.map(m => {
+      const numStr = String(typeof m === 'object' ? m.numero : m).padStart(2, '0');
+      const sortRest = typeof m === 'object' && m.sorteosRestantes !== undefined ? m.sorteosRestantes : null;
+      return {
+        numero: numStr,
+        nombre: (typeof m === 'object' && m.nombre) || getAnimalName(numStr),
+        sorteosRestantes: sortRest,
+        origen: 'MEMORIA_CUPO_0',
+        origenTexto: sortRest !== null ? `Memoria Cupo 0 (${sortRest} rest.)` : 'Memoria Cupo Cero Premier',
+        detalle: 'Arrastre preventivo de agotado'
+      };
+    });
+    const numMemoriaCupoCero = detalleMemoria.map(m => m.numero);
+
+    // 6. Lista final consolidada de números bloqueados con origen (5 Vías de Riesgo)
+    const todosNumeros = Array.from(new Set([...rojosPremier, ...numFijos, ...numPredictivos, ...numAleatorios, ...numMemoriaCupoCero]));
     const bloqueosConsolidados = todosNumeros.map(num => {
       const esPremier = rojosPremier.includes(num);
       const esFijo = numFijos.includes(num);
       const predObj = detallePredictivos.find(p => p.numero === num);
       const esPredictivo = !!predObj;
       const esAleatorio = numAleatorios.includes(num);
+      const esMemoria = numMemoriaCupoCero.includes(num);
 
       let origen = 'PREMIER';
       let origenTexto = 'Premier Pluss (Cupo 0)';
       let detalle = 'Agotado en taquilla';
 
-      const origenesCount = (esPremier ? 1 : 0) + (esFijo ? 1 : 0) + (esPredictivo ? 1 : 0) + (esAleatorio ? 1 : 0);
+      const origenesCount = (esPremier ? 1 : 0) + (esFijo ? 1 : 0) + (esPredictivo ? 1 : 0) + (esAleatorio ? 1 : 0) + (esMemoria ? 1 : 0);
 
       if (origenesCount > 1) {
         origen = 'AMBOS';
         origenTexto = 'Múltiple Coincidencia';
         detalle = 'Coincidencia entre varios modelos de bloqueo';
+      } else if (esPremier) {
+        origen = 'PREMIER';
+        origenTexto = 'Premier Pluss (Cupo 0)';
+        detalle = 'Agotado en taquilla';
       } else if (esFijo) {
         origen = 'FIJO';
         origenTexto = 'Número Fijo (Siempre Bloqueado)';
@@ -203,6 +224,10 @@ function recordScan(scanData) {
         origen = 'ALEATORIO';
         origenTexto = 'Sistema Autónomo (Cobertura Aleatoria)';
         detalle = 'Selección de riesgo del sistema (máx 3)';
+      } else if (esMemoria) {
+        origen = 'MEMORIA_CUPO_0';
+        origenTexto = 'Memoria Cupo Cero Premier';
+        detalle = 'Arrastre preventivo de agotado previo';
       }
 
       return {
@@ -235,6 +260,8 @@ function recordScan(scanData) {
       predictivosVisualFx: detallePredictivos,
       numAleatorios,
       aleatoriosSistema: detalleAleatorios,
+      numMemoriaCupoCero,
+      memoriaCupoCero: detalleMemoria,
       bloqueosConsolidados,
       totalBloqueados: todosNumeros.length,
 
@@ -431,18 +458,20 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
     const fijoList = (rec.numFijos || (rec.fijosSeleccionados || []).map(f => String(typeof f === 'object' ? f.numero : f).padStart(2, '0')));
     const predictivoList = (rec.numPredictivos || (rec.predictivosVisualFx || []).map(p => String(p.numero).padStart(2, '0')));
     const aleatorioList = (rec.numAleatorios || (rec.aleatoriosSistema || []).map(a => String(a.numero).padStart(2, '0')));
+    const memoriaList = (rec.numMemoriaCupoCero || (rec.memoriaCupoCero || []).map(m => String(typeof m === 'object' ? m.numero : m).padStart(2, '0')));
     const allBlocked = (rec.rojos || []).map(n => String(n).padStart(2, '0'));
 
     const esPremier = premierList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
     const esFijo = fijoList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
     const esPredictivo = predictivoList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
     const esAleatorio = aleatorioList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
-    const salioBloqueado = esPremier || esFijo || esPredictivo || esAleatorio || allBlocked.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
+    const esMemoria = memoriaList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
+    const salioBloqueado = esPremier || esFijo || esPredictivo || esAleatorio || esMemoria || allBlocked.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
 
     let origenAcierto = 'NO_BLOQUEADO';
     let mensaje = `El número ${normWinner} (${resolvedName}) salió premiado, pero no estaba en la lista de bloqueos.`;
 
-    const aciertosCount = (esPremier ? 1 : 0) + (esFijo ? 1 : 0) + (esPredictivo ? 1 : 0) + (esAleatorio ? 1 : 0);
+    const aciertosCount = (esPremier ? 1 : 0) + (esFijo ? 1 : 0) + (esPredictivo ? 1 : 0) + (esAleatorio ? 1 : 0) + (esMemoria ? 1 : 0);
 
     if (aciertosCount > 1) {
       origenAcierto = 'AMBOS';
@@ -459,10 +488,20 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
     } else if (esAleatorio) {
       origenAcierto = 'ALEATORIO';
       mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.`;
+    } else if (esMemoria) {
+      origenAcierto = 'MEMORIA_CUPO_0';
+      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por la Memoria de Cupo Cero Premier (Arrastre Preventivo).`;
     } else if (salioBloqueado) {
       origenAcierto = 'PREMIER';
       mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO.`;
     }
+
+    // Auto-liberar de la memoria de cupo cero si este número estaba en persistencia
+    try {
+      const cupoMem = require('./cupo_cero_memory');
+      const gameKey = mapLoteriaToVisualFx(rec.loteria);
+      cupoMem.verificarYAutoLiberarPorGanador(gameKey, normWinner, resolvedName, rec.sorteo || rec.horaSorteo, rec.fecha);
+    } catch (e) {}
 
     rec.ganador = {
       verificado: true,

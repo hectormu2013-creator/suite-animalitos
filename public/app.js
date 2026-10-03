@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTrophyModule();
   loadTrophies();
   initTriple7Module();
+  initMemoryManager();
   startStatusPolling();
   bindActionButtons();
   initTunnelManager();
@@ -256,6 +257,29 @@ function renderLotteries(lotteries) {
             <label style="font-size:12px; color:var(--text-muted); font-weight:600;">Números (Máx 3):</label>
             <input type="text" class="form-input lot-input-numeros-fijos" data-index="${index}" placeholder="Ej: 04, 12, 28" value="${(lot.numerosFijos || []).join(', ')}" style="width:160px; padding:5px 10px; font-size:13px; background:#1e293b; color:#fff; text-align:center; font-family:var(--font-mono);">
             <span style="font-size:11px; color:#818cf8; font-weight:700;" id="fijos-count-preview-${index}">(${(lot.numerosFijos || []).length}/3)</span>
+          </div>
+        </div>
+
+        <!-- 5. Memoria de Cupo Cero Premier (Arrastre Preventivo de Agotados) -->
+        <div style="background:rgba(236,72,153,0.04); border:1px solid rgba(236,72,153,0.25); border-radius:8px; padding:12px; margin-top:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <label class="checkbox-label" style="font-weight:600;">
+              <input type="checkbox" class="lot-input-memoria-cupo" data-index="${index}" ${lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false ? 'checked' : ''}>
+              <span style="color:#f472b6;">🧠 Memoria de Cupo Cero Premier (Arrastre Preventivo a Sorteos Siguientes)</span>
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; color:var(--text-muted); font-weight:600;">Persistencia:</label>
+              <select class="form-input lot-input-persistencia-memoria" data-index="${index}" style="width:auto; padding:5px 10px; font-size:13px; background:#1e293b; color:#fff;">
+                <option value="1" ${(lot.memoriaCupoCero ? lot.memoriaCupoCero.sorteosPersistencia : 3) === 1 ? 'selected' : ''}>1 sorteo siguiente</option>
+                <option value="2" ${(lot.memoriaCupoCero ? lot.memoriaCupoCero.sorteosPersistencia : 3) === 2 ? 'selected' : ''}>2 sorteos siguientes</option>
+                <option value="3" ${(lot.memoriaCupoCero ? lot.memoriaCupoCero.sorteosPersistencia : 3) === 3 || !lot.memoriaCupoCero ? 'selected' : ''}>3 sorteos siguientes</option>
+                <option value="4" ${(lot.memoriaCupoCero ? lot.memoriaCupoCero.sorteosPersistencia : 3) === 4 ? 'selected' : ''}>4 sorteos siguientes</option>
+                <option value="5" ${(lot.memoriaCupoCero ? lot.memoriaCupoCero.sorteosPersistencia : 3) === 5 ? 'selected' : ''}>5 sorteos siguientes (Máximo)</option>
+              </select>
+            </div>
+          </div>
+          <div style="font-size:11px; color:#94a3b8; margin-top:8px; line-height:1.4;">
+            💡 Al pescar un número con cupo 0 en PremierPluss, se bloqueará de inmediato para los siguientes <b>N sorteos seleccionados</b> en Triple 7. Se descuenta al pasar cada sorteo y <b>se auto-libera para todos los sorteos restantes si sale premiado</b> 🏆.
           </div>
         </div>
       </div>
@@ -587,6 +611,13 @@ async function saveLotteriesConfig() {
         lot.numerosFijos = normFijos;
       }
 
+      // Memoria de Cupo Cero Premier
+      if (!lot.memoriaCupoCero) lot.memoriaCupoCero = {};
+      const memToggle = el.querySelector('.lot-input-memoria-cupo');
+      if (memToggle) lot.memoriaCupoCero.activo = memToggle.checked;
+      const persistSelect = el.querySelector('.lot-input-persistencia-memoria');
+      if (persistSelect) lot.memoriaCupoCero.sorteosPersistencia = Math.min(Math.max(parseInt(persistSelect.value, 10) || 3, 1), 5);
+
       const rawHorarios = el.querySelector('.lot-input-horarios').value;
       lot.horarios = rawHorarios.split(/[,;\s]+/).map(h => h.trim()).filter(Boolean);
     }
@@ -815,8 +846,16 @@ function renderHistoryTable(history) {
       }
       return `<span class="tag" style="background:rgba(6,182,212,0.2); color:#67e8f9; border:1px solid rgba(6,182,212,0.4);" title="Aleatorio del Sistema">🎲 ${a}</span>`;
     });
+
+    const memoriaList = item.numMemoriaCupoCero || (item.memoriaCupoCero || []).map(m => typeof m === 'object' ? m.numero : m);
+    const memoriaTags = memoriaList.map(m => {
+      if (isWinnerNumber(m)) {
+        return `<span class="tag tag-trophy-acierto" title="¡GOLPE DE BANCA EVITADO! Número de Memoria de Cupo Cero Premier salió premiado.">🏆 🧠 ${m}</span>`;
+      }
+      return `<span class="tag tag-memoria" title="Memoria Cupo Cero Premier (Arrastre Preventivo)">🧠 ${m}</span>`;
+    });
     
-    const allCoverage = [...fijosTags, ...predTags, ...aleatTags];
+    const allCoverage = [...fijosTags, ...predTags, ...aleatTags, ...memoriaTags];
     const coverageHtml = allCoverage.length > 0 
       ? allCoverage.join(' ') 
       : '<span style="color:var(--text-dim); font-size:11px;">Solo Cupo 0</span>';
@@ -1131,6 +1170,9 @@ function renderTrophyCards(records, filter = 'all') {
       } else if (b.origen === 'ALEATORIO') {
         chipClass += ' chip-aleatorio';
         originLabel = '🎲 Sistema';
+      } else if (b.origen === 'MEMORIA_CUPO_0') {
+        chipClass += ' chip-memoria';
+        originLabel = '🧠 Memoria';
       } else {
         chipClass += ' chip-both';
         originLabel = '🔥 Múltiple';
@@ -1159,6 +1201,7 @@ function renderTrophyCards(records, filter = 'all') {
       if (rec.ganador.origenAcierto === 'FIJO') descOrigen = '📌 Número Fijo Permanente';
       else if (rec.ganador.origenAcierto === 'PREDICTIVO') descOrigen = '🔮 Modelo Predictivo Visual-FX';
       else if (rec.ganador.origenAcierto === 'ALEATORIO') descOrigen = '🎲 Cobertura Aleatoria del Sistema Autónomo';
+      else if (rec.ganador.origenAcierto === 'MEMORIA_CUPO_0') descOrigen = '🧠 Memoria de Cupo Cero Premier (Arrastre Preventivo)';
       else if (rec.ganador.origenAcierto === 'AMBOS') descOrigen = '🔥 Múltiple Coincidencia de Bloqueo';
 
       ribbonHtml = `
@@ -1574,5 +1617,80 @@ async function handleTriple7ManualBlock() {
     btn.innerHTML = '<span class="btn-icon">⚡</span><span>Bloquear en Triple 7</span>';
     showToast(`Error de conexión: ${err.message}`);
   }
+}
+
+// ==========================================
+// GESTOR DE MEMORIA DE CUPO CERO PREMIER
+// ==========================================
+function initMemoryManager() {
+  const banner = document.getElementById('memory-live-banner');
+  const container = document.getElementById('memory-chips-container');
+  const btnClear = document.getElementById('btn-clear-memory');
+
+  if (btnClear) {
+    btnClear.addEventListener('click', async () => {
+      if (!confirm('¿Deseas reiniciar la memoria de persistencia de Cupo Cero?')) return;
+      try {
+        const res = await fetch('/api/memory/clear', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Memoria de cupo cero reseteada');
+          loadMemoryStatus();
+        }
+      } catch (e) {}
+    });
+  }
+
+  async function loadMemoryStatus() {
+    try {
+      const res = await fetch('/api/memory/status');
+      const data = await res.json();
+      if (!data.ok || !data.summary) return;
+
+      const activos = data.summary.activos || [];
+      if (!banner || !container) return;
+
+      if (activos.length === 0) {
+        banner.style.display = 'none';
+        container.innerHTML = '';
+        return;
+      }
+
+      banner.style.display = 'flex';
+      container.innerHTML = activos.map(item => `
+        <span class="chip-memoria" style="padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:8px;" title="Lotería: ${item.loteriaNombre} • Sorteo Origen: ${item.sorteoOrigen}">
+          <span>🧠 <b>${item.numero} ${item.nombre}</b></span>
+          <span style="font-size:11px; background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:10px;">
+            ${item.sorteosRestantes} ${item.sorteosRestantes === 1 ? 'sorteo rest.' : 'sorteos rest.'}
+          </span>
+          <button class="btn-release-single" data-lot="${item.loteriaId}" data-num="${item.numero}" title="Liberar de memoria y reincorporar en Triple 7" style="background:none; border:none; color:#f472b6; cursor:pointer; font-size:13px; padding:0 2px;">✖</button>
+        </span>
+      `).join('');
+
+      // Bind botones de liberación individual
+      container.querySelectorAll('.btn-release-single').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const loteriaId = btn.getAttribute('data-lot');
+          const numero = btn.getAttribute('data-num');
+          try {
+            const r = await fetch('/api/memory/release-animal', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ loteriaId, numero, reincorporarTriple7: true })
+            });
+            const d = await r.json();
+            if (d.ok) {
+              showToast(`Animal ${numero} liberado de memoria`);
+              loadMemoryStatus();
+            }
+          } catch (err) {}
+        });
+      });
+    } catch (e) {}
+  }
+
+  loadMemoryStatus();
+  setInterval(loadMemoryStatus, 8000);
 }
 

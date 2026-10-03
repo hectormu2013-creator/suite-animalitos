@@ -228,12 +228,31 @@ function buildConsolidatedBlockList(config, loteriaId, premierResult) {
     aleatoriosSeleccionados = getRandomSystemBlockNumbers(lot.id, Math.min(cantidadAleatorios, 3), yaBloqueados);
   }
 
+  // 5. Memoria de Cupo Cero Premier (Arrastre Preventivo de Sorteos Anteriores)
+  let memoriaSeleccionados = [];
+  if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false) {
+    try {
+      const cupoMem = require('./cupo_cero_memory');
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const activosMemoria = cupoMem.obtenerNumerosActivos(lot.id, todayStr);
+      memoriaSeleccionados = activosMemoria.map(m => ({
+        numero: m.numero,
+        nombre: m.nombre,
+        sorteoOrigen: m.sorteoOrigen,
+        sorteosRestantes: m.sorteosRestantes,
+        origen: 'MEMORIA_CUPO_0',
+        origenTexto: `Memoria Premier (${m.sorteosRestantes} sorteos rest.)`
+      }));
+    } catch (eMem) {}
+  }
+
   // Lista única final de números para bloqueo
   const listaNumerosFinal = Array.from(new Set([
     ...bloqueadosPremier,
     ...numFijos,
     ...predictivosSeleccionados.map(p => p.numero),
-    ...aleatoriosSeleccionados.map(a => a.numero)
+    ...aleatoriosSeleccionados.map(a => a.numero),
+    ...memoriaSeleccionados.map(m => m.numero)
   ]));
 
   return {
@@ -249,6 +268,9 @@ function buildConsolidatedBlockList(config, loteriaId, premierResult) {
     bloquearAleatoriosActivo: activarAleatorios,
     cantidadAleatoriosConfigurada: cantidadAleatorios,
     aleatoriosSeleccionados,
+    bloquearMemoriaActivo: lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false,
+    memoriaSeleccionados,
+    numMemoria: memoriaSeleccionados.map(m => m.numero),
     listaFinalNumeros: listaNumerosFinal,
     totalNumerosABloquear: listaNumerosFinal.length
   };

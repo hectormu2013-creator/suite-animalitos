@@ -55,6 +55,10 @@
       "cantidadPredictivosABloquear": 2,
       "bloqueoAleatorioSistema": true,
       "cantidadAleatoriosABloquear": 2,
+      "memoriaCupoCero": {
+        "activo": true,
+        "sorteosPersistencia": 3
+      },
       "horarios": [
         "09:00",
         "10:00",
@@ -88,6 +92,10 @@
       "cantidadPredictivosABloquear": 2,
       "bloqueoAleatorioSistema": true,
       "cantidadAleatoriosABloquear": 2,
+      "memoriaCupoCero": {
+        "activo": true,
+        "sorteosPersistencia": 3
+      },
       "horarios": [
         "09:00",
         "10:00",
@@ -121,6 +129,10 @@
       "cantidadPredictivosABloquear": 2,
       "bloqueoAleatorioSistema": true,
       "cantidadAleatoriosABloquear": 2,
+      "memoriaCupoCero": {
+        "activo": true,
+        "sorteosPersistencia": 3
+      },
       "horarios": [
         "09:00",
         "10:00",
