@@ -4,6 +4,38 @@
     "autoStartScheduler": true,
     "horaActivacionDiaria": "07:00",
     "activacionDiariaActiva": true,
+    "maquinaLocalId": "maquina_2",
+    "maquinaEncargadaVerificacionesId": "maquina_1",
+    "maquinas": [
+      {
+        "id": "maquina_1",
+        "nombre": "Máquina 1 (Primera Opción / Taquilla Principal)",
+        "activa": true,
+        "prioridad": 1,
+        "esEncargadaVerificaciones": true,
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "usuarioPremier": "TCOP101",
+        "clavePremier": "123",
+        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+        "keepOpen": true,
+        "ipOUrl": "http://192.168.1.100:4500",
+        "notas": "Taquilla designada como primera opción de pesca"
+      },
+      {
+        "id": "maquina_2",
+        "nombre": "Máquina 2 (Segunda Opción / Taquilla Actual)",
+        "activa": true,
+        "prioridad": 2,
+        "esEncargadaVerificaciones": false,
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "usuarioPremier": "TCOP102",
+        "clavePremier": "123",
+        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+        "keepOpen": true,
+        "ipOUrl": "http://127.0.0.1:4500",
+        "notas": "Taquilla de respaldo / PC actual"
+      }
+    ],
     "telegram": {
       "enabled": false,
       "botToken": "",

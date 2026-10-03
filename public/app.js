@@ -122,6 +122,9 @@ function populateUIWithConfig(config) {
 
   // Renderizar Loterías
   renderLotteries(config.loterias);
+
+  // Renderizar Red de Máquinas de Pesca & Verificación
+  renderMachinesManagement(config);
 }
 
 // Renderizar lista de loterías
@@ -300,6 +303,270 @@ function renderLotteries(lotteries) {
   });
 }
 
+// ========================================================
+// RED DE MÁQUINAS PARA PESCA Y VERIFICACIÓN (MULTI-NODOS)
+// ========================================================
+
+const PLATAFORMAS_SISTEMA = [
+  { id: 'PREMIER_PLUS_20', nombre: 'Premier Pluss 2.0 (PC Windows / Activo)', activo: true },
+  { id: 'PREMIER_VIEJO', nombre: 'Premier Clásico / Viejo (Próximamente)', activo: false },
+  { id: 'MAPLAY', nombre: 'Plataforma Maplay (Próximamente)', activo: false }
+];
+
+function renderMachinesManagement(config) {
+  if (!config || !config.general) return;
+
+  const maquinas = config.general.maquinas || [];
+  const localId = config.general.maquinaLocalId || 'maquina_2';
+  const verifierId = config.general.maquinaEncargadaVerificacionesId || 'maquina_1';
+
+  // 1. Selector de máquina local
+  const localSelect = document.getElementById('cfg-maquina-local-select');
+  if (localSelect) {
+    localSelect.innerHTML = maquinas.map(m => `
+      <option value="${m.id}" ${m.id === localId ? 'selected' : ''}>
+        ${m.nombre} (${m.usuarioPremier || 'Sin usuario'}) ${m.id === localId ? '★ [ESTE EQUIPO]' : ''}
+      </option>
+    `).join('');
+  }
+
+  // 2. Selector de máquina verificadora (Regla: sólo 1)
+  const verifierSelect = document.getElementById('cfg-maquina-verificadora-select');
+  if (verifierSelect) {
+    verifierSelect.innerHTML = maquinas.map(m => `
+      <option value="${m.id}" ${m.id === verifierId ? 'selected' : ''}>
+        👑 ${m.nombre} (${m.usuarioPremier || 'Sin usuario'})
+      </option>
+    `).join('');
+  }
+
+  // 3. Contenedor de tarjetas de cada máquina
+  const container = document.getElementById('machines-list-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  maquinas.forEach((m, idx) => {
+    const isVerifier = (m.id === verifierId) || !!m.esEncargadaVerificaciones;
+    const isLocal = (m.id === localId);
+
+    const card = document.createElement('div');
+    card.className = `machine-node-card ${isVerifier ? 'is-verifier' : ''} ${isLocal ? 'is-local' : ''}`;
+    card.setAttribute('data-machine-id', m.id);
+
+    const platformOptions = PLATAFORMAS_SISTEMA.map(p => `
+      <option value="${p.id}" ${m.tipoPlataforma === p.id ? 'selected' : ''}>
+        ${p.nombre}
+      </option>
+    `).join('');
+
+    card.innerHTML = `
+      <div class="machine-node-header">
+        <div class="machine-node-title">
+          <span class="machine-priority-badge">Prioridad ${m.prioridad || idx + 1}</span>
+          <span style="font-weight: 700; color: #fff;">${m.nombre || `Máquina ${idx + 1}`}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          ${isVerifier ? '<span class="machine-badge-verifier">👑 Verificadora Oficial (Visual-FX)</span>' : '<span class="machine-badge-pesca">🎣 Sólo Pesca (Cupo 0)</span>'}
+          ${isLocal ? '<span class="machine-badge-local">💻 Este Equipo Físico</span>' : ''}
+        </div>
+      </div>
+
+      <div class="machine-inputs-grid">
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Nombre / Etiqueta:</label>
+          <input type="text" class="form-input machine-input-nombre" value="${m.nombre || ''}" placeholder="Ej: Máquina 1 (Principal)">
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Plataforma de Pesca:</label>
+          <select class="form-input machine-select-plataforma">
+            ${platformOptions}
+          </select>
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Usuario de Taquilla:</label>
+          <input type="text" class="form-input machine-input-user" value="${m.usuarioPremier || ''}" placeholder="Ej: TCOP101">
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Contraseña de Taquilla:</label>
+          <input type="password" class="form-input machine-input-pass" value="${m.clavePremier || ''}" placeholder="••••••">
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Prioridad de Elección:</label>
+          <input type="number" min="1" max="99" class="form-input machine-input-prioridad" value="${m.prioridad || idx + 1}">
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Ruta Ejecutable / URL:</label>
+          <input type="text" class="form-input machine-input-path" value="${m.executablePath || 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe'}" placeholder="C:\\...">
+        </div>
+      </div>
+
+      <div class="machine-actions-bar">
+        <div>
+          <label class="checkbox-label" style="font-size: 13px; font-weight: 600;">
+            <input type="checkbox" class="machine-toggle-activa" ${m.activa !== false ? 'checked' : ''}>
+            <span>Habilitada para pesca activa</span>
+          </label>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          ${!isVerifier ? `
+            <button class="btn btn-secondary btn-sm btn-assign-verifier" data-id="${m.id}" style="border-color:#f59e0b; color:#fbbf24;">
+              <span>👑 Asignar como Verificadora</span>
+            </button>
+          ` : ''}
+
+          ${!isLocal ? `
+            <button class="btn btn-secondary btn-sm btn-assign-local" data-id="${m.id}" style="border-color:#38bdf8; color:#38bdf8;">
+              <span>💻 Operar en Este Equipo</span>
+            </button>
+          ` : ''}
+
+          ${maquinas.length > 1 ? `
+            <button class="btn btn-secondary btn-sm btn-delete-machine" data-id="${m.id}" style="border-color:#f43f5e; color:#f43f5e;">
+              <span>🗑️ Eliminar</span>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+
+  // Vincular eventos de botones internos de tarjetas
+  container.querySelectorAll('.btn-assign-verifier').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      setVerifierMachineUI(id);
+    });
+  });
+
+  container.querySelectorAll('.btn-assign-local').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      setLocalMachineUI(id);
+    });
+  });
+
+  container.querySelectorAll('.btn-delete-machine').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      deleteMachineUI(id);
+    });
+  });
+}
+
+function setVerifierMachineUI(targetId) {
+  if (!currentConfig || !currentConfig.general) return;
+  currentConfig.general.maquinaEncargadaVerificacionesId = targetId;
+
+  if (Array.isArray(currentConfig.general.maquinas)) {
+    currentConfig.general.maquinas.forEach(m => {
+      m.esEncargadaVerificaciones = (m.id === targetId);
+    });
+  }
+
+  renderMachinesManagement(currentConfig);
+  const target = (currentConfig.general.maquinas || []).find(m => m.id === targetId);
+  showToast(`👑 ${target ? target.nombre : targetId} asignada como única verificadora oficial`);
+  appendLog(`[VERIFICADOR OFICIAL] Rol exclusivo asignado a: ${target ? target.nombre : targetId}`, 'log-info');
+}
+
+function setLocalMachineUI(machineId) {
+  if (!currentConfig || !currentConfig.general) return;
+  currentConfig.general.maquinaLocalId = machineId;
+
+  const target = (currentConfig.general.maquinas || []).find(m => m.id === machineId);
+  if (target) {
+    if (!currentConfig.general.premierPluss) currentConfig.general.premierPluss = {};
+    currentConfig.general.premierPluss.user = target.usuarioPremier;
+    currentConfig.general.premierPluss.password = target.clavePremier;
+    currentConfig.general.premierPluss.executablePath = target.executablePath;
+
+    const userEl = document.getElementById('cfg-premier-user');
+    const passEl = document.getElementById('cfg-premier-pass');
+    const pathEl = document.getElementById('cfg-premier-path');
+    if (userEl) userEl.value = target.usuarioPremier || '';
+    if (passEl) passEl.value = target.clavePremier || '';
+    if (pathEl) pathEl.value = target.executablePath || '';
+  }
+
+  renderMachinesManagement(currentConfig);
+  showToast(`💻 Este equipo configurado para operar como: ${target ? target.nombre : machineId}`);
+  appendLog(`[MÁQUINA LOCAL] Identidad actualizada a: ${target ? target.nombre : machineId}`, 'log-info');
+}
+
+function deleteMachineUI(machineId) {
+  if (!currentConfig || !currentConfig.general || !Array.isArray(currentConfig.general.maquinas)) return;
+  if (currentConfig.general.maquinas.length <= 1) {
+    alert('Debe existir al menos 1 máquina en la red.');
+    return;
+  }
+
+  const target = currentConfig.general.maquinas.find(m => m.id === machineId);
+  const name = target ? target.nombre : machineId;
+  if (!confirm(`¿Estás seguro de eliminar la "${name}" de la red de pesca?`)) return;
+
+  currentConfig.general.maquinas = currentConfig.general.maquinas.filter(m => m.id !== machineId);
+
+  // Si eliminó la verificadora, transferir a la primera opción
+  if (currentConfig.general.maquinaEncargadaVerificacionesId === machineId) {
+    currentConfig.general.maquinaEncargadaVerificacionesId = currentConfig.general.maquinas[0].id;
+    currentConfig.general.maquinas[0].esEncargadaVerificaciones = true;
+  }
+
+  // Si eliminó la local, reasignar a la primera
+  if (currentConfig.general.maquinaLocalId === machineId) {
+    currentConfig.general.maquinaLocalId = currentConfig.general.maquinas[0].id;
+  }
+
+  renderMachinesManagement(currentConfig);
+  showToast(`🗑️ ${name} eliminada de la red`);
+  appendLog(`[MULTI-MÁQUINAS] Eliminada ${name}. Restantes: ${currentConfig.general.maquinas.length}`, 'log-warn');
+}
+
+function addNewMachineUI() {
+  if (!currentConfig || !currentConfig.general) return;
+  if (!Array.isArray(currentConfig.general.maquinas)) currentConfig.general.maquinas = [];
+
+  const count = currentConfig.general.maquinas.length;
+  const newNum = count + 1;
+  const newId = `maquina_${Date.now()}`;
+  const defaultPath = 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe';
+
+  const newMachine = {
+    id: newId,
+    nombre: `Máquina ${newNum} (Opción ${newNum})`,
+    activa: true,
+    prioridad: newNum,
+    esEncargadaVerificaciones: false,
+    tipoPlataforma: 'PREMIER_PLUS_20',
+    usuarioPremier: `TCOP10${newNum}`,
+    clavePremier: '123',
+    executablePath: defaultPath,
+    keepOpen: true,
+    ipOUrl: 'http://127.0.0.1:4500',
+    notas: `Taquilla adicional ${newNum}`
+  };
+
+  currentConfig.general.maquinas.push(newMachine);
+  renderMachinesManagement(currentConfig);
+  showToast(`➕ Nueva ${newMachine.nombre} agregada. Recuerda guardar.`);
+  appendLog(`[MULTI-MÁQUINAS] Agregada nueva ${newMachine.nombre}`, 'log-info');
+
+  // Hacer scroll suave hacia la nueva tarjeta
+  const container = document.getElementById('machines-list-container');
+  if (container && container.lastElementChild) {
+    container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
 // Botones de acción
 function bindActionButtons() {
   // Probar Chequeo Manual / Iniciar
@@ -407,6 +674,28 @@ function bindActionButtons() {
   const btnSaveCreds = document.getElementById('btn-save-credentials');
   if (btnSaveCreds) {
     btnSaveCreds.addEventListener('click', saveCredentialsConfig);
+  }
+
+  // Red Multi-Máquinas: Botón Agregar Otra Máquina
+  const btnAddMachine = document.getElementById('btn-add-machine');
+  if (btnAddMachine) {
+    btnAddMachine.addEventListener('click', addNewMachineUI);
+  }
+
+  // Red Multi-Máquinas: Selector de identidad local
+  const selectLocalMachine = document.getElementById('cfg-maquina-local-select');
+  if (selectLocalMachine) {
+    selectLocalMachine.addEventListener('change', (e) => {
+      setLocalMachineUI(e.target.value);
+    });
+  }
+
+  // Red Multi-Máquinas: Selector de verificador oficial
+  const selectVerifierMachine = document.getElementById('cfg-maquina-verificadora-select');
+  if (selectVerifierMachine) {
+    selectVerifierMachine.addEventListener('change', (e) => {
+      setVerifierMachineUI(e.target.value);
+    });
   }
 
   // Botón Sincronizar Tarea Programada de Windows
@@ -630,10 +919,60 @@ async function saveLotteriesConfig() {
 async function saveCredentialsConfig() {
   if (!currentConfig) return;
 
-  currentConfig.general.premierPluss.user = document.getElementById('cfg-premier-user').value.trim();
-  currentConfig.general.premierPluss.password = document.getElementById('cfg-premier-pass').value.trim();
-  currentConfig.general.premierPluss.executablePath = document.getElementById('cfg-premier-path').value.trim();
-  currentConfig.general.premierPluss.keepOpen = document.getElementById('cfg-premier-keepopen').checked;
+  // 1. Sincronizar Red Multi-Máquinas desde las tarjetas en pantalla
+  const machineCards = document.querySelectorAll('.machine-node-card');
+  if (machineCards.length > 0 && currentConfig.general.maquinas) {
+    machineCards.forEach(card => {
+      const mId = card.getAttribute('data-machine-id');
+      const machine = currentConfig.general.maquinas.find(m => m.id === mId);
+      if (machine) {
+        const nameInput = card.querySelector('.machine-input-nombre');
+        const platSelect = card.querySelector('.machine-select-plataforma');
+        const userInput = card.querySelector('.machine-input-user');
+        const passInput = card.querySelector('.machine-input-pass');
+        const prioInput = card.querySelector('.machine-input-prioridad');
+        const pathInput = card.querySelector('.machine-input-path');
+        const actToggle = card.querySelector('.machine-toggle-activa');
+
+        if (nameInput) machine.nombre = nameInput.value.trim();
+        if (platSelect) machine.tipoPlataforma = platSelect.value;
+        if (userInput) machine.usuarioPremier = userInput.value.trim();
+        if (passInput) machine.clavePremier = passInput.value.trim();
+        if (prioInput) machine.prioridad = parseInt(prioInput.value, 10) || 1;
+        if (pathInput) machine.executablePath = pathInput.value.trim();
+        if (actToggle) machine.activa = actToggle.checked;
+      }
+    });
+
+    const localSelect = document.getElementById('cfg-maquina-local-select');
+    if (localSelect) currentConfig.general.maquinaLocalId = localSelect.value;
+
+    const verifSelect = document.getElementById('cfg-maquina-verificadora-select');
+    if (verifSelect) {
+      currentConfig.general.maquinaEncargadaVerificacionesId = verifSelect.value;
+      currentConfig.general.maquinas.forEach(m => {
+        m.esEncargadaVerificaciones = (m.id === verifSelect.value);
+      });
+    }
+
+    // Sincronizar credenciales de la máquina local con la configuración de premierPluss
+    const localMachine = currentConfig.general.maquinas.find(m => m.id === currentConfig.general.maquinaLocalId);
+    if (localMachine) {
+      currentConfig.general.premierPluss.user = localMachine.usuarioPremier;
+      currentConfig.general.premierPluss.password = localMachine.clavePremier;
+      if (localMachine.executablePath) currentConfig.general.premierPluss.executablePath = localMachine.executablePath;
+    }
+  }
+
+  // 2. Credenciales Legacy Premier (Sincronizadas con máquina local o campos directos)
+  const pUserEl = document.getElementById('cfg-premier-user');
+  const pPassEl = document.getElementById('cfg-premier-pass');
+  const pPathEl = document.getElementById('cfg-premier-path');
+  const pKeepEl = document.getElementById('cfg-premier-keepopen');
+  if (pUserEl && pUserEl.value.trim()) currentConfig.general.premierPluss.user = pUserEl.value.trim();
+  if (pPassEl && pPassEl.value.trim()) currentConfig.general.premierPluss.password = pPassEl.value.trim();
+  if (pPathEl && pPathEl.value.trim()) currentConfig.general.premierPluss.executablePath = pPathEl.value.trim();
+  if (pKeepEl) currentConfig.general.premierPluss.keepOpen = pKeepEl.checked;
 
   currentConfig.general.triple7.url = document.getElementById('cfg-t7-url').value.trim();
   currentConfig.general.triple7.user = document.getElementById('cfg-t7-user').value.trim();
