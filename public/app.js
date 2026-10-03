@@ -734,6 +734,25 @@ function startStatusPolling() {
   }, 1500);
 }
 
+// Formatear fecha para el historial (ej: "2026-10-03" -> "03/10/2026")
+function formatHistoryDate(dateStr) {
+  if (!dateStr) return '--/--/----';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+  } catch (e) {}
+  return dateStr;
+}
+
 // Renderizar tabla de historial
 function renderHistoryTable(history) {
   const tbody = document.getElementById('history-table-body');
@@ -743,36 +762,96 @@ function renderHistoryTable(history) {
   history.slice().reverse().forEach(item => {
     const tr = document.createElement('tr');
     
+    // Verificación de Ganador y Aciertos
+    const hasWinner = item.ganador && item.ganador.verificado && item.ganador.numero;
+    const winNum = hasWinner ? String(item.ganador.numero).padStart(2, '0') : null;
+    const winInt = hasWinner ? parseInt(item.ganador.numero, 10) : null;
+    const isHit = hasWinner && item.ganador.bloqueoAcertado === true;
+
+    if (isHit) {
+      tr.classList.add('row-trophy-hit');
+    }
+
+    // Helper para verificar si un número coincide con el ganador
+    const isWinnerNumber = (n) => {
+      if (!hasWinner) return false;
+      const clean = String(typeof n === 'object' ? n.numero : n).padStart(2, '0');
+      return clean === winNum || parseInt(clean, 10) === winInt;
+    };
+
     // 1. Agotados Premier (Cupo 0)
     const premierItems = item.rojosPremier || item.rojos || [];
-    const redTags = premierItems.map(num => `<span class="tag tag-red">${num}</span>`).join(' ') || '<span style="color:var(--text-dim)">Ninguno</span>';
+    let redTags = '<span style="color:var(--text-dim)">Ninguno</span>';
+    if (premierItems.length > 0) {
+      redTags = premierItems.map(num => {
+        if (isWinnerNumber(num)) {
+          return `<span class="tag tag-trophy-acierto" title="¡GOLPE DE BANCA EVITADO! Este número agotado en Premier salió premiado.">🏆 ${num}</span>`;
+        }
+        return `<span class="tag tag-red">${num}</span>`;
+      }).join(' ');
+    }
     
     // 2. Cobertura de Riesgo (Fijos + Predictivos + Aleatorios)
-    const fijosTags = (item.numFijos || (item.fijosSeleccionados || []).map(f => typeof f === 'object' ? f.numero : f)).map(n => 
-      `<span class="tag" style="background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" title="Número Fijo">📌 ${n}</span>`
-    );
-    const predTags = (item.numPredictivos || (item.predictivosVisualFx || []).map(p => typeof p === 'object' ? p.numero : p)).map(p => 
-      `<span class="tag" style="background:rgba(168,85,247,0.2); color:#d8b4fe; border:1px solid rgba(168,85,247,0.4);" title="Atrasado Visual-FX">🔮 ${p}</span>`
-    );
-    const aleatTags = (item.numAleatorios || (item.aleatoriosSistema || []).map(a => typeof a === 'object' ? a.numero : a)).map(a => 
-      `<span class="tag" style="background:rgba(6,182,212,0.2); color:#67e8f9; border:1px solid rgba(6,182,212,0.4);" title="Aleatorio del Sistema">🎲 ${a}</span>`
-    );
+    const fijosList = item.numFijos || (item.fijosSeleccionados || []).map(f => typeof f === 'object' ? f.numero : f);
+    const fijosTags = fijosList.map(n => {
+      if (isWinnerNumber(n)) {
+        return `<span class="tag tag-trophy-acierto" title="¡GOLPE DE BANCA EVITADO! Número Fijo salió premiado.">🏆 📌 ${n}</span>`;
+      }
+      return `<span class="tag" style="background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" title="Número Fijo">📌 ${n}</span>`;
+    });
+
+    const predList = item.numPredictivos || (item.predictivosVisualFx || []).map(p => typeof p === 'object' ? p.numero : p);
+    const predTags = predList.map(p => {
+      if (isWinnerNumber(p)) {
+        return `<span class="tag tag-trophy-acierto" title="¡GOLPE DE BANCA EVITADO! Número Atrasado de Visual-FX salió premiado.">🏆 🔮 ${p}</span>`;
+      }
+      return `<span class="tag" style="background:rgba(168,85,247,0.2); color:#d8b4fe; border:1px solid rgba(168,85,247,0.4);" title="Atrasado Visual-FX">🔮 ${p}</span>`;
+    });
+
+    const aleatList = item.numAleatorios || (item.aleatoriosSistema || []).map(a => typeof a === 'object' ? a.numero : a);
+    const aleatTags = aleatList.map(a => {
+      if (isWinnerNumber(a)) {
+        return `<span class="tag tag-trophy-acierto" title="¡GOLPE DE BANCA EVITADO! Número Aleatorio de Cobertura salió premiado.">🏆 🎲 ${a}</span>`;
+      }
+      return `<span class="tag" style="background:rgba(6,182,212,0.2); color:#67e8f9; border:1px solid rgba(6,182,212,0.4);" title="Aleatorio del Sistema">🎲 ${a}</span>`;
+    });
     
     const allCoverage = [...fijosTags, ...predTags, ...aleatTags];
     const coverageHtml = allCoverage.length > 0 
       ? allCoverage.join(' ') 
       : '<span style="color:var(--text-dim); font-size:11px;">Solo Cupo 0</span>';
 
+    // 3. Estado Triple 7
     const statusTriple7 = item.t7Blocked 
       ? `<span class="tag tag-emerald">Bloqueados (${item.rojos ? item.rojos.length : 0})</span>` 
       : `<span class="tag tag-blue">${item.t7Status || 'Pendiente'}</span>`;
 
+    // 4. Fecha
+    const fechaFormatted = formatHistoryDate(item.fecha || (item.timestamp && item.timestamp.split('T')[0]));
+
+    // 5. Celda de Resultado Oficial
+    let resultadoHtml = '';
+    let resultadoTdClass = '';
+
+    if (hasWinner) {
+      if (isHit) {
+        resultadoTdClass = 'class="result-cell-trophy"';
+        resultadoHtml = `<span class="tag tag-winner-trophy" title="¡GOLPE DE BANCA EVITADO! El número ganador estaba bloqueado.">🏆 ${item.ganador.numero} - ${item.ganador.nombre}</span>`;
+      } else {
+        resultadoHtml = `<span class="tag tag-winner-normal" title="Resultado oficial">${item.ganador.numero} - ${item.ganador.nombre}</span>`;
+      }
+    } else {
+      resultadoHtml = `<span class="tag" style="color:var(--text-dim); background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.12); font-size:11px;">⏳ Por verificar</span>`;
+    }
+
     tr.innerHTML = `
-      <td><strong>${item.horaSorteo}</strong></td>
+      <td style="font-family:var(--font-mono); color:var(--text-muted); font-size:12px;"><strong>${fechaFormatted}</strong></td>
+      <td><strong>${item.horaSorteo || item.sorteo}</strong></td>
       <td>${item.loteria}</td>
       <td>${redTags}</td>
       <td>${coverageHtml}</td>
       <td>${statusTriple7}</td>
+      <td ${resultadoTdClass}>${resultadoHtml}</td>
     `;
     tbody.appendChild(tr);
   });

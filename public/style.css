@@ -409,6 +409,60 @@ body {
 .tag-emerald { background-color: rgba(16, 185, 129, 0.15); color: #34d399; }
 .tag-purple { background-color: rgba(168, 85, 247, 0.15); color: #c084fc; }
 
+/* Resaltado de Aciertos y Trofeos (Amarillo Dorado) */
+.tag-trophy-acierto {
+  background: linear-gradient(135deg, #facc15 0%, #eab308 100%) !important;
+  color: #451a03 !important;
+  font-weight: 800 !important;
+  border: 1.5px solid #ca8a04 !important;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.6) !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  animation: pulse-gold 2.5s infinite;
+}
+
+.result-cell-trophy {
+  background: rgba(234, 179, 8, 0.16) !important;
+  border-top: 1px solid rgba(234, 179, 8, 0.4) !important;
+  border-bottom: 1px solid rgba(234, 179, 8, 0.4) !important;
+  text-align: center;
+}
+
+.tag-winner-trophy {
+  background: linear-gradient(135deg, #fef08a 0%, #facc15 100%) !important;
+  color: #713f12 !important;
+  font-weight: 800 !important;
+  border: 1.5px solid #ca8a04 !important;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.5) !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.tag-winner-normal {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-light);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.row-trophy-hit {
+  background: rgba(234, 179, 8, 0.04) !important;
+  border-left: 3px solid #eab308 !important;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 10px rgba(234, 179, 8, 0.4); }
+  50% { box-shadow: 0 0 18px rgba(234, 179, 8, 0.8); }
+}
+
 .badge {
   font-size: 12px;
   padding: 4px 8px;

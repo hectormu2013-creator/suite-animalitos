@@ -10,8 +10,9 @@ tunnel.log
 tunnel_url.txt
 capturas_depuracion/
 capturas_sondeo/
-test_*.png
-temp_*.png
+data/*.png
+*.png
+.render_config.json
 
 # Archivos de sistema y SO
 Thumbs.db

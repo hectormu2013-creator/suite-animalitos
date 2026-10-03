@@ -205,9 +205,20 @@ app.post('/api/tunnel/restart', (req, res) => {
   res.json({ ok: true, message: 'Reiniciando túnel seguro...' });
 });
 
+let lastFxSyncTime = 0;
+
 // API: Estado y Logs
 app.get('/api/status', (req, res) => {
   const historyMgr = require('./history_manager');
+
+  // Sincronizar automáticamente resultados oficiales de Visual-FX en segundo plano
+  if (Date.now() - lastFxSyncTime > 30000) {
+    lastFxSyncTime = Date.now();
+    try {
+      historyMgr.syncResultsWithVisualFx();
+    } catch (e) {}
+  }
+
   const persistentHistory = historyMgr.getHistory();
   const logsToSend = [...logsQueue];
   logsQueue = []; // Vaciar buffer para polling
