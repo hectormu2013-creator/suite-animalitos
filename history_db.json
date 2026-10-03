@@ -260,12 +260,12 @@
     "captureFile": "premier_tabla_sondeo.png",
     "ganador": {
       "verificado": true,
-      "numero": "08",
-      "nombre": "Raton",
+      "numero": "19",
+      "nombre": "Chivo",
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
-      "mensaje": "El número 08 (Raton) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T01:06:49.867Z"
+      "mensaje": "El número 19 (Chivo) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:12:48.349Z"
     }
   },
   {
@@ -366,12 +366,12 @@
     "captureFile": "premier_tabla_sondeo.png",
     "ganador": {
       "verificado": true,
-      "numero": "00",
-      "nombre": "Delfin",
+      "numero": "28",
+      "nombre": "Zamuro",
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
-      "mensaje": "El número 00 (Delfin) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T01:06:49.878Z"
+      "mensaje": "El número 28 (Zamuro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:12:48.362Z"
     },
     "revision": {
       "estado": "RESUELTO",
@@ -505,7 +505,7 @@
       "bloqueoAcertado": false,
       "origenAcierto": "NO_BLOQUEADO",
       "mensaje": "El número 28 (Zamuro) salió premiado, pero no estaba en la lista de bloqueos.",
-      "fechaVerificacion": "2026-10-03T01:10:34.097Z"
+      "fechaVerificacion": "2026-10-03T22:12:48.375Z"
     },
     "revision": {
       "estado": "RESUELTO",
@@ -977,7 +977,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "46",
+      "nombre": "Puma",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 46 (Puma) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.334Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1096,7 +1104,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "25",
+      "nombre": "Gallina",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 25 (Gallina) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.346Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1215,7 +1231,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "09",
+      "nombre": "Aguila",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 09 (Aguila) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.365Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1352,7 +1376,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "61",
+      "nombre": "Panda",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 61 (Panda) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.377Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1471,7 +1503,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "06",
+      "nombre": "Rana",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 06 (Rana) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.386Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1590,7 +1630,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "01",
+      "nombre": "Carnero",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 01 (Carnero) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.397Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1719,7 +1767,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "47",
+      "nombre": "Pavo Real",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 47 (Pavo Real) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.412Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1830,7 +1886,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "00",
+      "nombre": "Delfin",
+      "bloqueoAcertado": true,
+      "origenAcierto": "ALEATORIO",
+      "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 00 (Delfin) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
+      "fechaVerificacion": "2026-10-03T22:13:18.473Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1949,7 +2013,15 @@
     "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null,
+    "ganador": {
+      "verificado": true,
+      "numero": "07",
+      "nombre": "Perico",
+      "bloqueoAcertado": true,
+      "origenAcierto": "ALEATORIO",
+      "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 07 (Perico) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
+      "fechaVerificacion": "2026-10-03T22:13:18.483Z"
+    },
     "revision": {
       "estado": "AGOTADO_2_INTENTOS",
       "intentos": 2,
@@ -1958,24 +2030,1004 @@
   },
   {
     "id": "2026-10-03_1791058241050",
-    "timestamp": "2026-10-03T20:10:41.049Z",
+    "timestamp": "2026-10-03T20:20:37.866Z",
     "fecha": "2026-10-03",
-    "hora": "16:10:41",
+    "hora": "16:20:37",
     "horaSorteo": "17:00",
     "loteria": "GUACHARO ACTIVO",
     "sorteo": "17:00",
     "montoSondeo": 3000,
     "totalAnimales": 77,
     "rojos": [
-      "75"
+      "75",
+      "12",
+      "08",
+      "41",
+      "43"
     ],
     "rojosPremier": [
-      "75"
+      "75",
+      "12",
+      "08",
+      "41",
+      "43"
     ],
     "detallePremier": [
       {
         "numero": "75",
         "nombre": "Guacharo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "12",
+        "nombre": "Caballo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "08",
+        "nombre": "Raton",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "41",
+        "nombre": "Canguro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "43",
+        "nombre": "Maripos",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "41",
+      "43"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "41",
+        "nombre": "Canguro",
+        "sorteosAtraso": 433,
+        "diasAtraso": 37,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 433 sorteos)"
+      },
+      {
+        "numero": "43",
+        "nombre": "Maripos",
+        "sorteosAtraso": 433,
+        "diasAtraso": 37,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 433 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "12",
+      "08"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "12",
+        "nombre": "Caballo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "08",
+        "nombre": "Raton",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "12",
+        "nombre": "Caballo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "08",
+        "nombre": "Raton",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "41",
+        "nombre": "Canguro",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "43",
+        "nombre": "Maripos",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 5,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "31",
+      "nombre": "Lapa",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 31 (Lapa) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.422Z"
+    },
+    "revision": {
+      "estado": "AGOTADO_2_INTENTOS",
+      "intentos": 2,
+      "ultimoIntento": "2026-10-03T21:10:29.148Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791058547391",
+    "timestamp": "2026-10-03T20:20:47.224Z",
+    "fecha": "2026-10-03",
+    "hora": "16:20:47",
+    "horaSorteo": "17:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "17:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "08",
+      "00",
+      "09",
+      "21"
+    ],
+    "rojosPremier": [
+      "08",
+      "00",
+      "09",
+      "21"
+    ],
+    "detallePremier": [
+      {
+        "numero": "08",
+        "nombre": "Raton",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "00",
+        "nombre": "Ballena",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "09",
+      "21"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "09",
+        "nombre": "ÁGUILA",
+        "sorteosAtraso": 205,
+        "diasAtraso": 18,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 205 sorteos)"
+      },
+      {
+        "numero": "21",
+        "nombre": "GALLO",
+        "sorteosAtraso": 129,
+        "diasAtraso": 11,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 129 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "08",
+      "00"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "08",
+        "nombre": "Raton",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "00",
+        "nombre": "Ballena",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "08",
+        "nombre": "Raton",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "00",
+        "nombre": "Ballena",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "08",
+      "nombre": "Ratón",
+      "bloqueoAcertado": true,
+      "origenAcierto": "AMBOS",
+      "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 08 (Ratón) y coincidió en MÚLTIPLES modelos de bloqueo.",
+      "fechaVerificacion": "2026-10-03T22:13:18.510Z"
+    },
+    "revision": {
+      "estado": "AGOTADO_2_INTENTOS",
+      "intentos": 2,
+      "ultimoIntento": "2026-10-03T21:10:44.894Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791058556872",
+    "timestamp": "2026-10-03T20:20:56.588Z",
+    "fecha": "2026-10-03",
+    "hora": "16:20:56",
+    "horaSorteo": "17:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "17:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "30",
+      "36",
+      "11",
+      "14"
+    ],
+    "rojosPremier": [
+      "30",
+      "36",
+      "11",
+      "14"
+    ],
+    "detallePremier": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "36",
+        "nombre": "Culebra",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "11",
+      "14"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "GATO",
+        "sorteosAtraso": 184,
+        "diasAtraso": 16,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 184 sorteos)"
+      },
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "sorteosAtraso": 110,
+        "diasAtraso": 10,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 110 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "30",
+      "36"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "36",
+        "nombre": "Culebra",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "36",
+        "nombre": "Culebra",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "31",
+      "nombre": "Lapa",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 31 (Lapa) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.434Z"
+    },
+    "revision": {
+      "estado": "AGOTADO_2_INTENTOS",
+      "intentos": 2,
+      "ultimoIntento": "2026-10-03T21:10:44.912Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791061844877",
+    "timestamp": "2026-10-03T21:20:40.664Z",
+    "fecha": "2026-10-03",
+    "hora": "17:20:40",
+    "horaSorteo": "18:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "18:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75",
+      "69",
+      "35",
+      "41",
+      "43"
+    ],
+    "rojosPremier": [
+      "75",
+      "69",
+      "35",
+      "41",
+      "43"
+    ],
+    "detallePremier": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "69",
+        "nombre": "Conejo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "35",
+        "nombre": "Jirafa",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "41",
+        "nombre": "Canguro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "43",
+        "nombre": "Maripos",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "41",
+      "43"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "41",
+        "nombre": "Canguro",
+        "sorteosAtraso": 433,
+        "diasAtraso": 37,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 433 sorteos)"
+      },
+      {
+        "numero": "43",
+        "nombre": "Maripos",
+        "sorteosAtraso": 433,
+        "diasAtraso": 37,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 433 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "69",
+      "35"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "69",
+        "nombre": "Conejo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "35",
+        "nombre": "Jirafa",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "69",
+        "nombre": "Conejo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "35",
+        "nombre": "Jirafa",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "41",
+        "nombre": "Canguro",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "43",
+        "nombre": "Maripos",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 5,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "22",
+      "nombre": "Camello",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 22 (Camello) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.446Z"
+    },
+    "revision": {
+      "estado": "AGOTADO_2_INTENTOS",
+      "intentos": 2,
+      "ultimoIntento": "2026-10-03T22:10:09.042Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791062152046",
+    "timestamp": "2026-10-03T21:20:52.054Z",
+    "fecha": "2026-10-03",
+    "hora": "17:20:52",
+    "horaSorteo": "18:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "18:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "31",
+      "27",
+      "09",
+      "21"
+    ],
+    "rojosPremier": [
+      "31",
+      "27",
+      "09",
+      "21"
+    ],
+    "detallePremier": [
+      {
+        "numero": "31",
+        "nombre": "Lapa",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "09",
+      "21"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "09",
+        "nombre": "ÁGUILA",
+        "sorteosAtraso": 205,
+        "diasAtraso": 18,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 205 sorteos)"
+      },
+      {
+        "numero": "21",
+        "nombre": "GALLO",
+        "sorteosAtraso": 129,
+        "diasAtraso": 11,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 129 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "31",
+      "27"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "31",
+        "nombre": "Lapa",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "31",
+        "nombre": "Lapa",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "02",
+      "nombre": "Toro",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.457Z"
+    },
+    "revision": {
+      "estado": "AGOTADO_2_INTENTOS",
+      "intentos": 2,
+      "ultimoIntento": "2026-10-03T22:10:28.633Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791062163690",
+    "timestamp": "2026-10-03T21:21:03.398Z",
+    "fecha": "2026-10-03",
+    "hora": "17:21:03",
+    "horaSorteo": "18:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "18:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "06",
+      "23",
+      "11",
+      "14"
+    ],
+    "rojosPremier": [
+      "06",
+      "23",
+      "11",
+      "14"
+    ],
+    "detallePremier": [
+      {
+        "numero": "06",
+        "nombre": "Rana",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "23",
+        "nombre": "Zebra",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "11",
+      "14"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "GATO",
+        "sorteosAtraso": 184,
+        "diasAtraso": 16,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 184 sorteos)"
+      },
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "sorteosAtraso": 110,
+        "diasAtraso": 10,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 110 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "06",
+      "23"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "06",
+        "nombre": "Rana",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "23",
+        "nombre": "Zebra",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "06",
+        "nombre": "Rana",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "23",
+        "nombre": "Zebra",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "02",
+      "nombre": "Toro",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.468Z"
+    },
+    "revision": {
+      "estado": "AGOTADO_2_INTENTOS",
+      "intentos": 2,
+      "ultimoIntento": "2026-10-03T22:10:28.656Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791063000686",
+    "timestamp": "2026-10-03T21:30:00.686Z",
+    "fecha": "2026-10-03",
+    "hora": "17:30:00",
+    "horaSorteo": "Cancelado por usuario",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "Cancelado por usuario",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "bloqueosConsolidados": [],
+    "totalBloqueados": 0,
+    "t7Status": "Procesando Triple 7",
+    "t7Blocked": false,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "22",
+      "nombre": "Camello",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 22 (Camello) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.480Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791063000693",
+    "timestamp": "2026-10-03T21:30:00.699Z",
+    "fecha": "2026-10-03",
+    "hora": "17:30:00",
+    "horaSorteo": "Cancelado por usuario",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "Cancelado por usuario",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "bloqueosConsolidados": [],
+    "totalBloqueados": 0,
+    "t7Status": "Procesando Triple 7",
+    "t7Blocked": false,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "02",
+      "nombre": "Toro",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.490Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791065428605",
+    "timestamp": "2026-10-03T22:15:18.494Z",
+    "fecha": "2026-10-03",
+    "hora": "18:15:18",
+    "horaSorteo": "19:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "19:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75",
+      "73",
+      "65"
+    ],
+    "rojosPremier": [
+      "75",
+      "73",
+      "65"
+    ],
+    "detallePremier": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "73",
+        "nombre": "Hipopotamo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "65",
+        "nombre": "Araña",
         "origen": "PREMIER",
         "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
       }
@@ -1994,8 +3046,26 @@
     ],
     "numPredictivos": [],
     "predictivosVisualFx": [],
-    "numAleatorios": [],
-    "aleatoriosSistema": [],
+    "numAleatorios": [
+      "73",
+      "65"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "73",
+        "nombre": "Hipopotamo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "65",
+        "nombre": "Araña",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
     "bloqueosConsolidados": [
       {
         "numero": "75",
@@ -2003,10 +3073,188 @@
         "origen": "AMBOS",
         "origenTexto": "Múltiple Coincidencia",
         "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "73",
+        "nombre": "Hipopotamo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "65",
+        "nombre": "Araña",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
       }
     ],
-    "totalBloqueados": 1,
-    "t7Status": "Bloqueados (1) en Triple 7",
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "22",
+      "nombre": "Camello",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "mensaje": "El número 22 (Camello) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-03T22:15:21.497Z"
+    }
+  },
+  {
+    "id": "2026-10-03_1791065727974",
+    "timestamp": "2026-10-03T22:15:27.974Z",
+    "fecha": "2026-10-03",
+    "hora": "18:15:27",
+    "horaSorteo": "19:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "19:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "19",
+      "32"
+    ],
+    "rojosPremier": [
+      "19",
+      "32"
+    ],
+    "detallePremier": [
+      {
+        "numero": "19",
+        "nombre": "Chivo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "32",
+        "nombre": "Ardilla",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [
+      "19",
+      "32"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "19",
+        "nombre": "Chivo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "32",
+        "nombre": "Ardilla",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "19",
+        "nombre": "Chivo",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "32",
+        "nombre": "Ardilla",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 2,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-03_1791065737361",
+    "timestamp": "2026-10-03T22:15:37.360Z",
+    "fecha": "2026-10-03",
+    "hora": "18:15:37",
+    "horaSorteo": "19:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "19:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "15",
+      "28"
+    ],
+    "rojosPremier": [
+      "15",
+      "28"
+    ],
+    "detallePremier": [
+      {
+        "numero": "15",
+        "nombre": "Zorro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "28",
+        "nombre": "Zamuro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [
+      "15",
+      "28"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "15",
+        "nombre": "Zorro",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "28",
+        "nombre": "Zamuro",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "bloqueosConsolidados": [
+      {
+        "numero": "15",
+        "nombre": "Zorro",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "28",
+        "nombre": "Zamuro",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      }
+    ],
+    "totalBloqueados": 2,
+    "t7Status": "Bloqueados (2) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
     "ganador": null

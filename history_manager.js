@@ -554,10 +554,8 @@ function syncResultsWithVisualFx() {
             if (drawMinutes === null) return false;
             return Math.abs(drawMinutes - recTimeMinutes) <= 25; // Dentro de 25 min de coincidencia
           });
-        }
-
-        // Si no coincidió exactamente por tiempo o sorteo era 'Próximo Sorteo', tomar el último sorteo completado
-        if (!matchedDraw) {
+        } else {
+          // Solo si no tiene hora específica de sorteo (ej: 'Próximo Sorteo')
           const completedDraws = candidateDraws.filter(d => !d.isPending && d.number);
           if (completedDraws.length > 0) {
             matchedDraw = completedDraws[completedDraws.length - 1];
