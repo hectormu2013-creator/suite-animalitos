@@ -428,6 +428,32 @@ app.post('/api/memory/release-animal', async (req, res) => {
   }
 });
 
+// --- API: SINCRONIZACIÓN EN TIEMPO REAL NUBE (LOCAL <-> RENDER) ---
+app.post('/api/sync/receive-history', (req, res) => {
+  try {
+    const { records, memory, resetAll } = req.body;
+    const historyMgr = require('./history_manager');
+    const cupoMem = require('./cupo_cero_memory');
+
+    if (resetAll && Array.isArray(records)) {
+      fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(records, null, 2), 'utf8');
+      historyMgr.rewriteCSV(records);
+    } else if (Array.isArray(records)) {
+      records.forEach(r => historyMgr.recordScan(r));
+    }
+
+    if (memory) {
+      cupoMem.saveMemory(memory);
+    }
+
+    log(`☁️ [SYNC NUBE] Recibidos y actualizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
+    res.json({ ok: true, count: Array.isArray(records) ? records.length : 0 });
+  } catch (err) {
+    log(`⚠️ Error en sync nube: ${err.message}`, 'log-danger');
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 // API: Consulta de Animales Más Atrasados (Predictivo Visual-FX)
 app.get('/api/predictive/delayed', (req, res) => {
   const predictive = require('./predictive_service');
@@ -892,6 +918,34 @@ setInterval(async () => {
   const now = new Date();
   const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
   const todayStr = now.toISOString().slice(0, 10);
+
+  // Sincronización continua y automática con la nube (Render) desde el nodo local
+  if (!process.env.RENDER && !process.env.IS_RENDER) {
+    try {
+      const historyMgr = require('./history_manager');
+      const cupoMem = require('./cupo_cero_memory');
+      const records = historyMgr.getHistory({ fecha: todayStr });
+      const memory = cupoMem.loadMemory();
+
+      const https = require('https');
+      const payload = JSON.stringify({ records, memory, resetAll: false });
+      const syncReq = https.request({
+        hostname: 'suite-animalitos.onrender.com',
+        port: 443,
+        path: '/api/sync/receive-history',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        },
+        timeout: 4000
+      }, () => {});
+      syncReq.on('error', () => {});
+      syncReq.on('timeout', () => syncReq.destroy());
+      syncReq.write(payload);
+      syncReq.end();
+    } catch (e) {}
+  }
 
   for (const lot of cfg.loterias) {
     if (!lot.activo) continue;
