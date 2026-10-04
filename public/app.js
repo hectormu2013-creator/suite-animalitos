@@ -429,8 +429,16 @@ function renderMachinesManagement(config) {
         </div>
 
         <div class="form-group" style="margin:0;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Ruta Ejecutable / URL:</label>
+          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Ruta Ejecutable:</label>
           <input type="text" class="form-input machine-input-path" value="${m.executablePath || 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe'}" placeholder="C:\\...">
+        </div>
+
+        <div class="form-group" style="margin:0; grid-column: span 2;">
+          <label style="font-size:12px; font-weight:700; color:#38bdf8; display:flex; align-items:center; justify-content:space-between;">
+            <span>🌐 Enlace de Acceso Remoto (Túnel Cloudflare / IP):</span>
+            ${m.ipOUrl && m.ipOUrl.startsWith('http') ? `<a href="${m.ipOUrl}" target="_blank" style="color:#4ade80; text-decoration:none; font-size:11px; background:rgba(74,222,128,0.15); padding:2px 8px; border-radius:4px; border:1px solid rgba(74,222,128,0.4); font-weight:700;">🔗 Abrir Consola Remota ↗</a>` : '<span style="color:#94a3b8; font-size:11px;">(Esperando conexión de nodo...)</span>'}
+          </label>
+          <input type="text" class="form-input machine-input-url" value="${m.ipOUrl || ''}" placeholder="Ej: https://xxxx.trycloudflare.com o http://192.168.1.100:4500" style="font-family:monospace; font-size:12px; color:#38bdf8;">
         </div>
       </div>
 
@@ -710,6 +718,32 @@ function bindActionButtons() {
     btnAddMachine.addEventListener('click', addNewMachineUI);
   }
 
+  // Botón Actualizar Nodo desde GitHub
+  const btnUpdateWeb = document.getElementById('btn-update-from-web');
+  if (btnUpdateWeb) {
+    btnUpdateWeb.addEventListener('click', async () => {
+      if (!confirm('¿Deseas descargar e instalar la última versión oficial desde GitHub en este nodo?')) return;
+      btnUpdateWeb.disabled = true;
+      btnUpdateWeb.innerHTML = '<span>⏳ Actualizando...</span>';
+      try {
+        const res = await fetch('/api/system/update', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+          alert('🚀 ' + (data.message || 'Actualización iniciada con éxito.'));
+        } else {
+          alert('Aviso: ' + (data.message || 'No se pudo iniciar la actualización.'));
+        }
+      } catch (e) {
+        alert('Error conectando con el servicio de actualización: ' + e.message);
+      } finally {
+        setTimeout(() => {
+          btnUpdateWeb.disabled = false;
+          btnUpdateWeb.innerHTML = '<span>🔄 Actualizar Nodo desde GitHub</span>';
+        }, 5000);
+      }
+    });
+  }
+
   // Red Multi-Máquinas: Selector de identidad local
   const selectLocalMachine = document.getElementById('cfg-maquina-local-select');
   if (selectLocalMachine) {
@@ -968,6 +1002,8 @@ async function saveCredentialsConfig() {
         if (passInput) machine.clavePremier = passInput.value.trim();
         if (prioInput) machine.prioridad = parseInt(prioInput.value, 10) || 1;
         if (pathInput) machine.executablePath = pathInput.value.trim();
+        const urlInput = card.querySelector('.machine-input-url');
+        if (urlInput) machine.ipOUrl = urlInput.value.trim();
         if (actToggle) machine.activa = actToggle.checked;
       }
     });

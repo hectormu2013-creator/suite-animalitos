@@ -8,10 +8,24 @@
     "maquinaEncargadaVerificacionesId": "maquina_2",
     "maquinas": [
       {
-        "id": "maquina_2",
-        "nombre": "Máquina Actual (Taquilla Local / Hector)",
+        "id": "maquina_1",
+        "nombre": "Nodo de Pesca Dedicado (Producción)",
         "activa": true,
         "prioridad": 1,
+        "esEncargadaVerificaciones": false,
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "usuarioPremier": "TCOP101",
+        "clavePremier": "123",
+        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+        "keepOpen": true,
+        "ipOUrl": "",
+        "notas": "Taquilla de pesca 24/7 dedicada (Auto-reporta túnel Cloudflare)"
+      },
+      {
+        "id": "maquina_2",
+        "nombre": "Estación de Trabajo / Dev (Hector)",
+        "activa": true,
+        "prioridad": 2,
         "esEncargadaVerificaciones": true,
         "tipoPlataforma": "PREMIER_PLUS_20",
         "usuarioPremier": "TCOP102",
@@ -19,21 +33,7 @@
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "keepOpen": true,
         "ipOUrl": "http://127.0.0.1:4500",
-        "notas": "Taquilla local abierta por Hector en el escritorio"
-      },
-      {
-        "id": "maquina_1",
-        "nombre": "Máquina Respaldo (Nodo Remoto)",
-        "activa": false,
-        "prioridad": 2,
-        "esEncargadaVerificaciones": false,
-        "tipoPlataforma": "PREMIER_PLUS_20",
-        "usuarioPremier": "TCOP101",
-        "clavePremier": "123",
-        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
-        "keepOpen": true,
-        "ipOUrl": "http://192.168.1.100:4500",
-        "notas": "Taquilla remota de respaldo"
+        "notas": "Estación de trabajo y verificaciones oficiales Visual-FX"
       }
     ],
     "telegram": {

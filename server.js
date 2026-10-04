@@ -263,6 +263,7 @@ let currentTunnelUrl = null;
 let tunnelProcess = null;
 
 function startCloudflareTunnel() {
+  if (process.env.RENDER) return; // En la nube (Render) no se ejecuta cloudflared local
   const exePath = path.join(__dirname, 'cloudflared.exe');
   if (!fs.existsSync(exePath)) return;
 
@@ -286,6 +287,33 @@ function startCloudflareTunnel() {
         try {
           fs.writeFileSync(path.join(__dirname, 'tunnel_url.txt'), currentTunnelUrl, 'utf8');
         } catch (e) {}
+        // Reportar enlace de túnel a la nube (Render) para que esté visible en todo momento
+        if (!process.env.RENDER) {
+          try {
+            const https = require('https');
+            const cfg = getConfig();
+            const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_1';
+            const payload = JSON.stringify({
+              machineId: localId,
+              tunnelUrl: currentTunnelUrl,
+              nombre: localId === 'maquina_1' ? 'Nodo Taquilla Dedicado (Producción)' : 'Taquilla Local (Hector)'
+            });
+            const rReq = https.request({
+              hostname: 'suite-animalitos.onrender.com',
+              port: 443,
+              path: '/api/machines/report-tunnel',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
+              },
+              timeout: 5000
+            }, () => {});
+            rReq.on('error', () => {});
+            rReq.write(payload);
+            rReq.end();
+          } catch (e) {}
+        }
         log(`🌐 [TÚNEL REMOTO ACTIVO] Enlace público seguro: ${currentTunnelUrl}`, 'log-success');
       }
     };
@@ -294,8 +322,11 @@ function startCloudflareTunnel() {
     tunnelProcess.stdout.on('data', handleOutput);
 
     tunnelProcess.on('exit', (code) => {
-      log(`🌐 [TÚNEL REMOTO] Desconectado (código ${code})`, 'log-warn');
+      log(`🌐 [TÚNEL REMOTO] Desconectado (código ${code}). Reintentando en 15s...`, 'log-warn');
       currentTunnelUrl = null;
+      setTimeout(() => {
+        if (!process.env.RENDER) startCloudflareTunnel();
+      }, 15000);
     });
   } catch (err) {
     log(`⚠️ Error iniciando Cloudflare Tunnel: ${err.message}`, 'log-warn');
@@ -313,6 +344,80 @@ app.get('/api/tunnel/info', (req, res) => {
 app.post('/api/tunnel/restart', (req, res) => {
   startCloudflareTunnel();
   res.json({ ok: true, message: 'Reiniciando túnel seguro...' });
+});
+
+// --- API: INSTALADOR REMOTO Y REPORTE DE TÚNELES DE NODOS ---
+app.get('/api/installer/bootstrap.ps1', (req, res) => {
+  const scriptPath = path.join(__dirname, 'scripts', 'bootstrap_node_installer.ps1');
+  if (fs.existsSync(scriptPath)) {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    fs.createReadStream(scriptPath).pipe(res);
+  } else {
+    res.status(404).send('# Instalador no encontrado');
+  }
+});
+
+app.get('/api/installer/download-bat', (req, res) => {
+  const batPath = path.join(__dirname, 'INSTALAR_NODO_AUTONOMO.bat');
+  if (fs.existsSync(batPath)) {
+    res.setHeader('Content-Type', 'application/x-bat');
+    res.setHeader('Content-Disposition', 'attachment; filename="INSTALAR_NODO_AUTONOMO.bat"');
+    fs.createReadStream(batPath).pipe(res);
+  } else {
+    res.status(404).send('Archivo no encontrado');
+  }
+});
+
+// API: Actualización Remota 1-Click desde GitHub
+app.post('/api/system/update', (req, res) => {
+  log('🔄 [ACTUALIZACIÓN SOLICITADA] Descargando última versión oficial desde GitHub...', 'log-warn');
+  const batPath = path.join(__dirname, 'ACTUALIZAR_DESDE_GITHUB.bat');
+  if (!fs.existsSync(batPath)) {
+    return res.status(404).json({ ok: false, message: 'Script actualizador no encontrado' });
+  }
+  try {
+    const child = spawn('cmd.exe', ['/c', batPath], { cwd: __dirname, detached: true, stdio: 'ignore' });
+    child.unref();
+    res.json({ ok: true, message: 'Actualización iniciada. La Suite se descargará y actualizará en segundos.' });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: `Error al iniciar actualizador: ${err.message}` });
+  }
+});
+
+app.post('/api/machines/report-tunnel', (req, res) => {
+  const { machineId, tunnelUrl, nombre } = req.body;
+  if (!machineId || !tunnelUrl) {
+    return res.status(400).json({ ok: false, message: 'Faltan machineId o tunnelUrl' });
+  }
+  const cfg = getConfig();
+  if (cfg && cfg.general) {
+    if (!Array.isArray(cfg.general.maquinas)) cfg.general.maquinas = [];
+    let m = cfg.general.maquinas.find(x => x.id === machineId);
+    if (!m) {
+      m = {
+        id: machineId,
+        nombre: nombre || 'Nodo Remoto (Producción)',
+        activa: true,
+        prioridad: 1,
+        esEncargadaVerificaciones: false,
+        tipoPlataforma: 'PREMIER_PLUS_20',
+        usuarioPremier: 'TCOP101',
+        clavePremier: '123',
+        executablePath: 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe',
+        keepOpen: true,
+        ipOUrl: tunnelUrl,
+        notas: 'Registrado automáticamente vía túnel Cloudflare'
+      };
+      cfg.general.maquinas.push(m);
+    } else {
+      m.ipOUrl = tunnelUrl;
+      m.activa = true;
+      m.notas = `Túnel en vivo: ${new Date().toLocaleTimeString()}`;
+    }
+    saveConfig(cfg);
+    log(`🌐 [NODO CONECTADO VÍA TÚNEL] ${m.nombre} conectado en: ${tunnelUrl}`, 'log-success');
+  }
+  res.json({ ok: true, message: 'Túnel registrado con éxito' });
 });
 
 let lastFxSyncTime = 0;
@@ -431,7 +536,7 @@ app.post('/api/memory/release-animal', async (req, res) => {
 // --- API: SINCRONIZACIÓN EN TIEMPO REAL NUBE (LOCAL <-> RENDER) ---
 app.post('/api/sync/receive-history', (req, res) => {
   try {
-    const { records, memory, resetAll } = req.body;
+    const { records, memory, resetAll, machineId, tunnelUrl, machineName } = req.body;
     const historyMgr = require('./history_manager');
     const cupoMem = require('./cupo_cero_memory');
 
@@ -444,6 +549,36 @@ app.post('/api/sync/receive-history', (req, res) => {
 
     if (memory) {
       cupoMem.saveMemory(memory);
+    }
+
+    if (machineId && tunnelUrl) {
+      const cfg = getConfig();
+      if (cfg && cfg.general) {
+        if (!Array.isArray(cfg.general.maquinas)) cfg.general.maquinas = [];
+        let m = cfg.general.maquinas.find(x => x.id === machineId);
+        if (m) {
+          m.ipOUrl = tunnelUrl;
+          m.activa = true;
+          m.ultimaConexion = new Date().toISOString();
+        } else {
+          cfg.general.maquinas.push({
+            id: machineId,
+            nombre: machineName || 'Nodo Taquilla Dedicado (Producción)',
+            activa: true,
+            prioridad: 1,
+            esEncargadaVerificaciones: false,
+            tipoPlataforma: 'PREMIER_PLUS_20',
+            usuarioPremier: 'TCOP101',
+            clavePremier: '123',
+            executablePath: 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe',
+            keepOpen: true,
+            ipOUrl: tunnelUrl,
+            notas: 'Auto-registrado vía túnel Cloudflare',
+            ultimaConexion: new Date().toISOString()
+          });
+        }
+        saveConfig(cfg);
+      }
     }
 
     log(`☁️ [SYNC NUBE] Recibidos y actualizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
@@ -927,8 +1062,16 @@ setInterval(async () => {
       const records = historyMgr.getHistory({ fecha: todayStr });
       const memory = cupoMem.loadMemory();
 
+      const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_1';
       const https = require('https');
-      const payload = JSON.stringify({ records, memory, resetAll: false });
+      const payload = JSON.stringify({
+        records,
+        memory,
+        resetAll: false,
+        machineId: localId,
+        tunnelUrl: currentTunnelUrl,
+        machineName: localId === 'maquina_1' ? 'Nodo Taquilla Dedicado (Producción)' : 'Taquilla Local (Hector)'
+      });
       const syncReq = https.request({
         hostname: 'suite-animalitos.onrender.com',
         port: 443,
