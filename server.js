@@ -536,11 +536,19 @@ app.post('/api/trigger-test', async (req, res) => {
   const targetId = req.body && req.body.loteriaId;
   let loteria = cfg.loterias.find(l => l.id === targetId) || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
 
-  log(`Iniciando ejecución de sondeo manual en PremierPluss para ${loteria.nombre}...`, 'log-warn');
+  const predictive = require('./predictive_service');
+  let horaSorteo = (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(loteria.horarios) || '10:00';
+
+  log(`Iniciando ejecución de sondeo manual en PremierPluss para ${loteria.nombre} (${horaSorteo})...`, 'log-warn');
   
   try {
     const machinesMgr = require('./machines_manager');
-    const result = await machinesMgr.ejecutarPescaEnCascada(cfg, loteria.id, log);
+    const result = await machinesMgr.ejecutarPescaEnCascada(cfg, loteria.id, log, horaSorteo);
+    
+    // Asegurar que result.sorteo tenga una hora válida para evitar rechazo en Triple 7
+    if (!result.sorteo || !/\d{1,2}:\d{2}/.test(result.sorteo)) {
+      result.sorteo = horaSorteo;
+    }
     
     // Consolidar lista de bloqueos (1. Premier + 2. Números Fijos + 3. Visual-FX + 4. Sistema Aleatorio + 5. Memoria Cupo 0)
     const predictive = require('./predictive_service');
@@ -592,15 +600,22 @@ app.post('/api/trigger-test', async (req, res) => {
     if (executionHistory.length > 50) executionHistory.shift();
 
     // Si Triple 7 está habilitado y hay números para bloquear en el sorteo actual
+    const drawTargetT7 = (result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : horaSorteo;
     if (cfg.general.triple7.enabled && consolidated.listaFinalNumeros.length > 0) {
-      log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para sorteo actual ${result.sorteo}...`, 'log-info');
+      log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para sorteo actual ${drawTargetT7}...`, 'log-info');
       try {
         const t7 = require('./triple7_robot');
-        const t7Res = await t7.bloquearNumeros(cfg, loteria.nombre, result.sorteo, consolidated.listaFinalNumeros);
+        const t7Res = await t7.bloquearNumeros(cfg, loteria.nombre, drawTargetT7, consolidated.listaFinalNumeros);
         record.t7Blocked = t7Res.ok;
         record.t7Status = t7Res.ok ? `Bloqueados (${consolidated.listaFinalNumeros.length})` : `Error: ${t7Res.message}`;
+        if (persistentRecord && persistentRecord.id) {
+          historyMgr.updateT7Status(persistentRecord.id, record.t7Status, record.t7Blocked);
+        }
       } catch (t7Err) {
         record.t7Status = `Error T7: ${t7Err.message}`;
+        if (persistentRecord && persistentRecord.id) {
+          historyMgr.updateT7Status(persistentRecord.id, record.t7Status, record.t7Blocked);
+        }
         log(`Error en Triple 7: ${t7Err.message}`, 'log-danger');
       }
     }
@@ -656,8 +671,24 @@ app.post('/api/trigger-test', async (req, res) => {
 app.get('/api/triple7/status', async (req, res) => {
   const cfg = getConfig();
   try {
+    delete require.cache[require.resolve('./triple7_robot')];
     const t7 = require('./triple7_robot');
     const estado = await t7.obtenerEstadoBloqueos(cfg);
+
+    if (estado && estado.ok && Array.isArray(estado.draws) && cfg && Array.isArray(cfg.loterias)) {
+      function normStr(str) {
+        return (str || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/guacharito/g, 'guacharo').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+      const activeLotNames = cfg.loterias
+        .filter(l => l.activo !== false)
+        .map(l => normStr(l.nombre));
+
+      if (activeLotNames.length > 0) {
+        estado.totalPlataforma = estado.totalPlataforma || estado.draws.length;
+        estado.draws = estado.draws.filter(d => activeLotNames.includes(normStr(d.loteria)));
+        estado.totalGestionados = estado.draws.length;
+      }
+    }
     res.json(estado);
   } catch (err) {
     res.status(500).json({ ok: false, message: err.message });
@@ -755,7 +786,9 @@ app.post('/api/restart', async (req, res) => {
     
     log(`Iniciando nuevo ciclo de sondeo para ${loteria.nombre}...`, 'log-info');
     try {
-      robot.ejecutarSondeoPremier(cfg, loteria.id);
+      const predictive = require('./predictive_service');
+      const horaSorteo = predictive.calcularProximoSorteo(loteria.horarios) || '';
+      robot.ejecutarSondeoPremier(cfg, loteria.id, horaSorteo);
     } catch (e) {
       log(`Error reiniciando: ${e.message}`, 'log-danger');
     }
@@ -825,11 +858,32 @@ function enviarTelegram(cfg, texto, cb) {
   req.end();
 }
 
-// Planificador / Scheduler Automático (Revisa cada 30 segundos)
-// Control de tareas programadas y de revisión de resultados en Visual-FX
-let ultimoSorteoEjecutado = '';
-const tareasEjecutadas = new Set(); // Formato: "YYYY-MM-DD_loteriaId_HH:MM_tarea"
-const revisionesRealizadas = new Set(); // Formato: "YYYY-MM-DD_loteriaId_HH:MM_intento"
+function esUltimoSorteoDelDia(cfg, currentTotalMinutes) {
+  if (cfg.general && cfg.general.premierPluss && cfg.general.premierPluss.cerrarAlFinalizarDia === false) {
+    return false;
+  }
+  let maxDrawMinutes = 0;
+  for (const l of (cfg.loterias || [])) {
+    if (!l.activo) continue;
+    for (const h of (l.horarios || [])) {
+      const match = h.match(/(\d{1,2}):(\d{2})/);
+      if (!match) continue;
+      let hh = parseInt(match[1], 10);
+      const mm = parseInt(match[2], 10);
+      if (h.toUpperCase().includes('PM') && hh < 12) hh += 12;
+      if (h.toUpperCase().includes('AM') && hh === 12) hh = 0;
+      const mins = hh * 60 + mm;
+      if (mins > maxDrawMinutes) {
+        maxDrawMinutes = mins;
+      }
+    }
+  }
+  return maxDrawMinutes > 0 && currentTotalMinutes >= (maxDrawMinutes - 35);
+}
+
+// Registro de tareas ejecutadas y revisiones de resultados realizadas
+const tareasEjecutadas = new Set();
+const revisionesRealizadas = new Set();
 
 setInterval(async () => {
   const cfg = getConfig();
@@ -855,7 +909,7 @@ setInterval(async () => {
         const diffFijos = currentTotalMinutes - targetFijosMinutes;
         const keyFijos = `${todayStr}_${lot.id}_${hStr}_fijos`;
 
-        if (diffFijos >= 0 && diffFijos < 2 && !tareasEjecutadas.has(keyFijos)) {
+        if (diffFijos >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyFijos)) {
           tareasEjecutadas.add(keyFijos);
           log(`📌 [ALARMA NÚMEROS FIJOS] Activando bloqueo de fijos (${fijosMinutesBefore}m antes) para ${lot.nombre} (${hStr})...`, 'log-info');
 
@@ -915,7 +969,7 @@ setInterval(async () => {
         const diffAleat = currentTotalMinutes - targetAleatMinutes;
         const keyAleat = `${todayStr}_${lot.id}_${hStr}_aleat`;
 
-        if (diffAleat >= 0 && diffAleat < 2 && !tareasEjecutadas.has(keyAleat)) {
+        if (diffAleat >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyAleat)) {
           tareasEjecutadas.add(keyAleat);
           log(`🎲 [ALARMA SISTEMA ALEATORIO] Activando cobertura aleatoria (${aleatMinutesBefore}m antes) para ${lot.nombre} (${hStr})...`, 'log-info');
 
@@ -983,7 +1037,7 @@ setInterval(async () => {
         const diffVfx = currentTotalMinutes - targetVfxMinutes;
         const keyVfx = `${todayStr}_${lot.id}_${hStr}_visualfx`;
 
-        if (diffVfx >= 0 && diffVfx < 2 && !tareasEjecutadas.has(keyVfx)) {
+        if (diffVfx >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyVfx)) {
           tareasEjecutadas.add(keyVfx);
           log(`🔮 [ALARMA VISUAL-FX] Activando bloqueo de ${lot.cantidadPredictivosABloquear} atrasados (${vfxMinutesBefore}m antes) para ${lot.nombre} (${hStr})...`, 'log-info');
 
@@ -1043,7 +1097,7 @@ setInterval(async () => {
         const diffPrem = currentTotalMinutes - targetPremMinutes;
         const keyPrem = `${todayStr}_${lot.id}_${hStr}_premier`;
 
-        if (diffPrem >= 0 && diffPrem < 2 && !tareasEjecutadas.has(keyPrem)) {
+        if (diffPrem >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyPrem)) {
           tareasEjecutadas.add(keyPrem);
           log(`🔴 [ALARMA PREMIER PLUSS] Activando sondeo de cupo cero (${premierMinutesBefore}m antes) para ${lot.nombre} (Sorteo ${hStr})...`, 'log-warn');
 
@@ -1052,17 +1106,19 @@ setInterval(async () => {
             const historyMgr = require('./history_manager');
             const t7 = require('./triple7_robot');
 
-            const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log);
+            const esUltimo = esUltimoSorteoDelDia(cfg, currentTotalMinutes);
+            const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log, hStr, esUltimo);
             const rojosPremier = (result && result.rojos) || [];
 
             let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
             let t7Blocked = false;
 
-            // Bloqueo en Triple 7 para el sorteo actual
+            // Bloqueo en Triple 7 para el sorteo actual (asegurar hora válida hStr)
+            const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
             if (cfg.general.triple7.enabled && rojosPremier.length > 0) {
-              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${rojosPremier.length} números agotados en Premier a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
+              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${rojosPremier.length} números agotados en Premier a Triple 7 para ${lot.nombre} (${targetDrawTime})...`, 'log-info');
               try {
-                const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, result.sorteo || hStr, rojosPremier);
+                const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, rojosPremier);
                 t7Blocked = t7Res.ok;
                 t7Status = t7Res.ok ? `Bloqueados (${rojosPremier.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
               } catch (t7Err) {
@@ -1195,9 +1251,13 @@ setInterval(async () => {
         // INTENTO 1 (+5 MINUTOS TRAS EL SORTEO: ventana entre +5 y +9 minutos)
         if (diffMinutes >= 5 && diffMinutes < 10 && !revisionesRealizadas.has(keyIntento1) && !revisionesRealizadas.has(keyResuelto)) {
           revisionesRealizadas.add(keyIntento1);
-          log(`🔍 [REVISIÓN RESULTADOS] Intento 1 (+5 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando Visual-FX...`, 'log-info');
+          log(`🔍 [REVISIÓN RESULTADOS] Intento 1 (+5 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con Visual-FX...`, 'log-info');
           
           try {
+            const predictive = require('./predictive_service');
+            // Consultar y sincronizar dinámicamente con Visual-FX (1000Resultados / TuAzar) 5 minutos después del sorteo
+            await predictive.syncVisualFxDraws(lot.id);
+
             const historyMgr = require('./history_manager');
             const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 1);
             if (syncRes.found) {
@@ -1206,6 +1266,11 @@ setInterval(async () => {
               
               // Auto-liberar sorteos futuros si estaba en memoria
               await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
+
+              // Actualizar modelo predictivo de atrasados dinámicamente con el nuevo resultado
+              const updatedAtrasados = predictive.getMostDelayedNumbers(lot.id, 5);
+              const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
+              log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
 
               if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
                 enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
@@ -1221,9 +1286,13 @@ setInterval(async () => {
         // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ)
         if (diffMinutes >= 10 && diffMinutes < 60 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
           revisionesRealizadas.add(keyIntento2);
-          log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando Visual-FX...`, 'log-info');
+          log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con Visual-FX...`, 'log-info');
           
           try {
+            const predictive = require('./predictive_service');
+            // Reintentar sincronización activa con Visual-FX
+            await predictive.syncVisualFxDraws(lot.id);
+
             const historyMgr = require('./history_manager');
             const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 2);
             if (syncRes.found) {
@@ -1232,6 +1301,11 @@ setInterval(async () => {
               
               // Auto-liberar sorteos futuros si estaba en memoria
               await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
+
+              // Actualizar modelo predictivo de atrasados dinámicamente con el nuevo resultado
+              const updatedAtrasados = predictive.getMostDelayedNumbers(lot.id, 5);
+              const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
+              log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
 
               if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
                 enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 2do intento (+10 min)!`);

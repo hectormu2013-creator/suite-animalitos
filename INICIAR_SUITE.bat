@@ -17,12 +17,14 @@ echo    SUITE PRONOSTICADOR Y CONTROL DE RIESGO (ANIMALITOS)
 echo ======================================================================
 echo Modo Administrador: ACTIVO
 
-:: Verificar si el servidor ya esta corriendo en el puerto 4500
+:: Si el puerto 4500 esta ocupado por un proceso previo, cerrarlo para garantizar arranque limpio en Administrador
 netstat -ano | findstr ":4500 " | findstr "LISTENING" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo [INFO] El servidor de la suite ya se encuentra activo en el puerto 4500.
-    start "" "http://localhost:4500"
-    exit /b
+    echo [INFO] Liberando puerto 4500 para arranque con permisos de Administrador...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":4500 " ^| findstr "LISTENING"') do (
+        taskkill /F /PID %%a >nul 2>&1
+    )
+    timeout /t 2 >nul
 )
 
 echo Iniciando servidor local en puerto 4500...

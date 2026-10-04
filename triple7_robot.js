@@ -21,6 +21,7 @@ function normalizarTexto(str) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/guacharito/g, 'guacharo')
     .replace(/[^a-z0-9]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -79,6 +80,15 @@ async function iniciarSesionTriple7(config, browser) {
   return { context, page };
 }
 
+let t7Queue = Promise.resolve();
+
+function enqueueT7Operation(fn) {
+  const op = () => fn();
+  const next = t7Queue.then(op, op);
+  t7Queue = next.catch(() => {});
+  return next;
+}
+
 /**
  * Bloquea una lista de números en la plataforma Triple 7 para un sorteo específico
  * @param {Object} config - Objeto de configuración general
@@ -86,7 +96,7 @@ async function iniciarSesionTriple7(config, browser) {
  * @param {string} sorteoHora - Hora del sorteo (ej. "06:00 PM" o "18:00")
  * @param {Array<string>} numerosParaBloquear - Lista de números (ej. ["00", "04", "12", "28"])
  */
-async function bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBloquear) {
+async function _bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBloquear) {
   if (!numerosParaBloquear || numerosParaBloquear.length === 0) {
     return { ok: true, message: 'No hay números para bloquear' };
   }
@@ -115,7 +125,7 @@ async function bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBlo
     // Inspeccionar filas para localizar la fila de la lotería y sorteo
     const targetRow = await page.evaluate(({ loteriaBuscada, horaBuscada }) => {
       function clean(s) {
-        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/guacharito/g, 'guacharo').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
       }
       function normTime(s) {
         const m = (s || '').trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
@@ -302,7 +312,7 @@ async function bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBlo
  * @param {string} loteriaNombre - Nombre o ID de la lotería
  * @param {string} sorteoHora - Hora del sorteo
  */
-async function reincorporarAnimalitos(config, loteriaNombre, sorteoHora) {
+async function _reincorporarAnimalitos(config, loteriaNombre, sorteoHora) {
   if (!playwright) {
     return { ok: false, message: 'Playwright no disponible' };
   }
@@ -325,7 +335,7 @@ async function reincorporarAnimalitos(config, loteriaNombre, sorteoHora) {
     // Buscar botón de reincorporación en la fila correspondiente
     const unblockInfo = await page.evaluate(({ loteriaBuscada, horaBuscada }) => {
       function clean(s) {
-        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/guacharito/g, 'guacharo').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
       }
       function normTime(s) {
         const m = (s || '').trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
@@ -391,7 +401,7 @@ async function reincorporarAnimalitos(config, loteriaNombre, sorteoHora) {
 
     const checkAgain = await page.evaluate(({ loteriaBuscada, horaBuscada }) => {
       function clean(s) {
-        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/guacharito/g, 'guacharo').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
       }
       function normTime(s) {
         const m = (s || '').trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
@@ -427,7 +437,7 @@ async function reincorporarAnimalitos(config, loteriaNombre, sorteoHora) {
 /**
  * Consulta el estado actual de los sorteos y bloqueos en Triple 7
  */
-async function obtenerEstadoBloqueos(config) {
+async function _obtenerEstadoBloqueos(config) {
   if (!playwright) return { ok: false, message: 'Playwright no disponible' };
 
   const t7Config = config.general.triple7;
@@ -466,11 +476,38 @@ async function obtenerEstadoBloqueos(config) {
     });
 
     await browser.close();
-    return { ok: true, draws };
+
+    // Filtrar exclusivamente por las loterías configuradas y activas a las que se les aplican bloqueos
+    const activeLotNames = (config && Array.isArray(config.loterias))
+      ? config.loterias.filter(l => l.activo !== false).map(l => normalizarTexto(l.nombre))
+      : [];
+
+    const drawsFiltrados = (activeLotNames.length > 0)
+      ? draws.filter(d => activeLotNames.includes(normalizarTexto(d.loteria)))
+      : draws;
+
+    return {
+      ok: true,
+      draws: drawsFiltrados,
+      totalPlataforma: draws.length,
+      totalGestionados: drawsFiltrados.length
+    };
   } catch (err) {
     await browser.close().catch(() => {});
     return { ok: false, message: err.message };
   }
+}
+
+async function bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBloquear) {
+  return enqueueT7Operation(() => _bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBloquear));
+}
+
+async function reincorporarAnimalitos(config, loteriaNombre, sorteoHora) {
+  return enqueueT7Operation(() => _reincorporarAnimalitos(config, loteriaNombre, sorteoHora));
+}
+
+async function obtenerEstadoBloqueos(config) {
+  return enqueueT7Operation(() => _obtenerEstadoBloqueos(config));
 }
 
 module.exports = {

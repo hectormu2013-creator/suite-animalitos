@@ -5,35 +5,35 @@
     "horaActivacionDiaria": "07:00",
     "activacionDiariaActiva": true,
     "maquinaLocalId": "maquina_2",
-    "maquinaEncargadaVerificacionesId": "maquina_1",
+    "maquinaEncargadaVerificacionesId": "maquina_2",
     "maquinas": [
       {
-        "id": "maquina_1",
-        "nombre": "Máquina 1 (Primera Opción / Taquilla Principal)",
+        "id": "maquina_2",
+        "nombre": "Máquina Actual (Taquilla Local / Hector)",
         "activa": true,
         "prioridad": 1,
         "esEncargadaVerificaciones": true,
-        "tipoPlataforma": "PREMIER_PLUS_20",
-        "usuarioPremier": "TCOP101",
-        "clavePremier": "123",
-        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
-        "keepOpen": true,
-        "ipOUrl": "http://192.168.1.100:4500",
-        "notas": "Taquilla designada como primera opción de pesca"
-      },
-      {
-        "id": "maquina_2",
-        "nombre": "Máquina 2 (Segunda Opción / Taquilla Actual)",
-        "activa": true,
-        "prioridad": 2,
-        "esEncargadaVerificaciones": false,
         "tipoPlataforma": "PREMIER_PLUS_20",
         "usuarioPremier": "TCOP102",
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "keepOpen": true,
         "ipOUrl": "http://127.0.0.1:4500",
-        "notas": "Taquilla de respaldo / PC actual"
+        "notas": "Taquilla local abierta por Hector en el escritorio"
+      },
+      {
+        "id": "maquina_1",
+        "nombre": "Máquina Respaldo (Nodo Remoto)",
+        "activa": false,
+        "prioridad": 2,
+        "esEncargadaVerificaciones": false,
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "usuarioPremier": "TCOP101",
+        "clavePremier": "123",
+        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+        "keepOpen": true,
+        "ipOUrl": "http://192.168.1.100:4500",
+        "notas": "Taquilla remota de respaldo"
       }
     ],
     "telegram": {
@@ -45,7 +45,8 @@
       "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
       "user": "TCOP102",
       "password": "123",
-      "keepOpen": true
+      "keepOpen": true,
+      "cerrarAlFinalizarDia": true
     },
     "triple7": {
       "enabled": true,
@@ -70,8 +71,8 @@
       "id": "guacharo_activo",
       "nombre": "GUACHARO ACTIVO",
       "activo": true,
-      "minutosAntes": 35,
-      "minutosAntesPremier": 35,
+      "minutosAntes": 30,
+      "minutosAntesPremier": 30,
       "minutosAntesVisualFx": 40,
       "minutosAntesAleatorios": 45,
       "minutosAntesFijos": 50,
@@ -84,14 +85,15 @@
         "75"
       ],
       "bloqueoPredictivosAtrasados": true,
-      "cantidadPredictivosABloquear": 2,
+      "cantidadPredictivosABloquear": 3,
       "bloqueoAleatorioSistema": true,
-      "cantidadAleatoriosABloquear": 2,
+      "cantidadAleatoriosABloquear": 3,
       "memoriaCupoCero": {
         "activo": true,
         "sorteosPersistencia": 3
       },
       "horarios": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -109,8 +111,8 @@
       "id": "lotto_activo",
       "nombre": "LOTTO ACTIVO",
       "activo": true,
-      "minutosAntes": 35,
-      "minutosAntesPremier": 35,
+      "minutosAntes": 28,
+      "minutosAntesPremier": 28,
       "minutosAntesVisualFx": 40,
       "minutosAntesAleatorios": 45,
       "minutosAntesFijos": 35,
@@ -129,6 +131,7 @@
         "sorteosPersistencia": 3
       },
       "horarios": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -146,8 +149,8 @@
       "id": "la_granjita",
       "nombre": "LA GRANJITA",
       "activo": true,
-      "minutosAntes": 30,
-      "minutosAntesPremier": 30,
+      "minutosAntes": 29,
+      "minutosAntesPremier": 29,
       "minutosAntesVisualFx": 40,
       "minutosAntesAleatorios": 45,
       "minutosAntesFijos": 35,
@@ -166,6 +169,7 @@
         "sorteosPersistencia": 3
       },
       "horarios": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -177,6 +181,46 @@
         "17:00",
         "18:00",
         "19:00"
+      ]
+    },
+    {
+      "id": "guacharo_millonario",
+      "nombre": "GUACHARO MILLONARIO",
+      "activo": true,
+      "minutosAntes": 27,
+      "minutosAntesPremier": 27,
+      "minutosAntesVisualFx": 40,
+      "minutosAntesAleatorios": 45,
+      "minutosAntesFijos": 50,
+      "montoSondeo": 3000,
+      "totalAnimales": 101,
+      "bloquearSoloRojos": true,
+      "bloqueoPremierAgotados": true,
+      "bloqueoFijos": true,
+      "numerosFijos": [
+        "99"
+      ],
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadPredictivosABloquear": 3,
+      "bloqueoAleatorioSistema": true,
+      "cantidadAleatoriosABloquear": 3,
+      "memoriaCupoCero": {
+        "activo": true,
+        "sorteosPersistencia": 3
+      },
+      "horarios": [
+        "08:30",
+        "09:30",
+        "10:30",
+        "11:30",
+        "12:30",
+        "13:30",
+        "14:30",
+        "15:30",
+        "16:30",
+        "17:30",
+        "18:30",
+        "19:30"
       ]
     }
   ],

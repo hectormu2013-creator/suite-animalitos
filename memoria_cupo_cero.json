@@ -1,3 +1,101 @@
 {
-  "items": []
+  "items": [
+    {
+      "id": "guacharo_activo_este_2026-10-04_1791132926618",
+      "loteriaId": "guacharo_activo",
+      "loteriaNombre": "GUACHARO ACTIVO",
+      "numero": "este",
+      "nombre": "Animal este",
+      "fechaOrigen": "2026-10-04",
+      "sorteoOrigen": "13:00",
+      "sorteosConfigurados": 3,
+      "sorteosRestantes": 2,
+      "sorteosPrebloqueados": [
+        "14:00",
+        "15:00",
+        "16:00"
+      ],
+      "sorteosProcesados": [
+        "14:00"
+      ],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-04T16:55:26.618Z"
+    },
+    {
+      "id": "guacharo_millonario_73_2026-10-04_1791133449166",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "73",
+      "nombre": "Hipopotamo",
+      "fechaOrigen": "2026-10-04",
+      "sorteoOrigen": "13:30",
+      "sorteosConfigurados": 3,
+      "sorteosRestantes": 3,
+      "sorteosPrebloqueados": [
+        "14:30",
+        "15:30",
+        "16:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-04T17:04:09.166Z"
+    },
+    {
+      "id": "guacharo_millonario_74_2026-10-04_1791133449166",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "74",
+      "nombre": "Turpial",
+      "fechaOrigen": "2026-10-04",
+      "sorteoOrigen": "13:30",
+      "sorteosConfigurados": 3,
+      "sorteosRestantes": 3,
+      "sorteosPrebloqueados": [
+        "14:30",
+        "15:30",
+        "16:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-04T17:04:09.166Z"
+    },
+    {
+      "id": "guacharo_millonario_75_2026-10-04_1791133449166",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "75",
+      "nombre": "Guacharo",
+      "fechaOrigen": "2026-10-04",
+      "sorteoOrigen": "13:30",
+      "sorteosConfigurados": 3,
+      "sorteosRestantes": 3,
+      "sorteosPrebloqueados": [
+        "14:30",
+        "15:30",
+        "16:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-04T17:04:09.166Z"
+    },
+    {
+      "id": "guacharo_millonario_92_2026-10-04_1791133449166",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "92",
+      "nombre": "Cisne",
+      "fechaOrigen": "2026-10-04",
+      "sorteoOrigen": "13:30",
+      "sorteosConfigurados": 3,
+      "sorteosRestantes": 3,
+      "sorteosPrebloqueados": [
+        "14:30",
+        "15:30",
+        "16:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-04T17:04:09.166Z"
+    }
+  ]
 }

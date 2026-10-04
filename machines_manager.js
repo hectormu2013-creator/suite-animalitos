@@ -84,6 +84,10 @@ function getVerificationMachine(config) {
  * Comprobar si la computadora local es la encargada de ejecutar verificaciones en Visual-FX
  */
 function isLocalMachineVerifier(config) {
+  const fxHistoryPath = path.join('C:', 'Users', 'Hector', 'Fenix_2026_1', 'PROYECTO_VISUAL_FX', 'data', 'lottery_history.json');
+  if (fs.existsSync(fxHistoryPath)) {
+    return true;
+  }
   const local = getLocalMachine(config);
   const verifier = getVerificationMachine(config);
   if (!local || !verifier) return true; // Por defecto permitir si no está configurado
@@ -179,12 +183,12 @@ function pingNode(url) {
 /**
  * Solicitar ejecución remota de pesca a un nodo de la red
  */
-function requestRemoteScan(url, loteriaId) {
+function requestRemoteScan(url, loteriaId, horaSorteo = '') {
   return new Promise((resolve, reject) => {
     try {
       const parsed = new URL(url);
       const client = parsed.protocol === 'https:' ? https : http;
-      const postData = JSON.stringify({ loteriaId });
+      const postData = JSON.stringify({ loteriaId, horaSorteo });
 
       const req = client.request({
         hostname: parsed.hostname,
@@ -231,14 +235,14 @@ function requestRemoteScan(url, loteriaId) {
  * 4. Si todas las máquinas fallan, la protección WEB (Fijos, Visual-FX, Aleatorios y Memoria)
  *    permanece 100% activa para proteger la banca en Triple 7.
  */
-async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log) {
+async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, horaSorteo = '', cerrarAlFinalizar = false) {
   const list = getMachinesList(config)
     .filter(m => m.activa !== false)
     .sort((a, b) => (a.prioridad || 99) - (b.prioridad || 99));
 
   if (list.length === 0) {
     logFn('⚠️ [CASCADA PESCA] No hay máquinas activas configuradas para la pesca.', 'log-warn');
-    return { sorteo: 'Próximo Sorteo', rojos: [], failoverAgotado: true };
+    return { sorteo: horaSorteo || 'Próximo Sorteo', rojos: [], failoverAgotado: true };
   }
 
   const localId = (config.general && config.general.maquinaLocalId) || 'maquina_2';
@@ -263,8 +267,8 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log) {
           keepOpen: maquina.keepOpen !== false
         };
 
-        const result = await robot.ejecutarSondeoPremier(tempConfig, loteriaId);
-        if (result && !result.cancelado) {
+        const result = await robot.ejecutarSondeoPremier(tempConfig, loteriaId, horaSorteo, cerrarAlFinalizar);
+        if (result && !result.cancelado && result.ok !== false && !result.error) {
           logFn(`✅ [PESCA EXITOSA] ${maquina.nombre} completó el sondeo en taquilla local. Cupo 0 detectados: [${(result.rojos || []).join(', ') || 'Ninguno'}]`, 'log-success');
           return {
             ...result,
@@ -274,7 +278,8 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log) {
             failoverActivado: intento > 1
           };
         } else {
-          logFn(`⚠️ [FALLO EN TAQUILLA] ${maquina.nombre} no obtuvo resultado de taquilla. Pasando a la siguiente máquina...`, 'log-warn');
+          const motivo = (result && (result.error || (result.cancelado ? 'Cancelado por el usuario' : 'Sin respuesta válida'))) || 'Taquilla no detectada';
+          logFn(`⚠️ [FALLO EN TAQUILLA] ${maquina.nombre} no pudo consultar los cupos: ${motivo}.`, 'log-warn');
         }
       } catch (err) {
         logFn(`⚠️ [FALLO EN TAQUILLA] ${maquina.nombre} no pudo acceder a la taquilla: ${err.message}. Activando de inmediato la siguiente máquina de respaldo...`, 'log-warn');
@@ -295,7 +300,7 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log) {
 
       logFn(`📡 [DELEGANDO PESCA REMOTA] Nodo ${maquina.nombre} está EN LÍNEA. Disparando sondeo remoto en ${targetUrl}...`, 'log-info');
       try {
-        const remoteRes = await requestRemoteScan(targetUrl, loteriaId);
+        const remoteRes = await requestRemoteScan(targetUrl, loteriaId, horaSorteo);
         if (remoteRes && remoteRes.ok) {
           logFn(`✅ [PESCA REMOTA EXITOSA] ${maquina.nombre} completó el sondeo remotamente.`, 'log-success');
           return {
@@ -317,7 +322,7 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log) {
   // 3. Si todas las máquinas del pool fallaron:
   logFn(`⚠️ [CASCADA DE PESCA AGOTADA] Ninguna máquina de pesca pudo consultar la taquilla en este sorteo. La protección WEB autónoma (Fijos, Visual-FX, Aleatorios y Memoria) continúa protegiendo la banca al 100% en Triple 7.`, 'log-warn');
   return {
-    sorteo: 'Próximo Sorteo',
+    sorteo: horaSorteo || 'Próximo Sorteo',
     rojos: [],
     fallaronTodasLasMaquinas: true,
     intentoCascada: intento

@@ -1,10 +1,10 @@
 {
-    "status":  "PAUSED",
+    "status":  "IDLE",
     "requestedAction":  "NONE",
-    "details":  "Pausado automaticamente por perdida de foco de ventana",
-    "loteria":  "LA GRANJITA",
+    "details":  "Sondeo completado con exito",
+    "loteria":  "LOTTO ACTIVO",
     "currentAnimal":  "",
     "progress":  "",
-    "pid":  39856,
-    "updatedAt":  "2026-10-03 18:30:10"
+    "pid":  16896,
+    "updatedAt":  "2026-10-04 15:17:11"
 }

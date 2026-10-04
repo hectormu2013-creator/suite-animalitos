@@ -4,6 +4,8 @@ const fs = require('fs');
 
 const CONTROL_PATH = path.join(__dirname, 'automation_control.json');
 let activeChildProcess = null;
+const sondeoQueue = [];
+let isProcessingQueue = false;
 
 function setControlAction(action) {
   try {
@@ -25,11 +27,12 @@ function getEstadoControl() {
   try {
     if (fs.existsSync(CONTROL_PATH)) {
       const data = JSON.parse(fs.readFileSync(CONTROL_PATH, 'utf8'));
-      data.isRunning = !!activeChildProcess;
+      data.isRunning = !!activeChildProcess || isProcessingQueue;
+      data.colaPendientes = sondeoQueue.length;
       return data;
     }
   } catch (e) {}
-  return { status: 'IDLE', requestedAction: 'NONE', isRunning: !!activeChildProcess };
+  return { status: 'IDLE', requestedAction: 'NONE', isRunning: !!activeChildProcess || isProcessingQueue, colaPendientes: sondeoQueue.length };
 }
 
 function pausarSondeo() {
@@ -45,6 +48,17 @@ function reanudarSondeo() {
 function detenerSondeo() {
   console.log('[ROBOT PREMIER] Solicitando DETENCIÓN TOTAL...');
   setControlAction('STOP');
+
+  // Cancelar tareas que estén esperando en la cola
+  while (sondeoQueue.length > 0) {
+    const item = sondeoQueue.shift();
+    item.resolve({
+      sorteo: 'Cancelado por detención total',
+      rojos: [],
+      naranjas: [],
+      cancelado: true
+    });
+  }
 
   if (activeChildProcess && activeChildProcess.pid) {
     const pid = activeChildProcess.pid;
@@ -71,22 +85,17 @@ function detenerSondeo() {
 }
 
 /**
- * Robot de extracción y sondeo en Premier Pluss 2.0
+ * Ejecutor interno individual de un sondeo
  */
-async function ejecutarSondeoPremier(config, loteriaId) {
+function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFinalizar = false) {
   return new Promise((resolve, reject) => {
-    // Si ya hay un proceso corriendo, advertir o detener el previo
-    if (activeChildProcess) {
-      detenerSondeo();
-    }
-
     let loteria = config.loterias.find(l => l.id === loteriaId);
     if (!loteria) {
       loteria = config.loterias.find(l => l.activo) || config.loterias[0];
     }
     const montoSondeo = loteria ? loteria.montoSondeo : 3000;
 
-    console.log(`[ROBOT PREMIER] Iniciando sondeo para ${loteria.nombre} con monto ${montoSondeo} Bs...`);
+    console.log(`[ROBOT PREMIER] Iniciando sondeo para ${loteria.nombre} (${horaSorteo || 'Próximo Sorteo'}) con monto ${montoSondeo} Bs...`);
 
     const psScript = path.join(__dirname, 'scripts', 'sondeo_completo.ps1');
     if (!fs.existsSync(psScript)) {
@@ -98,8 +107,9 @@ async function ejecutarSondeoPremier(config, loteriaId) {
       fs.writeFileSync(CONTROL_PATH, JSON.stringify({
         status: 'RUNNING',
         requestedAction: 'NONE',
-        details: `Iniciando sondeo para ${loteria.nombre}`,
+        details: `Iniciando sondeo para ${loteria.nombre} (${horaSorteo || 'Próximo'})`,
         loteria: loteria.nombre,
+        horaSorteo: horaSorteo || '',
         currentAnimal: '',
         progress: 'Iniciando',
         pid: null,
@@ -107,7 +117,9 @@ async function ejecutarSondeoPremier(config, loteriaId) {
       }, null, 2), 'utf8');
     } catch (e) {}
 
-    const command = `powershell.exe -ExecutionPolicy Bypass -File "${psScript}" -Loteria "${loteria.nombre}" -MontoSondeo ${montoSondeo}`;
+    const horaParam = horaSorteo ? ` -HoraSorteo "${horaSorteo}"` : '';
+    const cerrarParam = cerrarAlFinalizar ? ' -CerrarAlFinalizar' : '';
+    const command = `powershell.exe -ExecutionPolicy Bypass -File "${psScript}" -Loteria "${loteria.nombre}" -MontoSondeo ${montoSondeo}${horaParam}${cerrarParam}`;
 
     const child = exec(command, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       activeChildProcess = null;
@@ -125,7 +137,7 @@ async function ejecutarSondeoPremier(config, loteriaId) {
 
         if (error.code === 99 || (stdout && stdout.includes('[CONTROL] Detencion'))) {
           return resolve({
-            sorteo: 'Cancelado por usuario',
+            sorteo: horaSorteo || 'Cancelado por usuario',
             rojos: [],
             naranjas: [],
             cancelado: true,
@@ -154,7 +166,7 @@ async function ejecutarSondeoPremier(config, loteriaId) {
       }
 
       resolve({
-        sorteo: 'Próximo Sorteo',
+        sorteo: horaSorteo || 'Próximo Sorteo',
         rojos: [],
         naranjas: [],
         rawOutput: stdout
@@ -162,6 +174,43 @@ async function ejecutarSondeoPremier(config, loteriaId) {
     });
 
     activeChildProcess = child;
+  });
+}
+
+/**
+ * Procesar la cola FIFO de sondeos de manera secuencial (1 a la vez para no colisionar con la taquilla)
+ */
+async function procesarColaSondeos() {
+  if (isProcessingQueue) return;
+  if (sondeoQueue.length === 0) return;
+
+  isProcessingQueue = true;
+  const currentTask = sondeoQueue.shift();
+
+  try {
+    const result = await ejecutarSondeoInternal(currentTask.config, currentTask.loteriaId, currentTask.horaSorteo, currentTask.cerrarAlFinalizar);
+    currentTask.resolve(result);
+  } catch (err) {
+    currentTask.reject(err);
+  } finally {
+    isProcessingQueue = false;
+    if (sondeoQueue.length > 0) {
+      console.log(`[ROBOT PREMIER COLA] Siguiente sondeo en espera (${sondeoQueue.length} pendiente(s)). Iniciando en 1s...`);
+      setTimeout(procesarColaSondeos, 1000);
+    }
+  }
+}
+
+/**
+ * Encolar o ejecutar sondeo en Premier Pluss 2.0
+ */
+function ejecutarSondeoPremier(config, loteriaId, horaSorteo = '', cerrarAlFinalizar = false) {
+  return new Promise((resolve, reject) => {
+    sondeoQueue.push({ config, loteriaId, horaSorteo, cerrarAlFinalizar, resolve, reject });
+    if (isProcessingQueue) {
+      console.log(`[ROBOT PREMIER COLA] Hay un sondeo en curso en la taquilla. ${loteriaId} (${horaSorteo || 'Próximo'}) queda en cola de espera (Posición #${sondeoQueue.length}).`);
+    }
+    procesarColaSondeos();
   });
 }
 

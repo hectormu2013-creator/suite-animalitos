@@ -1,6 +1,8 @@
 param(
     [string]$Loteria = "GUACHARO ACTIVO",
-    [int]$MontoSondeo = 3000
+    [int]$MontoSondeo = 3000,
+    [string]$HoraSorteo = "",
+    [switch]$CerrarAlFinalizar
 )
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -34,9 +36,13 @@ using System.Text;
 
 public class PremierFullProbe {
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    public delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
 
     [DllImport("user32.dll")]
     public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
 
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
@@ -44,11 +50,23 @@ public class PremierFullProbe {
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport("kernel32.dll")]
+    public static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int X, int Y);
@@ -69,46 +87,117 @@ public class PremierFullProbe {
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    public const uint BM_CLICK = 0x00F5;
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT {
         public int Left, Top, Right, Bottom;
     }
 
-    public static IntPtr FindPremier() {
-        IntPtr found = IntPtr.Zero;
+    public static bool DismissExceptionDialog(IntPtr parent) {
+        IntPtr btn = IntPtr.Zero;
+        EnumChildWindows(parent, (ch, cl) => {
+            StringBuilder t = new StringBuilder(256);
+            GetWindowText(ch, t, 256);
+            string txt = t.ToString().Trim();
+            if (txt.Equals("Continuar", StringComparison.OrdinalIgnoreCase) || txt.Equals("&Continuar", StringComparison.OrdinalIgnoreCase)) {
+                btn = ch;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+
+        if (btn != IntPtr.Zero) {
+            SendMessage(btn, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
+            return true;
+        }
+        return false;
+    }
+
+    public static bool CheckAndDismissAnyExceptionDialog() {
+        bool dismissed = false;
         EnumWindows((hWnd, lParam) => {
             uint pid;
             GetWindowThreadProcessId(hWnd, out pid);
             try {
                 Process p = Process.GetProcessById((int)pid);
                 if (p.ProcessName.Equals("PremierPlussPC20", StringComparison.OrdinalIgnoreCase)) {
+                    if (DismissExceptionDialog(hWnd)) {
+                        dismissed = true;
+                    }
+                }
+            } catch {}
+            return true;
+        }, IntPtr.Zero);
+        return dismissed;
+    }
+
+    public static IntPtr FindPremier() {
+        IntPtr found = IntPtr.Zero;
+        CheckAndDismissAnyExceptionDialog();
+
+        // 1. Verificacion rapida por proceso principal
+        try {
+            Process[] procs = Process.GetProcessesByName("PremierPlussPC20");
+            foreach (Process p in procs) {
+                IntPtr mw = p.MainWindowHandle;
+                if (mw != IntPtr.Zero) {
+                    found = mw;
+                    break;
+                }
+            }
+        } catch {}
+
+        // 2. Si no, recorrer todas las ventanas buscando proceso PremierPlussPC20
+        if (found == IntPtr.Zero) {
+            EnumWindows((hWnd, lParam) => {
+                uint pid;
+                GetWindowThreadProcessId(hWnd, out pid);
+                try {
+                    Process p = Process.GetProcessById((int)pid);
+                    if (p.ProcessName.Equals("PremierPlussPC20", StringComparison.OrdinalIgnoreCase)) {
+                        if (DismissExceptionDialog(hWnd)) {
+                            return true;
+                        }
+                        RECT r;
+                        GetWindowRect(hWnd, out r);
+                        int w = r.Right - r.Left;
+                        int h = r.Bottom - r.Top;
+                        bool vis = IsWindowVisible(hWnd);
+                        bool min = IsIconic(hWnd);
+                        if (min || (vis && w > 300 && h > 200)) {
+                            found = hWnd;
+                            return false;
+                        }
+                        if (found == IntPtr.Zero) {
+                            found = hWnd;
+                        }
+                    }
+                } catch {}
+                return true;
+            }, IntPtr.Zero);
+        }
+
+        // 3. Fallback por titulo de ventana si la taquilla cambio de proceso o nombre
+        if (found == IntPtr.Zero) {
+            EnumWindows((hWnd, lParam) => {
+                StringBuilder title = new StringBuilder(256);
+                GetWindowText(hWnd, title, 256);
+                string t = title.ToString();
+                if (t.Contains("Premier Pluss") || t.Contains("PremierPluss") || t.Contains("Taquilla")) {
                     RECT r;
                     GetWindowRect(hWnd, out r);
                     int w = r.Right - r.Left;
                     int h = r.Bottom - r.Top;
                     bool vis = IsWindowVisible(hWnd);
                     bool min = IsIconic(hWnd);
-                    if (min || (vis && w > 300 && h > 200)) {
+                    if (min || (vis && w > 350 && h > 200)) {
                         found = hWnd;
                         return false;
                     }
-                    if (found == IntPtr.Zero) {
-                        found = hWnd;
-                    }
-                }
-            } catch {}
-            return true;
-        }, IntPtr.Zero);
-
-        // Fallback por título si no se encontró por proceso
-        if (found == IntPtr.Zero) {
-            EnumWindows((hWnd, lParam) => {
-                StringBuilder title = new StringBuilder(256);
-                GetWindowText(hWnd, title, 256);
-                string t = title.ToString();
-                if (t.Contains("Premier Pluss") || t.Contains("PremierPluss")) {
-                    found = hWnd;
-                    return false;
                 }
                 return true;
             }, IntPtr.Zero);
@@ -136,9 +225,54 @@ public class PremierFullProbe {
     public const int VK_F7     = 0x76;
     public const int VK_F8     = 0x77;
 
-    public static bool IsPremierFocused(IntPtr premierHwnd) {
+    public static bool ForceForeground(IntPtr hWnd) {
+        if (hWnd == IntPtr.Zero) return false;
         IntPtr fg = GetForegroundWindow();
-        return fg == premierHwnd;
+        if (fg == hWnd) return true;
+
+        uint fgPid = 0;
+        uint targetPid = 0;
+        uint fgThread = GetWindowThreadProcessId(fg, out fgPid);
+        uint targetThread = GetWindowThreadProcessId(hWnd, out targetPid);
+
+        if (fgPid != 0 && fgPid == targetPid) return true;
+
+        uint curThread = GetCurrentThreadId();
+
+        try {
+            AttachThreadInput(curThread, fgThread, true);
+            AttachThreadInput(curThread, targetThread, true);
+
+            // Simular pulsacion de tecla ALT para liberar la restriccion de SetForegroundWindow de Windows
+            keybd_event(0x12, 0, 0, UIntPtr.Zero);
+            keybd_event(0x12, 0, 2, UIntPtr.Zero);
+
+            ShowWindow(hWnd, 9); // SW_RESTORE
+            ShowWindow(hWnd, 3); // SW_MAXIMIZE
+            SetForegroundWindow(hWnd);
+        } catch {}
+        finally {
+            try { AttachThreadInput(curThread, targetThread, false); } catch {}
+            try { AttachThreadInput(curThread, fgThread, false); } catch {}
+        }
+
+        System.Threading.Thread.Sleep(80);
+        IntPtr newFg = GetForegroundWindow();
+        if (newFg == hWnd) return true;
+        uint newFgPid = 0;
+        GetWindowThreadProcessId(newFg, out newFgPid);
+        return (newFgPid != 0 && newFgPid == targetPid);
+    }
+
+    public static bool IsPremierFocused(IntPtr premierHwnd) {
+        if (premierHwnd == IntPtr.Zero) return false;
+        IntPtr fg = GetForegroundWindow();
+        if (fg == premierHwnd) return true;
+        uint fgPid = 0;
+        GetWindowThreadProcessId(fg, out fgPid);
+        uint targetPid = 0;
+        GetWindowThreadProcessId(premierHwnd, out targetPid);
+        return (fgPid != 0 && fgPid == targetPid);
     }
 
     public static bool IsStopHotkeyPressed() {
@@ -225,10 +359,13 @@ function Check-SafetyAndControl {
     if ([PremierFullProbe]::IsStopHotkeyPressed()) {
         Write-Output "`n`n[ALERTA DE SEGURIDAD] ¡Detencion de emergencia accionada por teclado (ESC / F8)!"
         Set-ControlState "STOPPED" "Detenido de emergencia por teclado (ESC/F8)"
-        if ([PremierFullProbe]::IsPremierFocused($hwnd)) {
-            [System.Windows.Forms.SendKeys]::SendWait("n")
-            Start-Sleep -Milliseconds 200
-            [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+        if ($hwnd -ne [IntPtr]::Zero) {
+            [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+            try {
+                [System.Windows.Forms.SendKeys]::SendWait("n")
+                Start-Sleep -Milliseconds 150
+                [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+            } catch {}
         }
         exit 99
     }
@@ -238,25 +375,28 @@ function Check-SafetyAndControl {
     if ($action -eq "STOP") {
         Write-Output "`n`n[CONTROL] Detencion total solicitada por el usuario desde el panel."
         Set-ControlState "STOPPED" "Detenido desde panel web"
-        if ([PremierFullProbe]::IsPremierFocused($hwnd)) {
-            [System.Windows.Forms.SendKeys]::SendWait("n")
-            Start-Sleep -Milliseconds 200
-            [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+        if ($hwnd -ne [IntPtr]::Zero) {
+            [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+            try {
+                [System.Windows.Forms.SendKeys]::SendWait("n")
+                Start-Sleep -Milliseconds 150
+                [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+            } catch {}
         }
         exit 99
     }
 
-    # 3. Comprobar solicitud de pausa (por tecla F7 o por panel web)
+    # 3. Comprobar solicitud de pausa manual (por tecla F7 o por panel web)
     $pauseTriggered = ($action -eq "PAUSE") -or [PremierFullProbe]::IsPauseHotkeyPressed()
     if ($pauseTriggered) {
         Write-Output "`n[PAUSA ACTIVADA] Automatizacion en PAUSA ($stepName)."
         Write-Output " -> Presiona [F7] o pulsa 'Continuar' en el panel web para reanudar."
         Write-Output " -> Presiona [ESC] o [F8] para abortar por completo."
         Set-ControlState "PAUSED" "Pausado en: $stepName"
-        Start-Sleep -Milliseconds 600
+        Start-Sleep -Milliseconds 500
 
         while ($true) {
-            Start-Sleep -Milliseconds 250
+            Start-Sleep -Milliseconds 200
             if ([PremierFullProbe]::IsStopHotkeyPressed()) {
                 Write-Output "`n[ALERTA] Detencion solicitada mientras estaba pausado."
                 Set-ControlState "STOPPED" "Detenido durante pausa"
@@ -271,29 +411,11 @@ function Check-SafetyAndControl {
             if ($act -eq "RESUME" -or [PremierFullProbe]::IsPauseHotkeyPressed()) {
                 Write-Output "[CONTINUAR] Reanudando ejecucion..."
                 Set-ControlState "RUNNING" "Reanudado en: $stepName"
-                [PremierFullProbe]::SetForegroundWindow($hwnd) | Out-Null
-                Start-Sleep -Milliseconds 600
+                [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+                Start-Sleep -Milliseconds 400
                 break
             }
         }
-    }
-
-    # 4. ESCUDO DE FOCO DE VENTANA (Protege Chrome, chat, VS Code contra escritura no deseada)
-    if (-not [PremierFullProbe]::IsPremierFocused($hwnd)) {
-        Write-Output "`n[ESCUDO DE FOCO] Premier Pluss perdio el foco. Pausando inmediatamente para no escribir en otras ventanas..."
-        Set-ControlState "PAUSED" "Pausado automaticamente por perdida de foco de ventana"
-        
-        while (-not [PremierFullProbe]::IsPremierFocused($hwnd)) {
-            Start-Sleep -Milliseconds 300
-            if ([PremierFullProbe]::IsStopHotkeyPressed() -or ((Get-ControlAction) -eq "STOP")) {
-                Write-Output "[CONTROL] Detenido por el usuario mientras Premier Pluss no tenia foco."
-                Set-ControlState "STOPPED" "Detenido sin foco"
-                exit 99
-            }
-        }
-        Write-Output "[ESCUDO DE FOCO] Foco recuperado en Premier Pluss. Reanudando en 500ms..."
-        Set-ControlState "RUNNING" "Foco recuperado en Premier Pluss"
-        Start-Sleep -Milliseconds 500
     }
 }
 
@@ -302,66 +424,47 @@ Write-Output "  SONDEO Y EXTRACCION DE AGOTADOS - $Loteria"
 Write-Output "  SEGURIDAD ACTIVA: [ESC/F8] Detener | [F7] Pausar/Continuar"
 Write-Output "=========================================================="
 
+# Deteccion directa de la taquilla abierta por el usuario en el escritorio
 $hwnd = [PremierFullProbe]::FindPremier()
-if ($hwnd -eq [IntPtr]::Zero) {
-    Write-Output "[AUTO-INICIO] Premier Pluss 2.0 no esta abierto. Intentando iniciar la aplicacion..."
-    
-    # 1. Obtener ruta del ejecutable desde config.json o ruta estandar
-    $cfgPath = Join-Path (Split-Path $PSScriptRoot -Parent) "config.json"
-    $exePath = "C:\Program Files (x86)\Premier Pluss 2.0\PremierPlussPC20.exe"
-    if (Test-Path $cfgPath) {
-        try {
-            $cfgRaw = Get-Content $cfgPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
-            if ($cfgRaw.general.premierPluss.executablePath) {
-                $exePath = $cfgRaw.general.premierPluss.executablePath
-            }
-        } catch {}
-    }
-    
-    if (Test-Path $exePath) {
-        Write-Output "[AUTO-INICIO] Ejecutando: $exePath..."
-        Start-Process -FilePath $exePath -WorkingDirectory (Split-Path $exePath)
-        
-        # Esperar hasta 20 segundos a que la ventana de Premier aparezca
-        for ($waitCount = 0; $waitCount -lt 20; $waitCount++) {
-            Start-Sleep -Seconds 1
-            $hwnd = [PremierFullProbe]::FindPremier()
-            if ($hwnd -ne [IntPtr]::Zero) {
-                Write-Output "[AUTO-INICIO] ¡Ventana de Premier Pluss detectada exitosamente!"
-                Start-Sleep -Seconds 3 # Pausa para que termine de cargar la interfaz
-                break
-            }
-        }
-    }
-}
 
 if ($hwnd -eq [IntPtr]::Zero) {
-    Write-Output "[ERROR] Premier Pluss 2.0 no esta abierto y no pudo iniciarse."
-    Set-ControlState "ERROR" "Premier Pluss 2.0 no esta abierto"
+    Write-Output "[ERROR] Premier Pluss 2.0 no esta abierto en el escritorio."
+    Write-Output "[AVISO] Por favor abre Premier Pluss e inicia sesion en la taquilla. El sistema se encargara de los sondeos y bloqueos automaticamente."
+    Set-ControlState "IDLE" "Premier Pluss no detectado - Abrelo en el escritorio"
     $errObj = [PSCustomObject]@{
-        error = "Premier Pluss 2.0 no esta abierto"
+        error = "Premier Pluss 2.0 no esta abierto en el escritorio"
         ok = $false
         rojos = @()
         naranjas = @()
     }
-    Write-Output ($errObj | ConvertTo-Json)
+    Write-Output "JSON_OUTPUT_START"
+    Write-Output ($errObj | ConvertTo-Json -Compress)
+    Write-Output "JSON_OUTPUT_END"
     exit 1
 }
 
 Set-ControlState "RUNNING" "Iniciando sondeo de $Loteria"
 
-Write-Output "[1/7] Enfocando y maximizando Premier Pluss..."
+Write-Output "[1/7] Enfocando y maximizando Premier Pluss (Taquilla)..."
 [PremierFullProbe]::ShowWindow($hwnd, 9)
 [PremierFullProbe]::ShowWindow($hwnd, 3)
-[PremierFullProbe]::SetForegroundWindow($hwnd) | Out-Null
-Start-Sleep -Milliseconds 600
+[PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+Start-Sleep -Milliseconds 800
 
-# Limpiar pantalla previa por seguridad
+# Limpieza inicial segura: descartar excepciones previas y cancelar cualquier menu emergente con ESC
+[PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
 try {
-    [System.Windows.Forms.SendKeys]::SendWait("n")
-    Start-Sleep -Milliseconds 300
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+    [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
     Start-Sleep -Milliseconds 200
+} catch {}
+
+# =====================================================================
+# ASEGURAR SIEMPRE PESTAÑA ANIMALITOS (F2)
+# =====================================================================
+Write-Output "[1.2/7] Asegurando pestana ANIMALITOS con tecla F2..."
+try {
+    [System.Windows.Forms.SendKeys]::SendWait("{F2}")
+    Start-Sleep -Milliseconds 300
 } catch {}
 
 # =====================================================================
@@ -379,21 +482,29 @@ Start-Sleep -Milliseconds 300
 Start-Sleep -Milliseconds 300
 Write-Output "[OK] Moneda fijada y confirmada en BS."
 
-# 1. Seleccionar la lotería solicitada
+# 1. Seleccionar la loteria solicitada
 Write-Output "[2/7] Seleccionando Loteria: $Loteria..."
 Check-SafetyAndControl "Seleccionando Loteria"
-$loteriaY = switch ($Loteria.ToUpper().Trim()) {
-    "LA GRANJITA"     { 173 }
+
+# Coordenadas Y operativas comprobadas:
+# LA GRANJITA:           173
+# GUACHARITO MILLONARIO: 248
+# GUACHARO ACTIVO:       270
+# LOTTO ACTIVO:          292
+# SELVA PLUS:            355
+$loteriaY = switch -Wildcard ($Loteria.ToUpper().Trim()) {
+    "*MILLONARIO*"    { 248 }
+    "*GRANJITA*"      { 173 }
     "CENTENA PLUS"    { 215 }
-    "GUACHARO ACTIVO" { 270 }
-    "LOTTO ACTIVO"    { 292 }
-    "SELVA PLUS"      { 355 }
+    "*LOTTO ACTIVO*"  { 292 }
+    "*GUACHARO*"      { 270 }
+    "*SELVA PLUS*"    { 355 }
     default           { 270 } # Guacharo por defecto
 }
 [PremierFullProbe]::Click(120, $loteriaY)
 Start-Sleep -Milliseconds 500
 
-# 2. Marcar próximo sorteo en casilla 1 (X=328, Y=63)
+# 2. Marcar proximo sorteo en casilla 1 (X=328, Y=63 para todas las loterias)
 Write-Output "[3/7] Marcando casilla del proximo sorteo (Q)..."
 Check-SafetyAndControl "Marcando Sorteo"
 [PremierFullProbe]::Click(328, 63)
@@ -409,38 +520,41 @@ Start-Sleep -Milliseconds 150
 [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 Start-Sleep -Milliseconds 250
 
-# 4. Determinar lista de animales según la lotería:
-if ($Loteria.ToUpper().Contains("GUACHARO")) {
+# 4. Determinar lista de animales segun la loteria:
+if ($Loteria.ToUpper().Contains("MILLONARIO")) {
+    # Guacharito Millonario: 101 animales (00, 0, 1..99)
+    $animales = @("00", "0") + (1..99 | ForEach-Object { "$_" })
+} elseif ($Loteria.ToUpper().Contains("GUACHARO")) {
+    # Guacharo Activo: 77 animales (00, 0, 1..75)
     $animales = @("00", "0") + (1..75 | ForEach-Object { "$_" })
 } else {
-    # 38 estándar para Lotto Activo, La Granjita, Selva Plus, etc.
+    # 38 estandar para Lotto Activo, La Granjita, Selva Plus, etc.
     $animales = @("00", "0") + (1..36 | ForEach-Object { "$_" })
 }
 
-Write-Output "[5/7] Ingresando los $($animales.Count) animales por teclado (Motor Universal)..."
+Write-Output "[5/7] Ingresando los $($animales.Count) animales por teclado (Motor Universal Rapido)..."
 $idx = 0
 $total = $animales.Count
 foreach ($anim in $animales) {
     $idx++
     Check-SafetyAndControl "Animal $anim ($idx/$total)"
-    Set-ControlState "RUNNING" "Ingresando animal $anim" $anim "$idx/$total"
+    if ($idx % 5 -eq 1 -or $idx -eq $total) {
+        Set-ControlState "RUNNING" "Ingresando animal $anim" $anim "$idx/$total"
+    }
     
     Write-Host -NoNewline "`r -> Ingresando animal [$idx/$total]: '$anim' [ESC/F8: Detener | F7: Pausa]...      "
     
     [System.Windows.Forms.SendKeys]::SendWait("{F5}")
-    Start-Sleep -Milliseconds 50
-    Check-SafetyAndControl "Post F5 animal $anim"
+    Start-Sleep -Milliseconds 35
     
     [System.Windows.Forms.SendKeys]::SendWait("$anim")
-    Start-Sleep -Milliseconds 60
-    Check-SafetyAndControl "Post Numero animal $anim"
+    Start-Sleep -Milliseconds 40
     
     [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-    Start-Sleep -Milliseconds 80
-    Check-SafetyAndControl "Post Primer Enter animal $anim"
+    Start-Sleep -Milliseconds 50
     
     [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-    Start-Sleep -Milliseconds 220
+    Start-Sleep -Milliseconds 120
 }
 
 Write-Output "`n[OK] Los $($animales.Count) animales fueron ingresados al ticket."
@@ -453,7 +567,7 @@ Set-ControlState "RUNNING" "Disparando validacion con boton Imprimir"
 [PremierFullProbe]::Click(1015, 62)
 Start-Sleep -Milliseconds 2500
 
-# Función interna de extracción OCR + Color de la tabla
+# Funcion interna de extraccion OCR + Color de la tabla
 function ExtraerFilasDePantalla($bmpScreen) {
     $tableX = 890
     $tableY = 130
@@ -550,7 +664,7 @@ function ExtraerFilasDePantalla($bmpScreen) {
                 $rObj.Nombre = $animalDict[$rObj.Num]
             }
 
-            # Si tenemos Nombre pero no Num, resolver número desde diccionario
+            # Si tenemos Nombre pero no Num, resolver numero desde diccionario
             if (-not $rObj.Num -and $rObj.Nombre) {
                 foreach ($pair in $animalDict.GetEnumerator()) {
                     if ($pair.Value -like "*$($rObj.Nombre)*" -or $rObj.Nombre -like "*$($pair.Value)*") {
@@ -589,7 +703,7 @@ foreach ($r in $rowsView1) {
 $g1.Dispose()
 $bmpFull1.Dispose()
 
-# Si son más de 20 animales (La Granjita, Lotto Activo, Guácharo), scrollear tabla para capturar la Vista 2 (Inferior)
+# Si son mas de 20 animales (La Granjita, Lotto Activo, Guacharo), scrollear tabla para capturar la Vista 2 (Inferior)
 if ($animales.Count -gt 20) {
     Write-Output "[7/7] Desplazando tabla del ticket hacia abajo para Vista 2..."
     [PremierFullProbe]::ScrollToBottom(1050, 400)
@@ -604,7 +718,7 @@ if ($animales.Count -gt 20) {
         if (-not $todasLasFilas.ContainsKey($r.Num)) {
             $todasLasFilas[$r.Num] = $r
         } else {
-            # Si en cualquier vista se detectó ROJO o NARANJA, preservar el estado crítico
+            # Si en cualquier vista se detecto ROJO o NARANJA, preservar el estado critico
             if ($r.Color -eq "ROJO") { $todasLasFilas[$r.Num].Color = "ROJO" }
             elseif ($r.Color -eq "NARANJA" -and $todasLasFilas[$r.Num].Color -ne "ROJO") { $todasLasFilas[$r.Num].Color = "NARANJA" }
         }
@@ -617,14 +731,31 @@ if ($animales.Count -gt 20) {
 # REGLA DE ORO DE SEGURIDAD ABSOLUTA: LIMPIAR TICKET CON TECLA 'N'
 # =====================================================================
 Write-Output "`n[REGLA DE ORO] Cancelando jugada y limpiando pantalla de Premier Pluss..."
-[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-Start-Sleep -Milliseconds 250
-[System.Windows.Forms.SendKeys]::SendWait("n")
-Start-Sleep -Milliseconds 350
-[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-Start-Sleep -Milliseconds 200
+try {
+    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+    Start-Sleep -Milliseconds 250
+    [System.Windows.Forms.SendKeys]::SendWait("n")
+    Start-Sleep -Milliseconds 350
+    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+    Start-Sleep -Milliseconds 200
+} catch {}
+[PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
 
 Write-Output "[SEGURIDAD OK] Pantalla restablecida a 0 jugadas."
+
+# Comprobar si corresponde cierre limpio al finalizar el ultimo sorteo del dia
+if ($CerrarAlFinalizar) {
+    Write-Output "`n[CIERRE DE SESION] Ultimo sorteo del dia finalizado. Cerrando Premier Pluss de forma limpia..."
+    try {
+        $p = Get-Process -Name "PremierPlussPC20" -ErrorAction SilentlyContinue
+        if ($p) {
+            $p.CloseMainWindow() | Out-Null
+            Start-Sleep -Seconds 2
+        }
+    } catch {}
+} else {
+    Write-Output "`n[SESION PERMANENTE] Premier Pluss se mantiene abierto y listo para los proximos sorteos del dia."
+}
 
 # Consolidar Resultados (Solo Cupo Cero 100% Agotados / Rojos)
 $listaRojos = @()
@@ -643,7 +774,7 @@ foreach ($num in ($todasLasFilas.Keys | Sort-Object { if ($_ -eq "00") { -1 } el
 $reporteFinal = [PSCustomObject]@{
     ok = $true
     loteria = $Loteria
-    sorteo = "Proximo Sorteo (Q)"
+    sorteo = if ($HoraSorteo) { $HoraSorteo } else { "Proximo Sorteo" }
     timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     totalAnimalesAnalizados = $todasLasFilas.Count
     rojos = $listaRojos

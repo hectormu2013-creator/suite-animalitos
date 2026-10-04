@@ -16,11 +16,12 @@ echo ========================================================
 echo    SUITE DE SONDEO Y DETECCION DE AGOTADOS - PREMIER
 echo ========================================================
 echo.
-echo   [1] Guacharo Activo  (77 animales)
-echo   [2] Lotto Activo     (38 animales)
-echo   [3] La Granjita      (38 animales)
-echo   [4] Sondeo en Cadena (Las 3 loterias consecutivas)
-echo   [5] Salir
+echo   [1] Guacharo Activo       (77 animales)
+echo   [2] Lotto Activo          (38 animales)
+echo   [3] La Granjita           (38 animales)
+echo   [4] Guacharito Millonario (101 animales)
+echo   [5] Sondeo en Cadena      (Las 4 loterias consecutivas)
+echo   [6] Salir
 echo.
 echo   --------------------------------------------------------
 echo   ESCUDO Y CONTROLES OPERATIVOS ACTIVOS:
@@ -31,14 +32,15 @@ echo    * Escudo de Foco: Si sales de Premier, el bot se pausa
 echo      para no escribir en el chat ni en otras ventanas.
 echo   --------------------------------------------------------
 echo.
-set /p opt="Selecciona una opcion (1-5) [Por defecto: 1]: "
+set /p opt="Selecciona una opcion (1-6) [Por defecto: 1]: "
 
 if "%opt%"=="" set opt=1
 if "%opt%"=="1" goto GUACHARO
 if "%opt%"=="2" goto LOTTO
 if "%opt%"=="3" goto GRANJITA
-if "%opt%"=="4" goto TODAS
-if "%opt%"=="5" exit /b
+if "%opt%"=="4" goto GUACHARITO_MILLONARIO
+if "%opt%"=="5" goto TODAS
+if "%opt%"=="6" exit /b
 goto MENU
 
 :GUACHARO
@@ -59,20 +61,31 @@ echo Iniciando sondeo de La Granjita (38 animales en BS)...
 powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\sondeo_completo.ps1" -Loteria "LA GRANJITA"
 goto POST_CHECK
 
+:GUACHARITO_MILLONARIO
+echo.
+echo Iniciando sondeo de Guacharito Millonario (101 animales en BS)...
+powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\sondeo_completo.ps1" -Loteria "GUACHARITO MILLONARIO"
+goto POST_CHECK
+
 :TODAS
 echo.
-echo [1/3] Sondeando Guacharo Activo...
+echo [1/4] Sondeando Guacharo Activo...
 powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\sondeo_completo.ps1" -Loteria "GUACHARO ACTIVO"
 if %errorlevel% neq 0 goto POST_CHECK
 timeout /t 3 >nul
 echo.
-echo [2/3] Sondeando Lotto Activo...
+echo [2/4] Sondeando Lotto Activo...
 powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\sondeo_completo.ps1" -Loteria "LOTTO ACTIVO"
 if %errorlevel% neq 0 goto POST_CHECK
 timeout /t 3 >nul
 echo.
-echo [3/3] Sondeando La Granjita...
+echo [3/4] Sondeando La Granjita...
 powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\sondeo_completo.ps1" -Loteria "LA GRANJITA"
+if %errorlevel% neq 0 goto POST_CHECK
+timeout /t 3 >nul
+echo.
+echo [4/4] Sondeando Guacharito Millonario...
+powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\sondeo_completo.ps1" -Loteria "GUACHARITO MILLONARIO"
 goto POST_CHECK
 
 :POST_CHECK

@@ -123,6 +123,23 @@ function populateUIWithConfig(config) {
   // Renderizar Loterías
   renderLotteries(config.loterias);
 
+  // Sincronizar selector de prueba/sondeo con las loterías activas
+  const selectTest = document.getElementById('select-test-lottery');
+  if (selectTest && Array.isArray(config.loterias)) {
+    const curVal = selectTest.value;
+    selectTest.innerHTML = '';
+    config.loterias.forEach(lot => {
+      const opt = document.createElement('option');
+      opt.value = lot.id;
+      const icon = lot.nombre.includes('MILLONARIO') ? '🦅' : lot.nombre.includes('GUACHARO') ? '🦜' : lot.nombre.includes('GRANJITA') ? '🐸' : '🎰';
+      opt.textContent = `${icon} ${lot.nombre} (${lot.totalAnimales || 38})`;
+      selectTest.appendChild(opt);
+    });
+    if (curVal && Array.from(selectTest.options).some(o => o.value === curVal)) {
+      selectTest.value = curVal;
+    }
+  }
+
   // Renderizar Red de Máquinas de Pesca & Verificación
   renderMachinesManagement(config);
 }
@@ -160,7 +177,7 @@ function renderLotteries(lotteries) {
 
       <div class="form-group" style="margin-bottom:12px;">
         <label>Horarios de Sorteos (Separados por coma o espacio)</label>
-        <input type="text" class="form-input lot-input-horarios" data-index="${index}" value="${(lot.horarios || []).join(', ')}" placeholder="09:00, 10:00, 11:00...">
+        <input type="text" class="form-input lot-input-horarios" data-index="${index}" value="${(lot.horarios || []).join(', ')}" placeholder="08:00, 09:00, 10:00...">
       </div>
 
       <!-- Estrategias de Bloqueo y Tiempos Independientes en Triple 7 -->
@@ -290,16 +307,27 @@ function renderLotteries(lotteries) {
     container.appendChild(card);
 
     // Cargar estadísticas en vivo de atrasos para esta lotería
-    fetch(`/api/predictive/delayed?loteriaId=${lot.id}&limit=5`)
-      .then(res => res.json())
-      .then(data => {
-        const previewEl = document.getElementById(`preview-delayed-${lot.id}`);
-        if (previewEl && data.delayed && data.delayed.length > 0) {
-          const itemsStr = data.delayed.map(d => `${d.numero} (${d.nombre}: ${d.sorteosAtraso}s)`).join(', ');
-          previewEl.innerHTML = `🔮 <b>Top Atrasados Visual-FX:</b> ${itemsStr}`;
-        }
-      })
-      .catch(() => {});
+    actualizarPreviewAtrasadosLoteria(lot.id);
+  });
+}
+
+function actualizarPreviewAtrasadosLoteria(loteriaId) {
+  fetch(`/api/predictive/delayed?loteriaId=${loteriaId}&limit=5`)
+    .then(res => res.json())
+    .then(data => {
+      const previewEl = document.getElementById(`preview-delayed-${loteriaId}`);
+      if (previewEl && data.delayed && data.delayed.length > 0) {
+        const itemsStr = data.delayed.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso !== undefined ? d.diasAtraso + 'd' : d.sorteosAtraso + 's'})`).join(', ');
+        previewEl.innerHTML = `🔮 <b>Top Atrasados Visual-FX:</b> ${itemsStr}`;
+      }
+    })
+    .catch(() => {});
+}
+
+function actualizarTodosLosAtrasados() {
+  if (!currentConfig || !Array.isArray(currentConfig.loterias)) return;
+  currentConfig.loterias.forEach(lot => {
+    actualizarPreviewAtrasadosLoteria(lot.id);
   });
 }
 
@@ -1100,6 +1128,12 @@ function startStatusPolling() {
         window._lastTrophyPoll = Date.now();
         loadTrophies();
       }
+
+      // 4. Sincronizar números atrasados con Visual-FX periódicamente (cada 5 minutos)
+      if (!window._lastDelayedPoll || Date.now() - window._lastDelayedPoll > 300000) {
+        window._lastDelayedPoll = Date.now();
+        actualizarTodosLosAtrasados();
+      }
     } catch (e) {}
   }, 1500);
 }
@@ -1798,6 +1832,30 @@ function initTriple7Module() {
   if (lotSelect) {
     lotSelect.addEventListener('change', updateTriple7SorteoOptions);
   }
+
+  // Filtro dinámico de la tabla de loterías gestionadas
+  const filterSelect = document.getElementById('t7-filter-loteria');
+  if (filterSelect) {
+    filterSelect.addEventListener('change', () => {
+      if (!cachedT7Draws) return;
+      const selected = filterSelect.value;
+      const filtered = selected === 'ALL'
+        ? cachedT7Draws
+        : cachedT7Draws.filter(d => d.loteria === selected);
+      renderTriple7Table(filtered);
+    });
+  }
+}
+
+function normalizarTextoLocal(str) {
+  return (str || '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 async function loadTriple7Draws(isManual = false) {
@@ -1807,10 +1865,19 @@ async function loadTriple7Draws(isManual = false) {
   const metricUpdated = document.getElementById('t7-metric-updated-at');
   const countBadge = document.getElementById('t7-table-count-badge');
   const btnRefresh = document.getElementById('btn-refresh-triple7');
+  const filterSelect = document.getElementById('t7-filter-loteria');
 
   if (btnRefresh) btnRefresh.classList.add('loading');
   if (isManual && tbody) {
     tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Consultando plataforma https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php...</td></tr>';
+  }
+
+  // Asegurar que currentConfig esté cargado para saber cuáles loterías tienen bloqueos activos
+  if (!currentConfig) {
+    try {
+      const cfgRes = await fetch('/api/config');
+      currentConfig = await cfgRes.json();
+    } catch (e) {}
   }
 
   try {
@@ -1819,22 +1886,37 @@ async function loadTriple7Draws(isManual = false) {
     if (btnRefresh) btnRefresh.classList.remove('loading');
 
     if (data.ok && data.draws) {
-      cachedT7Draws = data.draws;
-      const total = data.draws.length;
-      const blocked = data.draws.filter(d => d.bloqueado).length;
+      // Filtrar estrictamente por las loterías configuradas y activas a las que les aplicamos bloqueos
+      const activeLotNames = (currentConfig && Array.isArray(currentConfig.loterias))
+        ? currentConfig.loterias.filter(l => l.activo !== false).map(l => normalizarTextoLocal(l.nombre))
+        : ['guacharo activo', 'lotto activo', 'la granjita'];
+
+      const drawsGestionados = data.draws.filter(d => activeLotNames.includes(normalizarTextoLocal(d.loteria)));
+      cachedT7Draws = drawsGestionados;
+
+      const total = drawsGestionados.length;
+      const blocked = drawsGestionados.filter(d => d.bloqueado).length;
 
       if (metricTotal) metricTotal.textContent = total;
       if (metricBlocked) metricBlocked.textContent = blocked;
-      if (countBadge) countBadge.textContent = `${total} sorteos activos`;
+      if (countBadge) countBadge.textContent = `${total} sorteos gestionados`;
       if (metricUpdated) metricUpdated.textContent = `Actualizado: ${new Date().toLocaleTimeString('es-VE')}`;
+
+      // Actualizar selector de filtro de la tabla
+      updateTriple7FilterOptions();
 
       // Actualizar opciones de lotería y sorteos en selector manual
       updateTriple7LotteryOptions();
 
-      // Renderizar tabla
-      renderTriple7Table(data.draws);
+      // Renderizar tabla aplicando el filtro seleccionado actualmente
+      const currentFilter = filterSelect ? filterSelect.value : 'ALL';
+      const toRender = currentFilter === 'ALL'
+        ? drawsGestionados
+        : drawsGestionados.filter(d => d.loteria === currentFilter);
 
-      if (isManual) showToast(`Sorteos de Triple 7 actualizados (${total} activos)`);
+      renderTriple7Table(toRender);
+
+      if (isManual) showToast(`Sorteos de Triple 7 actualizados (${total} gestionados)`);
     } else {
       if (tbody) {
         tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--rose-400);">Error consultando Triple 7: ${data.message || 'Desconocido'}</td></tr>`;
@@ -1846,6 +1928,21 @@ async function loadTriple7Draws(isManual = false) {
       tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--rose-400);">Error de conexión: ${err.message}</td></tr>`;
     }
   }
+}
+
+function updateTriple7FilterOptions() {
+  const filterSelect = document.getElementById('t7-filter-loteria');
+  if (!filterSelect || !cachedT7Draws) return;
+
+  const currentVal = filterSelect.value || 'ALL';
+  const uniqueLots = [...new Set(cachedT7Draws.map(d => d.loteria))];
+
+  let html = `<option value="ALL" ${currentVal === 'ALL' ? 'selected' : ''}>Todas las Gestionadas (${cachedT7Draws.length})</option>`;
+  uniqueLots.forEach(lot => {
+    const countLot = cachedT7Draws.filter(d => d.loteria === lot).length;
+    html += `<option value="${lot}" ${currentVal === lot ? 'selected' : ''}>${lot} (${countLot})</option>`;
+  });
+  filterSelect.innerHTML = html;
 }
 
 function updateTriple7LotteryOptions() {
@@ -1873,7 +1970,7 @@ function renderTriple7Table(draws) {
   if (!tbody) return;
 
   if (draws.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay sorteos activos en este momento en Triple 7.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay sorteos de loterías gestionadas activos en este momento en Triple 7.</td></tr>';
     return;
   }
 

@@ -120,8 +120,8 @@ function recordScan(scanData) {
     const hora = now.toLocaleTimeString('es-VE', { hour12: false });
     const id = `${fecha}_${Date.now()}`;
 
-    // 1. Números y detalle de Premier Pluss (Cupo Cero / Agotados)
-    const rojosPremier = (scanData.rojosPremier || scanData.rojos || []).map(n => String(n).padStart(2, '0'));
+    // 1. Números y detalle de Premier Pluss (Cupo Cero / Agotados) - Estricto: solo si viene de sondeo real
+    const rojosPremier = (Array.isArray(scanData.rojosPremier) ? scanData.rojosPremier : []).map(n => String(n).padStart(2, '0'));
     const detallePremier = rojosPremier.map(n => ({
       numero: n,
       nombre: getAnimalName(n),
@@ -825,6 +825,7 @@ function updateT7Status(recordId, t7Status, t7Blocked) {
       rec.t7Status = t7Status;
       rec.t7Blocked = t7Blocked;
       fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
+      rewriteCSV(history);
       return true;
     }
   } catch (e) {}
@@ -839,6 +840,7 @@ module.exports = {
   syncScheduledDrawResult,
   getTrophyStats,
   updateT7Status,
+  rewriteCSV,
   getAnimalName,
   parseTimeToMinutes,
   CSV_PATH,
