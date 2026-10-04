@@ -486,20 +486,19 @@ Write-Output "[OK] Moneda fijada y confirmada en BS."
 Write-Output "[2/7] Seleccionando Loteria: $Loteria..."
 Check-SafetyAndControl "Seleccionando Loteria"
 
-# Coordenadas Y operativas comprobadas:
-# LA GRANJITA:           173
-# GUACHARITO MILLONARIO: 248
-# GUACHARO ACTIVO:       270
-# LOTTO ACTIVO:          292
-# SELVA PLUS:            355
+# Coordenadas Y exactas calibradas por OCR (1536x864, 125% DPI):
+# LA GRANJITA:           204
+# GUACHARITO MILLONARIO: 314
+# GUACHARO ACTIVO:       342
+# LOTTO ACTIVO:          369
+# SELVA PLUS:            452
 $loteriaY = switch -Wildcard ($Loteria.ToUpper().Trim()) {
-    "*MILLONARIO*"    { 248 }
-    "*GRANJITA*"      { 173 }
-    "CENTENA PLUS"    { 215 }
-    "*LOTTO ACTIVO*"  { 292 }
-    "*GUACHARO*"      { 270 }
-    "*SELVA PLUS*"    { 355 }
-    default           { 270 } # Guacharo por defecto
+    "*MILLONARIO*"    { 314 }
+    "*GRANJITA*"      { 204 }
+    "*LOTTO ACTIVO*"  { 369 }
+    "*GUACHARO*"      { 342 }
+    "*SELVA PLUS*"    { 452 }
+    default           { 342 } # Guacharo por defecto
 }
 [PremierFullProbe]::Click(120, $loteriaY)
 Start-Sleep -Milliseconds 500

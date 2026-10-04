@@ -196,19 +196,19 @@ switch ($Paso) {
             Start-Sleep -Milliseconds 300
         } catch {}
 
-        # Coordenadas Y operativas comprobadas:
-        # LA GRANJITA:           173
-        # GUACHARITO MILLONARIO: 248
-        # GUACHARO ACTIVO:       270
-        # LOTTO ACTIVO:          292
-        # SELVA PLUS:            355
+        # Coordenadas Y exactas calibradas por OCR (1536x864, 125% DPI):
+        # LA GRANJITA:           204
+        # GUACHARITO MILLONARIO: 314
+        # GUACHARO ACTIVO:       342
+        # LOTTO ACTIVO:          369
+        # SELVA PLUS:            452
         $lotY = switch -Wildcard ($Loteria.ToUpper().Trim()) {
-            "*MILLONARIO*"    { 248 }
-            "*GRANJITA*"      { 173 }
-            "*LOTTO ACTIVO*"  { 292 }
-            "*GUACHARO*"      { 270 }
-            "*SELVA PLUS*"    { 355 }
-            default           { 270 }
+            "*MILLONARIO*"    { 314 }
+            "*GRANJITA*"      { 204 }
+            "*LOTTO ACTIVO*"  { 369 }
+            "*GUACHARO*"      { 342 }
+            "*SELVA PLUS*"    { 452 }
+            default           { 342 }
         }
 
         Write-Output " -> Haciendo clic en loteria ($Loteria) en X=120, Y=$lotY..."
