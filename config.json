@@ -92,6 +92,13 @@
         "activo": true,
         "sorteosPersistencia": 3
       },
+      "sondeosMultiples": [
+        { "id": 1, "activo": true, "minutosAntes": 50 },
+        { "id": 2, "activo": true, "minutosAntes": 40 },
+        { "id": 3, "activo": true, "minutosAntes": 30 },
+        { "id": 4, "activo": false, "minutosAntes": 20 },
+        { "id": 5, "activo": false, "minutosAntes": 10 }
+      ],
       "horarios": [
         "08:00",
         "09:00",
@@ -130,6 +137,13 @@
         "activo": true,
         "sorteosPersistencia": 3
       },
+      "sondeosMultiples": [
+        { "id": 1, "activo": true, "minutosAntes": 50 },
+        { "id": 2, "activo": true, "minutosAntes": 40 },
+        { "id": 3, "activo": true, "minutosAntes": 28 },
+        { "id": 4, "activo": false, "minutosAntes": 20 },
+        { "id": 5, "activo": false, "minutosAntes": 10 }
+      ],
       "horarios": [
         "08:00",
         "09:00",
@@ -168,6 +182,13 @@
         "activo": true,
         "sorteosPersistencia": 3
       },
+      "sondeosMultiples": [
+        { "id": 1, "activo": true, "minutosAntes": 50 },
+        { "id": 2, "activo": true, "minutosAntes": 40 },
+        { "id": 3, "activo": true, "minutosAntes": 29 },
+        { "id": 4, "activo": false, "minutosAntes": 20 },
+        { "id": 5, "activo": false, "minutosAntes": 10 }
+      ],
       "horarios": [
         "08:00",
         "09:00",
@@ -208,6 +229,13 @@
         "activo": true,
         "sorteosPersistencia": 3
       },
+      "sondeosMultiples": [
+        { "id": 1, "activo": true, "minutosAntes": 50 },
+        { "id": 2, "activo": true, "minutosAntes": 40 },
+        { "id": 3, "activo": true, "minutosAntes": 27 },
+        { "id": 4, "activo": false, "minutosAntes": 20 },
+        { "id": 5, "activo": false, "minutosAntes": 10 }
+      ],
       "horarios": [
         "08:30",
         "09:30",

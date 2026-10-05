@@ -189,18 +189,47 @@ function renderLotteries(lotteries) {
           <span style="font-size:11px; color:var(--text-muted);">Cada origen se ejecuta con sus propios minutos de anticipación</span>
         </div>
 
-        <!-- 1. Detección Premier Pluss (Cupo 0 / Agotados) -->
-        <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.2); border-radius:8px; padding:12px; margin-bottom:10px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-            <label class="checkbox-label" style="font-weight:600;">
+        <!-- 1. Detección Premier Pluss (Cupo 0 / Agotados - Hasta 5 Sondeos Independientes) -->
+        <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:14px; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; border-bottom:1px solid rgba(239,68,68,0.15); padding-bottom:10px; margin-bottom:10px;">
+            <label class="checkbox-label" style="font-weight:700;">
               <input type="checkbox" class="lot-input-bloqueo-premier" data-index="${index}" ${lot.bloqueoPremierAgotados !== false ? 'checked' : ''}>
-              <span style="color:#f87171;">🔴 Bloquear Agotados Premier (Cupo Cero / Taquilla)</span>
+              <span style="color:#f87171; font-size:13px;">🔴 Bloquear Agotados Premier (Cupo Cero / Taquilla)</span>
             </label>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <label style="font-size:12px; color:var(--text-muted); font-weight:600;">⏱️ Ejecutar:</label>
-              <input type="number" class="form-input lot-input-minutos-premier" data-index="${index}" value="${lot.minutosAntesPremier || lot.minutosAntes || 30}" style="width:70px; padding:5px 8px; font-size:13px; text-align:center; background:#1e293b; color:#fff;" min="1" max="120">
-              <span style="font-size:12px; color:var(--text-muted);">minutos antes</span>
-            </div>
+            <span class="badge" style="background:rgba(239,68,68,0.15); color:#fca5a5; font-size:11px; font-weight:700;">
+              ⚡ Hasta 5 Sondeos por Sorteo
+            </span>
+          </div>
+
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+            Indica hasta 5 tiempos previos por sorteo para consultar Premier y bloquear en Triple 7 (ej. 50m antes, 40m antes, etc.):
+          </div>
+
+          <div class="multi-sondeo-grid">
+            ${[1, 2, 3, 4, 5].map(sId => {
+              const sList = (Array.isArray(lot.sondeosMultiples) && lot.sondeosMultiples.length > 0)
+                ? lot.sondeosMultiples
+                : [
+                    { id: 1, activo: true, minutosAntes: lot.minutosAntesPremier || 50 },
+                    { id: 2, activo: true, minutosAntes: 40 },
+                    { id: 3, activo: true, minutosAntes: 30 },
+                    { id: 4, activo: false, minutosAntes: 20 },
+                    { id: 5, activo: false, minutosAntes: 10 }
+                  ];
+              const sItem = sList.find(s => s.id === sId) || { id: sId, activo: (sId <= 2), minutosAntes: (60 - sId * 10) };
+              return `
+                <div class="multi-sondeo-item ${sItem.activo ? 'active-sondeo' : ''}">
+                  <div class="multi-sondeo-header">
+                    <span>Sondeo ${sId}</span>
+                    <input type="checkbox" class="lot-sondeo-chk lot-sondeo-chk-${sId}" data-lot-index="${index}" data-sondeo-id="${sId}" ${sItem.activo ? 'checked' : ''} onchange="this.closest('.multi-sondeo-item').classList.toggle('active-sondeo', this.checked)">
+                  </div>
+                  <div class="multi-sondeo-input-wrap">
+                    <input type="number" class="lot-sondeo-min lot-sondeo-min-${sId}" data-lot-index="${index}" data-sondeo-id="${sId}" value="${sItem.minutosAntes || 30}" min="1" max="120">
+                    <span>m antes</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
 
@@ -973,8 +1002,20 @@ async function saveLotteriesConfig() {
     if (lot) {
       lot.activo = el.querySelector('.lottery-active-toggle').checked;
       
-      const minPremInput = el.querySelector('.lot-input-minutos-premier') || el.querySelector('.lot-input-minutos');
-      lot.minutosAntesPremier = minPremInput ? (parseInt(minPremInput.value, 10) || 30) : (lot.minutosAntes || 30);
+      // Sondeos Múltiples Escalonados (Hasta 5)
+      const sondeosList = [];
+      for (let sId = 1; sId <= 5; sId++) {
+        const chk = el.querySelector(`.lot-sondeo-chk-${sId}`);
+        const minInput = el.querySelector(`.lot-sondeo-min-${sId}`);
+        sondeosList.push({
+          id: sId,
+          activo: chk ? chk.checked : false,
+          minutosAntes: minInput ? (parseInt(minInput.value, 10) || (sId === 1 ? 50 : 40)) : 30
+        });
+      }
+      lot.sondeosMultiples = sondeosList;
+      const primerActivo = sondeosList.find(s => s.activo);
+      lot.minutosAntesPremier = primerActivo ? primerActivo.minutosAntes : (lot.minutosAntesPremier || 30);
       lot.minutosAntes = lot.minutosAntesPremier;
 
       const minVfxInput = el.querySelector('.lot-input-minutos-visualfx');

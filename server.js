@@ -1381,93 +1381,108 @@ setInterval(async () => {
       }
 
       // =========================================================================
-      // 4. DISPARO DE SONDEO Y BLOQUEO EN PREMIER PLUSS (100% Independiente)
+      // 4. DISPARO DE SONDEO Y BLOQUEO EN PREMIER PLUSS (Hasta 5 Sondeos por Sorteo)
       // =========================================================================
       if (lot.bloqueoPremierAgotados !== false) {
-        const premierMinutesBefore = lot.minutosAntesPremier || lot.minutosAntes || 35;
-        const targetPremMinutes = drawMinutes - premierMinutesBefore;
-        const diffPrem = currentTotalMinutes - targetPremMinutes;
-        const keyPrem = `${todayStr}_${lot.id}_${hStr}_premier`;
+        let sondeosActivos = [];
+        if (Array.isArray(lot.sondeosMultiples) && lot.sondeosMultiples.length > 0) {
+          sondeosActivos = lot.sondeosMultiples
+            .filter(s => s && s.activo !== false && parseInt(s.minutosAntes, 10) > 0)
+            .sort((a, b) => parseInt(b.minutosAntes, 10) - parseInt(a.minutosAntes, 10));
+        }
 
-        if (diffPrem >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyPrem)) {
-          tareasEjecutadas.add(keyPrem);
-          log(`🔴 [ALARMA PREMIER PLUSS] Activando sondeo de cupo cero (${premierMinutesBefore}m antes) para ${lot.nombre} (Sorteo ${hStr})...`, 'log-warn');
+        if (sondeosActivos.length === 0) {
+          const minDef = parseInt(lot.minutosAntesPremier || lot.minutosAntes || 35, 10);
+          sondeosActivos = [ { id: 1, activo: true, minutosAntes: minDef } ];
+        }
 
-          try {
-            const machinesMgr = require('./machines_manager');
-            const historyMgr = require('./history_manager');
-            const t7 = require('./triple7_robot');
+        for (const sondeoCfg of sondeosActivos) {
+          const premierMinutesBefore = parseInt(sondeoCfg.minutosAntes, 10);
+          const targetPremMinutes = drawMinutes - premierMinutesBefore;
+          const diffPrem = currentTotalMinutes - targetPremMinutes;
+          const sNum = sondeoCfg.id || (sondeosActivos.indexOf(sondeoCfg) + 1);
+          const keyPrem = `${todayStr}_${lot.id}_${hStr}_premier_s${sNum}_${premierMinutesBefore}m`;
 
-            const esUltimo = esUltimoSorteoDelDia(cfg, currentTotalMinutes);
-            const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log, hStr, esUltimo);
-            const rojosPremier = (result && result.rojos) || [];
+          if (diffPrem >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyPrem)) {
+            tareasEjecutadas.add(keyPrem);
+            log(`🔴 [ALARMA PREMIER PLUSS: SONDEO ${sNum}/${sondeosActivos.length}] Activando sondeo (${premierMinutesBefore}m antes) para ${lot.nombre} (Sorteo ${hStr})...`, 'log-warn');
 
-            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
-            let t7Blocked = false;
+            try {
+              const machinesMgr = require('./machines_manager');
+              const historyMgr = require('./history_manager');
+              const t7 = require('./triple7_robot');
 
-            // Bloqueo en Triple 7 para el sorteo actual (asegurar hora válida hStr)
-            const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
-            if (cfg.general.triple7.enabled && rojosPremier.length > 0) {
-              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${rojosPremier.length} números agotados en Premier a Triple 7 para ${lot.nombre} (${targetDrawTime})...`, 'log-info');
-              try {
-                const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, rojosPremier);
-                t7Blocked = t7Res.ok;
-                t7Status = t7Res.ok ? `Bloqueados (${rojosPremier.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
-              } catch (t7Err) {
-                t7Status = `Error T7: ${t7Err.message}`;
-                log(`Error en auto-bloqueo Triple 7 (Premier): ${t7Err.message}`, 'log-danger');
+              const esUltimo = esUltimoSorteoDelDia(cfg, currentTotalMinutes);
+              const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log, hStr, esUltimo);
+              const rojosPremier = (result && result.rojos) || [];
+
+              let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+              let t7Blocked = false;
+
+              // Bloqueo en Triple 7 para el sorteo actual (asegurar hora válida hStr)
+              const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
+              if (cfg.general.triple7.enabled && rojosPremier.length > 0) {
+                log(`[AUTO-BLOQUEO TRIPLE 7 (SONDEO ${sNum})] Enviando ${rojosPremier.length} números agotados en Premier a Triple 7 para ${lot.nombre} (${targetDrawTime})...`, 'log-info');
+                try {
+                  const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, rojosPremier);
+                  t7Blocked = t7Res.ok;
+                  t7Status = t7Res.ok ? `Bloqueados (${rojosPremier.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+                } catch (t7Err) {
+                  t7Status = `Error T7: ${t7Err.message}`;
+                  log(`Error en auto-bloqueo Triple 7 (Premier Sondeo ${sNum}): ${t7Err.message}`, 'log-danger');
+                }
               }
-            }
 
-            // GESTIÓN DE MEMORIA PREMIER CUPO 0: Pre-bloqueo inmediato para los siguientes N sorteos
-            let siguientesSorteos = [];
-            if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
-              try {
-                const cupoMem = require('./cupo_cero_memory');
-                const persistencia = Math.min(Math.max(parseInt(lot.memoriaCupoCero.sorteosPersistencia, 10) || 3, 1), 5);
-                siguientesSorteos = cupoMem.obtenerSiguientesSorteos(lot.horarios || [], result.sorteo || hStr, persistencia);
+              // GESTIÓN DE MEMORIA PREMIER CUPO 0: Pre-bloqueo inmediato para los siguientes N sorteos
+              let siguientesSorteos = [];
+              if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
+                try {
+                  const cupoMem = require('./cupo_cero_memory');
+                  const persistencia = Math.min(Math.max(parseInt(lot.memoriaCupoCero.sorteosPersistencia, 10) || 3, 1), 5);
+                  siguientesSorteos = cupoMem.obtenerSiguientesSorteos(lot.horarios || [], result.sorteo || hStr, persistencia);
 
-                if (siguientesSorteos.length > 0) {
-                  log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia activa (${persistencia} sorteos). Pre-bloqueando [${rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}...`, 'log-info');
-                  cupoMem.registrarAgotadosPremier(lot.id, lot.nombre, result.sorteo || hStr, todayStr, rojosPremier, persistencia, siguientesSorteos);
+                  if (siguientesSorteos.length > 0) {
+                    log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia activa (${persistencia} sorteos). Pre-bloqueando [${rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}...`, 'log-info');
+                    cupoMem.registrarAgotadosPremier(lot.id, lot.nombre, result.sorteo || hStr, todayStr, rojosPremier, persistencia, siguientesSorteos);
 
-                  if (cfg.general.triple7.enabled) {
-                    for (const sFuturo of siguientesSorteos) {
-                      try {
-                        log(`🧠 [PRE-BLOQUEO TRIPLE 7] Bloqueando ${lot.nombre} (${sFuturo}): [${rojosPremier.join(', ')}]...`, 'log-info');
-                        const t7FuturoRes = await t7.bloquearNumeros(cfg, lot.nombre, sFuturo, rojosPremier);
-                        log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: ${t7FuturoRes.ok ? 'Bloqueado con éxito' : t7FuturoRes.message}`, t7FuturoRes.ok ? 'log-success' : 'log-warn');
-                      } catch (eFuturo) {
-                        log(`Aviso al pre-bloquear ${sFuturo} en Triple 7: ${eFuturo.message}`, 'log-danger');
+                    if (cfg.general.triple7.enabled) {
+                      for (const sFuturo of siguientesSorteos) {
+                        try {
+                          log(`🧠 [PRE-BLOQUEO TRIPLE 7] Bloqueando ${lot.nombre} (${sFuturo}): [${rojosPremier.join(', ')}]...`, 'log-info');
+                          const t7FuturoRes = await t7.bloquearNumeros(cfg, lot.nombre, sFuturo, rojosPremier);
+                          log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: ${t7FuturoRes.ok ? 'Bloqueado con éxito' : t7FuturoRes.message}`, t7FuturoRes.ok ? 'log-success' : 'log-warn');
+                        } catch (eFuturo) {
+                          log(`Aviso al pre-bloquear ${sFuturo} en Triple 7: ${eFuturo.message}`, 'log-danger');
+                        }
                       }
                     }
                   }
+                } catch (errMem) {
+                  log(`Aviso en pre-bloqueo de memoria: ${errMem.message}`, 'log-warn');
                 }
-              } catch (errMem) {
-                log(`Aviso en pre-bloqueo de memoria: ${errMem.message}`, 'log-warn');
               }
+
+              const rec = historyMgr.recordScan({
+                loteria: lot.nombre,
+                sorteo: result.sorteo || hStr,
+                montoSondeo: lot.montoSondeo || 3000,
+                totalAnimalesAnalizados: result.totalAnimalesAnalizados || 38,
+                rojosPremier: rojosPremier,
+                t7Status,
+                t7Blocked
+              });
+
+              syncToCloudImmediate(false);
+
+              log(`✅ [PREMIER PLUSS SONDEO ${sNum}/${sondeosActivos.length} COMPLETADO] ${lot.nombre} (${hStr} a -${premierMinutesBefore}m): Agotados detectados: [${rojosPremier.join(', ') || 'Ninguno'}] -> Triple 7: ${t7Status}`, 'log-success');
+
+              if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
+                const memMsg = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';
+                enviarTelegram(cfg, `🔴 *SONDEO PREMIER PLUSS REALIZADO (Sondeo ${sNum}/${sondeosActivos.length})*\n*${lot.nombre} - Sorteo ${hStr} (${premierMinutesBefore}m antes)*\n❌ Agotados (Cupo 0): ${rojosPremier.join(', ') || 'Ninguno'}${memMsg}\nTriple 7: ${t7Status}`);
+              }
+            } catch (e) {
+              log(`Error en sondeo independiente Premier Pluss (Sondeo ${sNum}): ${e.message}`, 'log-danger');
             }
-
-            const rec = historyMgr.recordScan({
-              loteria: lot.nombre,
-              sorteo: result.sorteo || hStr,
-              montoSondeo: lot.montoSondeo || 3000,
-              totalAnimalesAnalizados: result.totalAnimalesAnalizados || 38,
-              rojosPremier: rojosPremier,
-              t7Status,
-              t7Blocked
-            });
-
-            syncToCloudImmediate(false);
-
-            log(`✅ [PREMIER PLUSS SONDEO COMPLETADO] ${lot.nombre} (${hStr}): Agotados detectados: [${rojosPremier.join(', ') || 'Ninguno'}] -> Triple 7: ${t7Status}`, 'log-success');
-
-            if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
-              const memMsg = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';
-              enviarTelegram(cfg, `🔴 *SONDEO PREMIER PLUSS REALIZADO*\n*${lot.nombre} - Sorteo ${hStr} (${premierMinutesBefore}m antes)*\n❌ Agotados (Cupo 0): ${rojosPremier.join(', ') || 'Ninguno'}${memMsg}\nTriple 7: ${t7Status}`);
-            }
-          } catch (e) {
-            log(`Error en sondeo independiente Premier Pluss: ${e.message}`, 'log-danger');
           }
         }
       }
