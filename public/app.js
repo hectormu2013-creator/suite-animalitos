@@ -646,11 +646,18 @@ function bindActionButtons() {
     showToast(`⚡ Iniciando Sondeo de ${lotLabel}...`);
     
     try {
-      const res = await fetch('/api/sondeo/trigger-now', { 
+      let res = await fetch('/api/sondeo/trigger-now', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loteriaId })
       });
+      if (!res.ok && res.status === 404) {
+        res = await fetch('/api/trigger-test', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loteriaId })
+        });
+      }
       const data = await res.json();
       if (data.ok) {
         appendLog(`[EXITO] ✅ ${data.message}`, 'log-success');
