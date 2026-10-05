@@ -9,7 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 4500;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -346,6 +347,58 @@ app.post('/api/tunnel/restart', (req, res) => {
   res.json({ ok: true, message: 'Reiniciando túnel seguro...' });
 });
 
+// Helper de sincronización instantánea hacia Render
+function syncToCloudImmediate(resetAll = false) {
+  if (process.env.RENDER || process.env.IS_RENDER) return;
+  try {
+    const historyMgr = require('./history_manager');
+    const cupoMem = require('./cupo_cero_memory');
+    const cfg = getConfig();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const records = resetAll ? historyMgr.getHistory() : historyMgr.getHistory({ fecha: todayStr });
+    const memory = cupoMem.loadMemory();
+    const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_2';
+
+    const payload = JSON.stringify({
+      records,
+      memory,
+      resetAll,
+      machineId: localId,
+      tunnelUrl: currentTunnelUrl,
+      machineName: 'Nodo Taquilla (Hector Local)'
+    });
+
+    const https = require('https');
+    const syncReq = https.request({
+      hostname: 'suite-animalitos.onrender.com',
+      port: 443,
+      path: '/api/sync/receive-history',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      },
+      timeout: 10000
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          // Sync exitoso
+        } else {
+          console.warn(`[SYNC NUBE] HTTP ${res.statusCode}: ${res.statusMessage} - ${data.slice(0, 100)}`);
+        }
+      });
+    });
+    syncReq.on('error', () => {});
+    syncReq.on('timeout', () => syncReq.destroy());
+    syncReq.write(payload);
+    syncReq.end();
+  } catch (e) {
+    console.error(`[SYNC NUBE ERROR] ${e.message}`);
+  }
+}
+
 // --- API: INSTALADOR REMOTO Y REPORTE DE TÚNELES DE NODOS ---
 app.get('/api/installer/bootstrap.ps1', (req, res) => {
   const scriptPath = path.join(__dirname, 'scripts', 'bootstrap_node_installer.ps1');
@@ -541,10 +594,36 @@ app.post('/api/sync/receive-history', (req, res) => {
     const cupoMem = require('./cupo_cero_memory');
 
     if (resetAll && Array.isArray(records)) {
-      fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(records, null, 2), 'utf8');
-      historyMgr.rewriteCSV(records);
+      const cleanRecords = records.filter(r => !r.t7Status || !r.t7Status.includes('Playwright no está'));
+      fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cleanRecords, null, 2), 'utf8');
+      historyMgr.rewriteCSV(cleanRecords);
     } else if (Array.isArray(records)) {
-      records.forEach(r => historyMgr.recordScan(r));
+      let currentDb = [];
+      try {
+        if (fs.existsSync(historyMgr.DB_PATH)) {
+          currentDb = JSON.parse(fs.readFileSync(historyMgr.DB_PATH, 'utf8'));
+        }
+      } catch (e) { currentDb = []; }
+
+      // Eliminar registros fantasmas generados accidentalmente en Render por Playwright ausente
+      currentDb = currentDb.filter(r => !r.t7Status || !r.t7Status.includes('Playwright no está'));
+
+      for (const rec of records) {
+        if (rec.t7Status && rec.t7Status.includes('Playwright no está')) continue;
+        const recSorteo = rec.sorteo || rec.horaSorteo;
+        const idx = currentDb.findIndex(existing => {
+          const exSorteo = existing.sorteo || existing.horaSorteo;
+          return existing.id === rec.id || (existing.fecha === rec.fecha && existing.loteria === rec.loteria && exSorteo === recSorteo);
+        });
+        if (idx >= 0) {
+          currentDb[idx] = rec;
+        } else {
+          currentDb.unshift(rec);
+        }
+      }
+
+      fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(currentDb, null, 2), 'utf8');
+      historyMgr.rewriteCSV(currentDb);
     }
 
     if (memory) {
@@ -581,12 +660,19 @@ app.post('/api/sync/receive-history', (req, res) => {
       }
     }
 
-    log(`☁️ [SYNC NUBE] Recibidos y actualizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
+    log(`☁️ [SYNC NUBE] Recibidos y sincronizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
     res.json({ ok: true, count: Array.isArray(records) ? records.length : 0 });
   } catch (err) {
     log(`⚠️ Error en sync nube: ${err.message}`, 'log-danger');
     res.status(500).json({ ok: false, message: err.message });
   }
+});
+
+// Endpoint para forzar sincronización hacia Render desde el nodo local
+app.post('/api/sync/push-now', (req, res) => {
+  const resetAll = req.body && req.body.resetAll === true;
+  syncToCloudImmediate(resetAll);
+  res.json({ ok: true, message: 'Sincronización manual forzada a Render en ejecución' });
 });
 
 // API: Consulta de Animales Más Atrasados (Predictivo Visual-FX)
@@ -1053,6 +1139,11 @@ const tareasEjecutadas = new Set();
 const revisionesRealizadas = new Set();
 
 setInterval(async () => {
+  // CRÍTICO: Si estamos en la nube (Render), NO ejecutar tareas de escaneo ni bloqueos.
+  // Render corre en Linux sin GUI/Playwright y su reloj es UTC (+4h respecto a Venezuela).
+  // Solo la máquina local (Windows) ejecuta Premier Pluss y Triple 7.
+  if (process.env.RENDER || process.env.IS_RENDER) return;
+
   const cfg = getConfig();
   if (!cfg || !cfg.general.autoStartScheduler) return;
 
@@ -1061,40 +1152,7 @@ setInterval(async () => {
   const todayStr = now.toISOString().slice(0, 10);
 
   // Sincronización continua y automática con la nube (Render) desde el nodo local
-  if (!process.env.RENDER && !process.env.IS_RENDER) {
-    try {
-      const historyMgr = require('./history_manager');
-      const cupoMem = require('./cupo_cero_memory');
-      const records = historyMgr.getHistory({ fecha: todayStr });
-      const memory = cupoMem.loadMemory();
-
-      const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_1';
-      const https = require('https');
-      const payload = JSON.stringify({
-        records,
-        memory,
-        resetAll: false,
-        machineId: localId,
-        tunnelUrl: currentTunnelUrl,
-        machineName: localId === 'maquina_1' ? 'Nodo Taquilla Dedicado (Producción)' : 'Taquilla Local (Hector)'
-      });
-      const syncReq = https.request({
-        hostname: 'suite-animalitos.onrender.com',
-        port: 443,
-        path: '/api/sync/receive-history',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload)
-        },
-        timeout: 4000
-      }, () => {});
-      syncReq.on('error', () => {});
-      syncReq.on('timeout', () => syncReq.destroy());
-      syncReq.write(payload);
-      syncReq.end();
-    } catch (e) {}
-  }
+  syncToCloudImmediate(false);
 
   for (const lot of cfg.loterias) {
     if (!lot.activo) continue;
@@ -1150,6 +1208,8 @@ setInterval(async () => {
               t7Status,
               t7Blocked
             });
+
+            syncToCloudImmediate(false);
 
             const descFijos = fijosParaBloquear.map(f => `${f.numero} ${f.nombre}`).join(', ');
             log(`✅ [NÚMEROS FIJOS BLOQUEADOS] ${lot.nombre} (${hStr}): [${descFijos}] -> Triple 7: ${t7Status}`, 'log-success');
@@ -1219,6 +1279,8 @@ setInterval(async () => {
               t7Blocked
             });
 
+            syncToCloudImmediate(false);
+
             const descAleatorios = aleatorios.map(a => `${a.numero} ${a.nombre}`).join(', ');
             log(`✅ [SISTEMA ALEATORIO BLOQUEADO] ${lot.nombre} (${hStr}): [${descAleatorios}] -> Triple 7: ${t7Status}`, 'log-success');
 
@@ -1278,6 +1340,8 @@ setInterval(async () => {
               t7Status,
               t7Blocked
             });
+
+            syncToCloudImmediate(false);
 
             const descAtrasados = atrasados.map(a => `${a.numero} ${a.nombre} (${a.sorteosAtraso}s)`).join(', ');
             log(`✅ [VISUAL-FX BLOQUEADO] ${lot.nombre} (${hStr}): [${descAtrasados}] -> Triple 7: ${t7Status}`, 'log-success');
@@ -1368,6 +1432,8 @@ setInterval(async () => {
               t7Status,
               t7Blocked
             });
+
+            syncToCloudImmediate(false);
 
             log(`✅ [PREMIER PLUSS SONDEO COMPLETADO] ${lot.nombre} (${hStr}): Agotados detectados: [${rojosPremier.join(', ') || 'Ninguno'}] -> Triple 7: ${t7Status}`, 'log-success');
 
@@ -1475,6 +1541,8 @@ setInterval(async () => {
               const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
               log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
 
+              syncToCloudImmediate(false);
+
               if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
                 enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
               }
@@ -1509,6 +1577,8 @@ setInterval(async () => {
               const updatedAtrasados = predictive.getMostDelayedNumbers(lot.id, 5);
               const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
               log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
+
+              syncToCloudImmediate(false);
 
               if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
                 enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 2do intento (+10 min)!`);
