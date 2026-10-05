@@ -152,6 +152,21 @@ public class StepTester {
     [DllImport("user32.dll")]
     public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr OpenWindowStation(string lpszWinSta, bool fInherit, uint dwDesiredAccess);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetProcessWindowStation(IntPtr hWinSta);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr OpenDesktop(string lpszDesktop, uint dwFlags, bool fInherit, uint dwDesiredAccess);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetThreadDesktop(IntPtr hDesktop);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumDesktopWindows(IntPtr hDesktop, EnumWindowsProc lpfn, IntPtr lParam);
+
     [DllImport("user32.dll")]
     public static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
 
@@ -237,21 +252,58 @@ public class StepTester {
     }
 
     public static IntPtr FindPremier() {
+        // Asegurar conexion a la estacion interactiva y escritorio Default
+        try {
+            IntPtr hw = OpenWindowStation("WinSta0", false, 0x10000000);
+            if (hw != IntPtr.Zero) SetProcessWindowStation(hw);
+            IntPtr hd = OpenDesktop("Default", 0, false, 0x10000000);
+            if (hd != IntPtr.Zero) SetThreadDesktop(hd);
+        } catch {}
+
         IntPtr found = IntPtr.Zero;
         try {
             Process[] procs = Process.GetProcessesByName("PremierPlussPC20");
             foreach (Process p in procs) {
                 IntPtr mw = p.MainWindowHandle;
                 if (mw != IntPtr.Zero) {
-                    found = mw;
-                    break;
+                    return mw;
                 }
+            }
+        } catch {}
+
+        // EnumDesktopWindows en escritorio interactivo Default
+        try {
+            IntPtr hd = OpenDesktop("Default", 0, false, 0x10000000);
+            if (hd != IntPtr.Zero) {
+                EnumDesktopWindows(hd, (hWnd, lParam) => {
+                    uint pid = 0;
+                    GetWindowThreadProcessId(hWnd, out pid);
+                    try {
+                        Process p = Process.GetProcessById((int)pid);
+                        if (p.ProcessName.Equals("PremierPlussPC20", StringComparison.OrdinalIgnoreCase)) {
+                            RECT r;
+                            GetWindowRect(hWnd, out r);
+                            int w = r.Right - r.Left;
+                            int h = r.Bottom - r.Top;
+                            bool vis = IsWindowVisible(hWnd);
+                            bool min = IsIconic(hWnd);
+                            if (min || (vis && w > 300 && h > 200)) {
+                                found = hWnd;
+                                return false;
+                            }
+                            if (found == IntPtr.Zero) {
+                                found = hWnd;
+                            }
+                        }
+                    } catch {}
+                    return true;
+                }, IntPtr.Zero);
             }
         } catch {}
 
         if (found == IntPtr.Zero) {
             EnumWindows((hWnd, lParam) => {
-                uint pid;
+                uint pid = 0;
                 GetWindowThreadProcessId(hWnd, out pid);
                 try {
                     Process p = Process.GetProcessById((int)pid);
