@@ -73,6 +73,10 @@
           <div class="currency-indicator" style="display:flex; align-items:center; gap:6px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); padding:6px 12px; border-radius:8px; font-weight:700; font-size:12px; color:#34d399;">
             <span>💵 Moneda Forzada:</span> <span style="background:#10b981; color:#0f172a; padding:2px 6px; border-radius:4px;">BS</span>
           </div>
+          <button id="btn-header-sondeo-now" class="btn btn-sm btn-primary" title="Ejecutar Sondeo en Premier Pluss y Bloqueo en Triple 7 de inmediato" style="display:flex; align-items:center; gap:6px; font-weight:800; font-size:12px; background:linear-gradient(135deg, #0284c7, #2563eb); border:1px solid #38bdf8; padding:7px 14px; border-radius:8px; box-shadow:0 0 12px rgba(37,99,235,0.5); cursor:pointer; color:#fff;">
+            <span>⚡</span>
+            <span>EJECUTAR SONDEO AHORA</span>
+          </button>
           <span class="status-pill status-idle" id="bot-control-pill">⚪ EN REPOSO</span>
         </div>
       </header>
@@ -83,10 +87,12 @@
           <div class="lottery-picker-wrap">
             <label for="select-test-lottery" class="control-label">Lotería a Sondeos:</label>
             <select id="select-test-lottery" class="form-input control-select">
+              <option value="AUTO">🎯 Próximo Sorteo Automático</option>
               <option value="guacharo_activo">🦜 Guácharo Activo (77)</option>
               <option value="lotto_activo">🎰 Lotto Activo (38)</option>
               <option value="la_granjita">🐸 La Granjita (38)</option>
               <option value="guacharo_millonario">🦅 Guacharito Millonario (101)</option>
+              <option value="selva_plus">🌿 Selva Plus (38)</option>
             </select>
           </div>
           <div class="control-status-info">
@@ -96,14 +102,14 @@
         </div>
 
         <div class="control-bar-buttons">
+          <button class="btn btn-primary" id="btn-run-manual-test" title="Ejecuta el sondeo de inmediato (selecciona lotería y próximo sorteo automáticamente)" style="background:linear-gradient(135deg, #0284c7, #2563eb); font-weight:700;">
+            <span class="btn-icon">⚡</span>
+            <span>Ejecutar Sondeo Ahora</span>
+          </button>
+
           <button class="btn btn-hibrido" id="btn-run-hybrid-test" title="Sondea la lotería y sorteo actualmente seleccionados en Premier Pluss por el operador (Recomendado)">
             <span class="btn-icon">🎯</span>
             <span>Sondeo Híbrido (Pantalla)</span>
-          </button>
-
-          <button class="btn btn-primary" id="btn-run-manual-test" title="Sondeo completamente automático (selecciona lotería y sorteo automáticamente)">
-            <span class="btn-icon">⚡</span>
-            <span>Sondeo Auto</span>
           </button>
           
           <button class="btn btn-warning" id="btn-pause-automation" disabled title="Pausar inyección temporalmente (Atajo: F7)">

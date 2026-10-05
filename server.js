@@ -777,21 +777,43 @@ app.post('/api/trophies/simulate', (req, res) => {
   res.json(result);
 });
 
-// API: Disparar Chequeo de Prueba
-app.post('/api/trigger-test', async (req, res) => {
+// API: Disparar Chequeo de Prueba / Sondeo Inmediato
+async function handleExecuteSondeoNow(req, res) {
   const cfg = getConfig();
   const targetId = req.body && req.body.loteriaId;
-  let loteria = cfg.loterias.find(l => l.id === targetId) || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
-
   const modoHibrido = req.body && req.body.modoHibrido === true;
-
   const predictive = require('./predictive_service');
+
+  let loteria;
+  if (!targetId || targetId === 'AUTO') {
+    const now = new Date();
+    const curMinutes = now.getHours() * 60 + now.getMinutes();
+    let bestLot = null;
+    let minDiff = 99999;
+
+    for (const l of (cfg.loterias || []).filter(x => x.activo !== false)) {
+      const prox = predictive.calcularProximoSorteo(l.horarios);
+      if (prox) {
+        const [h, m] = prox.split(':').map(Number);
+        const drawMin = h * 60 + m;
+        const diff = drawMin - curMinutes;
+        if (diff >= 0 && diff < minDiff) {
+          minDiff = diff;
+          bestLot = l;
+        }
+      }
+    }
+    loteria = bestLot || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
+  } else {
+    loteria = cfg.loterias.find(l => l.id === targetId) || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
+  }
+
   let horaSorteo = (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(loteria.horarios) || '10:00';
 
   if (modoHibrido) {
     log(`🎯 [MODO HÍBRIDO ASISTIDO] Iniciando sondeo para selección actual en PremierPluss (${loteria.nombre})...`, 'log-warn');
   } else {
-    log(`Iniciando ejecución de sondeo manual en PremierPluss para ${loteria.nombre} (${horaSorteo})...`, 'log-warn');
+    log(`⚡ [EJECUTAR SONDEO AHORA] Iniciando ejecución manual en PremierPluss para ${loteria.nombre} (${horaSorteo})...`, 'log-warn');
   }
   
   try {
@@ -913,12 +935,15 @@ app.post('/api/trigger-test', async (req, res) => {
       enviarTelegram(cfg, `🦜 *${loteria.nombre} - Sorteo ${record.horaSorteo}*\n\n❌ *Premier Agotados (Cupo 0):* ${consolidated.rojosPremier.join(', ') || 'Ninguno'}${fijosText}${predText}${aleatText}${memText}\n🛡️ *Bloqueo Total:* ${consolidated.listaFinalNumeros.join(', ') || 'Ninguno'}\n🛡️ *Triple 7:* ${record.t7Status}`);
     }
 
-    res.json({ ok: true, message: 'Chequeo completado', result, consolidated, siguientesSorteosPrebloqueados: siguientesSorteos });
+    res.json({ ok: true, message: `Sondeo de ${loteria.nombre} (${record.horaSorteo}) ejecutado con éxito`, result, consolidated, siguientesSorteosPrebloqueados: siguientesSorteos });
   } catch (err) {
     log(`Falla en ejecución de sondeo: ${err.message}`, 'log-danger');
     res.status(500).json({ ok: false, message: err.message });
   }
-});
+}
+
+app.post('/api/trigger-test', handleExecuteSondeoNow);
+app.post('/api/sondeo/trigger-now', handleExecuteSondeoNow);
 
 // API: Obtener Estado y Sorteos Activos en Triple 7
 app.get('/api/triple7/status', async (req, res) => {

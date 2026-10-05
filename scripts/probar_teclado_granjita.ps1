@@ -226,10 +226,10 @@ foreach ($anim in $animalesGranjita) {
 Write-Output "`n[OK] Los 38 animales fueron ingresados al ticket."
 Start-Sleep -Milliseconds 500
 
-# 5. DISPARO DE VALIDACION: Clic en [Imprimir] (X=1015, Y=62)
+# 5. DISPARO DE VALIDACION: Clic en [Imprimir] (X=1280, Y=65)
 Write-Output "`n[EVALUACION] Disparando validacion con boton [Imprimir]..."
-[PremierGranjitaProbe]::Click(1015, 62)
-Start-Sleep -Milliseconds 2200
+[PremierGranjitaProbe]::Click(1280, 65)
+Start-Sleep -Milliseconds 2500
 
 # Función OCR de extracción de filas de la tabla
 function ExtraerFilasDePantalla($bmpScreen) {

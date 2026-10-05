@@ -122,7 +122,12 @@ public class PremierFullProbe {
             StringBuilder t = new StringBuilder(256);
             GetWindowText(ch, t, 256);
             string txt = t.ToString().Trim();
-            if (txt.Equals("Continuar", StringComparison.OrdinalIgnoreCase) || txt.Equals("&Continuar", StringComparison.OrdinalIgnoreCase)) {
+            if (txt.Equals("Continuar", StringComparison.OrdinalIgnoreCase) || 
+                txt.Equals("&Continuar", StringComparison.OrdinalIgnoreCase) ||
+                txt.Equals("Aceptar", StringComparison.OrdinalIgnoreCase) ||
+                txt.Equals("&Aceptar", StringComparison.OrdinalIgnoreCase) ||
+                txt.Equals("OK", StringComparison.OrdinalIgnoreCase) ||
+                txt.Equals("Cerrar", StringComparison.OrdinalIgnoreCase)) {
                 btn = ch;
                 return false;
             }
@@ -267,9 +272,9 @@ public class PremierFullProbe {
 
     public static void Click(int x, int y) {
         SetCursorPos(x, y);
-        System.Threading.Thread.Sleep(25);
+        System.Threading.Thread.Sleep(40);
         mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-        System.Threading.Thread.Sleep(25);
+        System.Threading.Thread.Sleep(50);
         mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
     }
 
@@ -894,12 +899,20 @@ foreach ($anim in $animales) {
 Write-Output "`n[OK] Los $($animales.Count) animales fueron ingresados al ticket."
 Start-Sleep -Milliseconds 500
 
-# 5. DISPARO DE VALIDACION: Clic en [Imprimir]
-Write-Output "[6/7] Disparando validacion con boton [Imprimir]..."
+# 5. DISPARO DE VALIDACION: Clic en [Imprimir] (X=1280, Y=65)
+Write-Output "[6/7] Disparando validacion con boton [Imprimir] (X=1280, Y=65)..."
 Check-SafetyAndControl "Boton Imprimir"
 Set-ControlState "RUNNING" "Disparando validacion con boton Imprimir"
-[PremierFullProbe]::Click(1015, 62)
-Start-Sleep -Milliseconds 2500
+[PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+Start-Sleep -Milliseconds 150
+[PremierFullProbe]::Click(1280, 65)
+Start-Sleep -Milliseconds 250
+# Segundo clic por seguridad para garantizar recepcion del evento de impresion
+[PremierFullProbe]::Click(1280, 65)
+Start-Sleep -Milliseconds 2800
+
+# Descartar cualquier cuadro de error o confirmacion
+[PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
 
 # Funcion interna de extraccion OCR + Color de la tabla
 function ExtraerFilasDePantalla($bmpScreen) {

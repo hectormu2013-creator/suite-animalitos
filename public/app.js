@@ -635,32 +635,47 @@ function bindActionButtons() {
     });
   }
 
-  // Probar Chequeo Manual / Iniciar Auto
-  document.getElementById('btn-run-manual-test').addEventListener('click', async () => {
+  // Ejecutar Sondeo Ahora (Botón principal y Botón Superior en Header)
+  async function triggerSondeoNow() {
     const lotSelect = document.getElementById('select-test-lottery');
-    const loteriaId = lotSelect ? lotSelect.value : 'guacharo_activo';
-    const lotLabel = lotSelect ? lotSelect.options[lotSelect.selectedIndex].text : loteriaId;
+    const loteriaId = lotSelect ? lotSelect.value : 'AUTO';
+    const lotLabel = lotSelect ? lotSelect.options[lotSelect.selectedIndex].text : 'Próximo Sorteo';
 
-    appendLog(`[ACCION] Iniciando prueba de chequeo en PremierPluss 2.0 para ${lotLabel}...`, 'log-warn');
-    updateControlUIState('RUNNING', { details: `Iniciando ${lotLabel}`, progress: 'Conectando...' });
+    appendLog(`[ACCION] ⚡ Disparando Sondeo Inmediato en Premier Pluss para ${lotLabel}...`, 'log-warn');
+    updateControlUIState('RUNNING', { details: `Sondeo Inmediato: ${lotLabel}`, progress: 'Conectando con taquilla...' });
+    showToast(`⚡ Iniciando Sondeo de ${lotLabel}...`);
     
     try {
-      const res = await fetch('/api/trigger-test', { 
+      const res = await fetch('/api/sondeo/trigger-now', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loteriaId })
       });
       const data = await res.json();
       if (data.ok) {
-        appendLog(`[EXITO] ${data.message}`, 'log-success');
-        showToast('Chequeo ejecutado exitosamente');
+        appendLog(`[EXITO] ✅ ${data.message}`, 'log-success');
+        showToast('Sondeo y Bloqueo completados');
+        if (typeof fetchDashboardData === 'function') fetchDashboardData();
+        if (typeof fetchTrophies === 'function') fetchTrophies();
       } else {
-        appendLog(`[ERROR] ${data.message}`, 'log-danger');
+        appendLog(`[ERROR] ❌ ${data.message}`, 'log-danger');
+        showToast(`Error: ${data.message}`, 'error');
       }
     } catch (err) {
-      appendLog(`[ERROR] Falla al comunicar con el bot: ${err.message}`, 'log-danger');
+      appendLog(`[ERROR] ❌ Falla de comunicación: ${err.message}`, 'log-danger');
+      showToast(`Falla de conexión: ${err.message}`, 'error');
     }
-  });
+  }
+
+  const btnManual = document.getElementById('btn-run-manual-test');
+  if (btnManual) {
+    btnManual.addEventListener('click', triggerSondeoNow);
+  }
+
+  const btnHeaderSondeo = document.getElementById('btn-header-sondeo-now');
+  if (btnHeaderSondeo) {
+    btnHeaderSondeo.addEventListener('click', triggerSondeoNow);
+  }
 
   // Botón Pausar (F7)
   document.getElementById('btn-pause-automation').addEventListener('click', async () => {

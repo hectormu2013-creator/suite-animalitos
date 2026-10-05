@@ -572,4 +572,20 @@ switch ($Paso) {
         Write-Output " -> [OK] Pantalla restablecida a 0 jugadas."
         Write-Output "`n[VERIFICACION] ¿Quedo la pantalla limpia en 0 jugadas?"
     }
+
+    5 {
+        Write-Output "`n[PASO 5] Probando Clic en Boton [Imprimir] (X=1280, Y=65)..."
+        [StepTester]::ShowWindow($hwnd, 9) | Out-Null
+        [StepTester]::ShowWindow($hwnd, 3) | Out-Null
+        [StepTester]::SetForegroundWindow($hwnd) | Out-Null
+        Start-Sleep -Milliseconds 400
+
+        Write-Output " -> Posicionando cursor y haciendo clic en boton [Imprimir] (X=1280, Y=65)..."
+        [StepTester]::Click(1280, 65)
+        Start-Sleep -Milliseconds 250
+        [StepTester]::Click(1280, 65)
+        Start-Sleep -Milliseconds 1500
+
+        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Hizo clic en el icono azul de la Impresora?"
+    }
 }

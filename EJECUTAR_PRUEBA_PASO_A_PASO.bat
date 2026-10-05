@@ -34,11 +34,12 @@ echo   --- PASOS INDIVIDUALES DE DIAGNOSTICO ---
 echo   [P1] Enfocar Taquilla y Descartar Error
 echo   [P3] Probar Inyeccion Rapida de 3 Animales de Prueba (00, 0, 1)
 echo   [P4] Limpieza de Pantalla con Tecla N (0 jugadas)
+echo   [P5] Probar Clic en Boton [Imprimir] (Validacion Cupos en Pantalla)
 echo.
 echo   [9] Salir
 echo.
 echo ======================================================================
-set /p opt="Selecciona una opcion (1-6, B, T, 0, P1, P3, P4, 9): "
+set /p opt="Selecciona una opcion (1-6, B, T, 0, P1, P3, P4, P5, 9): "
 
 if /i "%opt%"=="B" (
     call "%~dp0EJECUTAR_HIBRIDO_CON_BLOQUEO.bat"
@@ -154,6 +155,11 @@ if /i "%opt%"=="P3" (
 )
 if /i "%opt%"=="P4" (
     powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\probar_paso_a_paso.ps1" -Paso 4
+    pause
+    goto MENU
+)
+if /i "%opt%"=="P5" (
+    powershell.exe -ExecutionPolicy Bypass -File "%~dp0scripts\probar_paso_a_paso.ps1" -Paso 5
     pause
     goto MENU
 )
