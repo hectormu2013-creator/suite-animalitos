@@ -2,7 +2,8 @@ param(
     [string]$Loteria = "GUACHARO ACTIVO",
     [int]$MontoSondeo = 3000,
     [string]$HoraSorteo = "",
-    [switch]$CerrarAlFinalizar
+    [switch]$CerrarAlFinalizar,
+    [switch]$ModoHibrido
 )
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -67,6 +68,9 @@ public class PremierFullProbe {
 
     [DllImport("user32.dll")]
     public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetProcessDPIAware();
 
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int X, int Y);
@@ -302,6 +306,106 @@ public class PremierFullProbe {
 }
 "@
 
+[PremierFullProbe]::SetProcessDPIAware() | Out-Null
+
+function ObtenerCasillasMarcadas($bmpPantalla, $panelLeft = 320, $panelTop = 35, $panelWidth = 580, $panelHeight = 95) {
+    $w = [Math]::Min($panelWidth, ($bmpPantalla.Width - $panelLeft))
+    $h = [Math]::Min($panelHeight, ($bmpPantalla.Height - $panelTop))
+    if ($w -le 0 -or $h -le 0) { return @() }
+    $rect = New-Object System.Drawing.Rectangle $panelLeft, $panelTop, $w, $h
+    $crop = $bmpPantalla.Clone($rect, $bmpPantalla.PixelFormat)
+
+    $greenPoints = @()
+    for ($y = 0; $y -lt $crop.Height; $y++) {
+        for ($x = 0; $x -lt $crop.Width; $x++) {
+            $c = $crop.GetPixel($x, $y)
+            if ($c.G -gt 130 -and $c.G -gt ($c.R + 40) -and $c.G -gt ($c.B + 40)) {
+                $greenPoints += [PSCustomObject]@{ X = $x; Y = $y }
+            }
+        }
+    }
+    $crop.Dispose()
+
+    $clusters = @()
+    foreach ($pt in $greenPoints) {
+        $foundCl = $null
+        foreach ($cl in $clusters) {
+            if ([Math]::Abs($cl.X - $pt.X) -le 25 -and [Math]::Abs($cl.Y - $pt.Y) -le 20) {
+                $foundCl = $cl
+                break
+            }
+        }
+        if ($foundCl) {
+            $foundCl.Count++
+            $foundCl.SumX += $pt.X
+            $foundCl.SumY += $pt.Y
+        } else {
+            $clusters += [PSCustomObject]@{
+                X = $pt.X
+                Y = $pt.Y
+                SumX = $pt.X
+                SumY = $pt.Y
+                Count = 1
+            }
+        }
+    }
+
+    $cajas = @()
+    foreach ($cl in $clusters) {
+        if ($cl.Count -ge 20) {
+            $cajas += [PSCustomObject]@{
+                X = $panelLeft + [int]($cl.SumX / $cl.Count)
+                Y = $panelTop + [int]($cl.SumY / $cl.Count)
+                CropX = [int]($cl.SumX / $cl.Count)
+                CropY = [int]($cl.SumY / $cl.Count)
+                Pixels = $cl.Count
+            }
+        }
+    }
+    return $cajas
+}
+
+function AsegurarSoloProximoSorteo($isTester = $false) {
+    Write-Output " -> [SORTEO] Verificando casillas de sorteo marcadas en pantalla..."
+    Start-Sleep -Milliseconds 250
+    $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    $bmpScreen = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+    $g = [System.Drawing.Graphics]::FromImage($bmpScreen)
+    $g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+    $g.Dispose()
+
+    $marcadas = ObtenerCasillasMarcadas $bmpScreen 320 35 580 95
+    $bmpScreen.Dispose()
+
+    $hayNoDeseados = $false
+    foreach ($m in $marcadas) {
+        $esQ = ($m.CropX -lt 90 -and $m.CropY -lt 38)
+        if (-not $esQ) {
+            $hayNoDeseados = $true
+            break
+        }
+    }
+
+    if ($hayNoDeseados -or $marcadas.Count -gt 1) {
+        Write-Output " -> [SORTEO] Detectadas casillas marcadas previamente ($($marcadas.Count)). Limpiando..."
+        foreach ($m in $marcadas) {
+            Write-Output "    -> Desmarcando casilla en X=$($m.X), Y=$($m.Y)..."
+            [PremierFullProbe]::Click($m.X, $m.Y)
+            Start-Sleep -Milliseconds 120
+        }
+        Start-Sleep -Milliseconds 200
+        Write-Output " -> [SORTEO] Marcando exclusivamente el proximo sorteo con tecla 'Q'..."
+        try { [System.Windows.Forms.SendKeys]::SendWait("q") } catch {}
+        Start-Sleep -Milliseconds 250
+    } elseif ($marcadas.Count -eq 1) {
+        Write-Output " -> [SORTEO] El proximo sorteo (Q) ya esta marcado correctamente."
+    } else {
+        Write-Output " -> [SORTEO] Ningun sorteo marcado. Marcando proximo sorteo con tecla 'Q'..."
+        try { [System.Windows.Forms.SendKeys]::SendWait("q") } catch {}
+        Start-Sleep -Milliseconds 250
+    }
+}
+
 # Cargar Diccionario de Animalitos
 $dictFile = Join-Path $PSScriptRoot "animal_dictionary.json"
 $animalDict = @{}
@@ -419,6 +523,119 @@ function Check-SafetyAndControl {
     }
 }
 
+function BuscarPosicionLoteriaPorOCR($bmpPantalla, $nombreLoteria) {
+    # Recortar la columna de loterias (X: 10 a 360, Y: 80 a 580)
+    $cropX = 10
+    $cropY = 80
+    $cropW = 350
+    $cropH = 500
+
+    $rect = New-Object System.Drawing.Rectangle $cropX, $cropY, $cropW, $cropH
+    $crop = $bmpPantalla.Clone($rect, $bmpPantalla.PixelFormat)
+    $tempOcrLot = Join-Path $PSScriptRoot "temp_ocr_loteria_find.png"
+    $crop.Save($tempOcrLot, [System.Drawing.Imaging.ImageFormat]::Png)
+    $crop.Dispose()
+
+    try {
+        $storageFile = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync([System.IO.Path]::GetFullPath($tempOcrLot))) ([Windows.Storage.StorageFile])
+        $stream = Await ($storageFile.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+        $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+        $softwareBitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+        $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+        if ($null -eq $engine) {
+            $lang = [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages | Where-Object { $_.LanguageTag -like "es*" } | Select-Object -First 1
+            if (-not $lang) {
+                $lang = [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages | Select-Object -First 1
+            }
+            if ($lang) {
+                $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($lang)
+            }
+        }
+        $ocrRes = Await ($engine.RecognizeAsync($softwareBitmap)) ([Windows.Media.Ocr.OcrResult])
+
+        Write-Host " -> [OCR INFO] Lineas detectadas en columna de loterias: $(@($ocrRes.Lines).Count)" -ForegroundColor Cyan
+        $nomUpper = $nombreLoteria.ToUpper().Trim()
+
+        foreach ($line in $ocrRes.Lines) {
+            $rawText = $line.Text.Trim()
+            $t = $rawText.ToUpper()
+
+            # Normalizar variaciones de OCR sobre LOTTO: [OTTO, 1OTTO, |OTTO, IOTTO, OTTO ACTIVO -> LOTTO
+            $tNorm = $t -replace '[\[\|1!I]OTTO', 'LOTTO'
+            $tNorm = $tNorm -replace 'LOTO', 'LOTTO'
+            if ($tNorm -like "*OTTO ACTIVO*") {
+                $tNorm = $tNorm -replace 'OTTO ACTIVO', 'LOTTO ACTIVO'
+            }
+
+            # Extraer el nombre base removiendo conteos de sorteos como (1), (3), (I), "), etc.
+            $delim = @('(', '[', '"', "'", '=', ')', ']')
+            $tBase = $tNorm.Split($delim, [System.StringSplitOptions]::RemoveEmptyEntries)[0].Trim()
+
+            $match = $false
+
+            if ($nomUpper -like "*RICACHONA*") {
+                if ($tBase -like "*RICACHONA*") { $match = $true }
+            } elseif ($nomUpper -like "*GRANJITA*PLUS*") {
+                if ($tBase -like "*GRANJITA*PLUS*") { $match = $true }
+            } elseif ($nomUpper -like "*GRANJITA*") {
+                if ($tBase -like "*GRANJITA*" -and $tBase -notlike "*PLUS*") { $match = $true }
+            } elseif ($nomUpper -like "*CENTENA*PLUS*") {
+                if ($tBase -like "*CENTENA*PLUS*" -or $tBase -like "*CENTENA*PTUS*") { $match = $true }
+            } elseif ($nomUpper -like "*CENTENA*") {
+                if ($tBase -like "*CENTENA*" -and $tBase -notlike "*PLUS*" -and $tBase -notlike "*PTUS*") { $match = $true }
+            } elseif ($nomUpper -like "*CHANCE*") {
+                if ($tBase -like "*CHANCE*") { $match = $true }
+            } elseif ($nomUpper -like "*MILLONARIO*") {
+                if ($tBase -like "*MILLONARIO*" -or $tBase -like "*GUACHARITO*") { $match = $true }
+            } elseif ($nomUpper -like "*GUACHARO*") {
+                if ($tBase -like "*GUACHARO*" -and $tBase -notlike "*MILLONARIO*" -and $tBase -notlike "*GUACHARITO*") { $match = $true }
+            } elseif ($nomUpper -like "*LOTTO*INT*") {
+                if ($tNorm -like "*LOTTO*INT*" -or $tNorm -like "*LOTTO*'NT*" -or $tNorm -like "*LOTTO*ACTIVO*INT*") { $match = $true }
+            } elseif ($nomUpper -like "*LOTTO*") {
+                # LOTTO ACTIVO NACIONAL: debe coincidir con LOTTO, OTTO o ACTIVO, pero NO ser Internacional ('NT, INT, INTERNACIONAL, etc.) ni Guacharo
+                $esGuacharo = ($tNorm -like "*GUACHAR*")
+                $esInt = ($tNorm -like "*INT*" -or $tNorm -like "*'NT*" -or $tNorm -like "*INTERNACIONAL*")
+                $tieneLottoU_Otto = ($tNorm -like "*LOTTO*" -or $tNorm -like "*OTTO*")
+                $tieneActivo = ($tNorm -like "*ACTIVO*")
+
+                if (($tieneLottoU_Otto -or $tieneActivo) -and -not $esGuacharo -and -not $esInt) {
+                    $match = $true
+                }
+            } elseif ($nomUpper -like "*MEGA*") {
+                if ($tBase -like "*MEGA*") { $match = $true }
+            } elseif ($nomUpper -like "*SELVA*") {
+                if ($tBase -like "*SELVA*") { $match = $true }
+            } else {
+                if ($tBase -like ("*" + $nomUpper + "*")) { $match = $true }
+            }
+
+            if ($match) {
+                Write-Host " -> [OCR OK] Coincidencia confirmada: '$rawText' para '$nombreLoteria'" -ForegroundColor Green
+                $firstWord = $null
+                foreach ($w in $line.Words) { $firstWord = $w; break }
+                $topY = [int]$firstWord.BoundingRect.Y
+                $h = [int]$firstWord.BoundingRect.Height
+                $screenY = $cropY + $topY + [int]($h / 2)
+                return [PSCustomObject]@{
+                    Encontrado = $true
+                    Y = $screenY
+                    TextoDetectado = $rawText
+                }
+            }
+        }
+    } catch {
+        Write-Host " -> [AVISO OCR] Error durante escaneo de loterias: $($_.Exception.Message)" -ForegroundColor Yellow
+    } finally {
+        if (Test-Path $tempOcrLot) { Remove-Item $tempOcrLot -Force -ErrorAction SilentlyContinue }
+    }
+
+    return [PSCustomObject]@{
+        Encontrado = $false
+        Y = 0
+        TextoDetectado = ""
+    }
+}
+
 Write-Output "=========================================================="
 Write-Output "  SONDEO Y EXTRACCION DE AGOTADOS - $Loteria"
 Write-Output "  SEGURIDAD ACTIVA: [ESC/F8] Detener | [F7] Pausar/Continuar"
@@ -451,63 +668,126 @@ Write-Output "[1/7] Enfocando y maximizando Premier Pluss (Taquilla)..."
 [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
 Start-Sleep -Milliseconds 800
 
-# Limpieza inicial segura: descartar excepciones previas y cancelar cualquier menu emergente con ESC
-[PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
-try {
-    [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
-    Start-Sleep -Milliseconds 200
-} catch {}
+if (-not $ModoHibrido) {
+    # Limpieza inicial segura: descartar excepciones previas y cancelar cualquier menu emergente con ESC
+    [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
+    try {
+        [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
+        Start-Sleep -Milliseconds 200
+    } catch {}
 
-# =====================================================================
-# ASEGURAR SIEMPRE PESTAÑA ANIMALITOS (F2)
-# =====================================================================
-Write-Output "[1.2/7] Asegurando pestana ANIMALITOS con tecla F2..."
-try {
-    [System.Windows.Forms.SendKeys]::SendWait("{F2}")
+    # =====================================================================
+    # ASEGURAR SIEMPRE PESTAÑA ANIMALITOS (F2)
+    # =====================================================================
+    Write-Output "[1.2/7] Asegurando pestana ANIMALITOS con tecla F2..."
+    try {
+        [System.Windows.Forms.SendKeys]::SendWait("{F2}")
+        Start-Sleep -Milliseconds 300
+    } catch {}
+
+    # =====================================================================
+    # SELECCION OBLIGATORIA DE MONEDA: BS (BOLIVARES)
+    # =====================================================================
+    Write-Output "[1.5/7] Configurando moneda obligatoria en BS (Bolivares)..."
+    Check-SafetyAndControl "Configurando Moneda"
+
+    # 1. Clic en el boton de moneda para desplegar la lista (X=1096, Y=58 en 125% DPI)
+    [PremierFullProbe]::Click(1096, 58)
     Start-Sleep -Milliseconds 300
-} catch {}
 
-# =====================================================================
-# SELECCION OBLIGATORIA DE MONEDA: BS (BOLIVARES)
-# =====================================================================
-Write-Output "[1.5/7] Configurando moneda obligatoria en BS (Bolivares)..."
-Check-SafetyAndControl "Configurando Moneda"
+    # 2. La primera opcion de la lista desplegada es 'BS' (X=1096, Y=92 en 125% DPI)
+    [PremierFullProbe]::Click(1096, 92)
+    Start-Sleep -Milliseconds 300
+    Write-Output "[OK] Moneda fijada y confirmada en BS."
 
-# 1. Clic en el boton de moneda para desplegar la lista (X=1096, Y=58 en 125% DPI)
-[PremierFullProbe]::Click(1096, 58)
-Start-Sleep -Milliseconds 300
+    # 1. Localizar la loteria en pantalla mediante OCR visual directo (Cero coordenadas fijas)
+    Write-Output "[2/7] Localizando loteria '$Loteria' en el menu mediante OCR visual..."
+    Check-SafetyAndControl "Buscando Loteria por OCR"
 
-# 2. La primera opcion de la lista desplegada es 'BS' (X=1096, Y=92 en 125% DPI)
-[PremierFullProbe]::Click(1096, 92)
-Start-Sleep -Milliseconds 300
-Write-Output "[OK] Moneda fijada y confirmada en BS."
+    $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    $bmpScreenForFind = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+    $gFind = [System.Drawing.Graphics]::FromImage($bmpScreenForFind)
+    $gFind.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+    $gFind.Dispose()
 
-# 1. Seleccionar la loteria solicitada
-Write-Output "[2/7] Seleccionando Loteria: $Loteria..."
-Check-SafetyAndControl "Seleccionando Loteria"
+    $posLoteria = BuscarPosicionLoteriaPorOCR $bmpScreenForFind $Loteria
+    $bmpScreenForFind.Dispose()
 
-# Coordenadas Y exactas calibradas por OCR (1536x864, 125% DPI):
-# LA GRANJITA:           204
-# GUACHARITO MILLONARIO: 314
-# GUACHARO ACTIVO:       342
-# LOTTO ACTIVO:          369
-# SELVA PLUS:            452
-$loteriaY = switch -Wildcard ($Loteria.ToUpper().Trim()) {
-    "*MILLONARIO*"    { 314 }
-    "*GRANJITA*"      { 204 }
-    "*LOTTO ACTIVO*"  { 369 }
-    "*GUACHARO*"      { 342 }
-    "*SELVA PLUS*"    { 452 }
-    default           { 342 } # Guacharo por defecto
+    if (-not $posLoteria.Encontrado -or $posLoteria.Y -le 0) {
+        Write-Output "`n❌ [ALERTA OCR] La loteria '$Loteria' no se encuentra visible en el menu de Premier Pluss."
+        Write-Output " -> Causa: Todos sus sorteos del dia ya concluyeron (o aun no han abierto)."
+        Write-Output " -> Medida de seguridad: Se aborta la seleccion para evitar clics accidentales en otra loteria."
+
+        $errObj = [PSCustomObject]@{
+            ok = $false
+            error = "Loteria '$Loteria' no disponible en el menu (sorteos culminados por hoy)."
+            loteria = $Loteria
+            sorteo = if ($HoraSorteo) { $HoraSorteo } else { "Culminado" }
+            rojos = @()
+            naranjas = @()
+        }
+        Write-Output "JSON_OUTPUT_START"
+        Write-Output ($errObj | ConvertTo-Json -Compress)
+        Write-Output "JSON_OUTPUT_END"
+        exit 2
+    }
+
+    $loteriaY = $posLoteria.Y
+    Write-Output " -> [OCR EXITO] '$($posLoteria.TextoDetectado)' encontrada exactamente en Y=$loteriaY."
+    Write-Output " -> Haciendo clic en X=135, Y=$loteriaY..."
+    [PremierFullProbe]::Click(135, $loteriaY)
+    Start-Sleep -Milliseconds 600
+
+    # 2. Asegurar que no haya sorteos previos marcados y marcar exclusivamente el proximo (Q)
+    Write-Output "[3/7] Asegurando exclusivamente el proximo sorteo..."
+    Check-SafetyAndControl "Marcando Sorteo"
+    AsegurarSoloProximoSorteo $false
+} else {
+    Write-Output "`n🎯 [MODO HIBRIDO ACTIVADO] Operacion asistida por el operador:"
+    Write-Output " -> Manteniendo la loteria y el sorteo ya marcados en pantalla por el operador."
+    [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
+
+    # Auto-deteccion opcional mediante OCR del encabezado 'Sorteos: (...)'
+    try {
+        $bmpHeader = New-Object System.Drawing.Bitmap 480, 40
+        $gH = [System.Drawing.Graphics]::FromImage($bmpHeader)
+        $gH.CopyFromScreen(380, 26, 0, 0, (New-Object System.Drawing.Size 480, 40))
+        $gH.Dispose()
+
+        $tempHdrFile = Join-Path $PSScriptRoot "temp_ocr_header.png"
+        $bmpHeader.Save($tempHdrFile, [System.Drawing.Imaging.ImageFormat]::Png)
+        $bmpHeader.Dispose()
+
+        $storageFileH = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($tempHdrFile)) ([Windows.Storage.StorageFile])
+        $streamH = Await ($storageFileH.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+        $decoderH = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($streamH)) ([Windows.Graphics.Imaging.BitmapDecoder])
+        $sbH = Await ($decoderH.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+        $engineH = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+        $ocrResH = Await ($engineH.RecognizeAsync($sbH)) ([Windows.Media.Ocr.OcrResult])
+
+        $hdrTxt = $ocrResH.Text.ToUpper().Trim()
+        Write-Output " -> [LECTURA PANTALLA] Encabezado: '$hdrTxt'"
+        if ($hdrTxt -like "*MILLONARIO*") {
+            $Loteria = "GUACHARITO MILLONARIO"
+            Write-Output " -> [AUTO-DETECTADO] GUACHARITO MILLONARIO (101 animales)"
+        } elseif ($hdrTxt -like "*GUACHARO*") {
+            $Loteria = "GUACHARO ACTIVO"
+            Write-Output " -> [AUTO-DETECTADO] GUACHARO ACTIVO (77 animales)"
+        } elseif ($hdrTxt -like "*GRANJITA*") {
+            $Loteria = "LA GRANJITA"
+            Write-Output " -> [AUTO-DETECTADO] LA GRANJITA (38 animales)"
+        } elseif ($hdrTxt -like "*LOTTO*") {
+            $Loteria = "LOTTO ACTIVO"
+            Write-Output " -> [AUTO-DETECTADO] LOTTO ACTIVO (38 animales)"
+        } elseif ($hdrTxt -like "*SELVA*") {
+            $Loteria = "SELVA PLUS"
+            Write-Output " -> [AUTO-DETECTADO] SELVA PLUS (38 animales)"
+        }
+        if (Test-Path $tempHdrFile) { Remove-Item $tempHdrFile -Force }
+    } catch {
+        Write-Output " -> Usando perfil de loteria indicado: $Loteria"
+    }
 }
-[PremierFullProbe]::Click(120, $loteriaY)
-Start-Sleep -Milliseconds 500
-
-# 2. Marcar proximo sorteo en casilla 1 (X=328, Y=63 para todas las loterias)
-Write-Output "[3/7] Marcando casilla del proximo sorteo (Q)..."
-Check-SafetyAndControl "Marcando Sorteo"
-[PremierFullProbe]::Click(328, 63)
-Start-Sleep -Milliseconds 300
 
 # 3. Precargar Monto de sondeo en F6
 Write-Output "[4/7] Precargando Monto de sondeo ($MontoSondeo Bs)..."

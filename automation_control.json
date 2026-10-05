@@ -1,10 +1,10 @@
 {
-    "status":  "IDLE",
+    "status":  "STOPPED",
     "requestedAction":  "NONE",
-    "details":  "Sondeo completado con exito",
-    "loteria":  "GUACHARO MILLONARIO",
+    "details":  "Detenido de emergencia por teclado (ESC/F8)",
+    "loteria":  "LOTTO ACTIVO",
     "currentAnimal":  "",
     "progress":  "",
-    "pid":  32320,
-    "updatedAt":  "2026-10-04 17:04:42"
+    "pid":  26980,
+    "updatedAt":  "2026-10-05 13:32:27"
 }

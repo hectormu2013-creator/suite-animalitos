@@ -235,7 +235,7 @@ function requestRemoteScan(url, loteriaId, horaSorteo = '') {
  * 4. Si todas las máquinas fallan, la protección WEB (Fijos, Visual-FX, Aleatorios y Memoria)
  *    permanece 100% activa para proteger la banca en Triple 7.
  */
-async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, horaSorteo = '', cerrarAlFinalizar = false) {
+async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, horaSorteo = '', cerrarAlFinalizar = false, modoHibrido = false) {
   const list = getMachinesList(config)
     .filter(m => m.activa !== false)
     .sort((a, b) => (a.prioridad || 99) - (b.prioridad || 99));
@@ -267,7 +267,7 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, ho
           keepOpen: maquina.keepOpen !== false
         };
 
-        const result = await robot.ejecutarSondeoPremier(tempConfig, loteriaId, horaSorteo, cerrarAlFinalizar);
+        const result = await robot.ejecutarSondeoPremier(tempConfig, loteriaId, horaSorteo, cerrarAlFinalizar, modoHibrido);
         if (result && !result.cancelado && result.ok !== false && !result.error) {
           logFn(`✅ [PESCA EXITOSA] ${maquina.nombre} completó el sondeo en taquilla local. Cupo 0 detectados: [${(result.rojos || []).join(', ') || 'Ninguno'}]`, 'log-success');
           return {

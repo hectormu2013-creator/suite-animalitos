@@ -697,14 +697,20 @@ app.post('/api/trigger-test', async (req, res) => {
   const targetId = req.body && req.body.loteriaId;
   let loteria = cfg.loterias.find(l => l.id === targetId) || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
 
+  const modoHibrido = req.body && req.body.modoHibrido === true;
+
   const predictive = require('./predictive_service');
   let horaSorteo = (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(loteria.horarios) || '10:00';
 
-  log(`Iniciando ejecución de sondeo manual en PremierPluss para ${loteria.nombre} (${horaSorteo})...`, 'log-warn');
+  if (modoHibrido) {
+    log(`🎯 [MODO HÍBRIDO ASISTIDO] Iniciando sondeo para selección actual en PremierPluss (${loteria.nombre})...`, 'log-warn');
+  } else {
+    log(`Iniciando ejecución de sondeo manual en PremierPluss para ${loteria.nombre} (${horaSorteo})...`, 'log-warn');
+  }
   
   try {
     const machinesMgr = require('./machines_manager');
-    const result = await machinesMgr.ejecutarPescaEnCascada(cfg, loteria.id, log, horaSorteo);
+    const result = await machinesMgr.ejecutarPescaEnCascada(cfg, loteria.id, log, horaSorteo, false, modoHibrido);
     
     // Asegurar que result.sorteo tenga una hora válida para evitar rechazo en Triple 7
     if (!result.sorteo || !/\d{1,2}:\d{2}/.test(result.sorteo)) {

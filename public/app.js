@@ -605,7 +605,37 @@ function addNewMachineUI() {
 
 // Botones de acción
 function bindActionButtons() {
-  // Probar Chequeo Manual / Iniciar
+  // Sondeo Híbrido (Selección Actual en Premier Pluss)
+  const btnHybrid = document.getElementById('btn-run-hybrid-test');
+  if (btnHybrid) {
+    btnHybrid.addEventListener('click', async () => {
+      const lotSelect = document.getElementById('select-test-lottery');
+      const loteriaId = lotSelect ? lotSelect.value : 'guacharo_activo';
+      const lotLabel = lotSelect ? lotSelect.options[lotSelect.selectedIndex].text : loteriaId;
+
+      appendLog(`[ACCION] 🎯 Iniciando Sondeo Híbrido (usando selección actual en Premier Pluss para ${lotLabel})...`, 'log-warn');
+      updateControlUIState('RUNNING', { details: `Modo Híbrido: ${lotLabel}`, progress: 'Inyectando...' });
+
+      try {
+        const res = await fetch('/api/trigger-test', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loteriaId, modoHibrido: true })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          appendLog(`[EXITO] Sondeo Híbrido finalizado: ${data.message || 'Cupos procesados'}`, 'log-success');
+          showToast('Sondeo Híbrido completado');
+        } else {
+          appendLog(`[ERROR] ${data.message}`, 'log-danger');
+        }
+      } catch (err) {
+        appendLog(`[ERROR] Falla al comunicar en Sondeo Híbrido: ${err.message}`, 'log-danger');
+      }
+    });
+  }
+
+  // Probar Chequeo Manual / Iniciar Auto
   document.getElementById('btn-run-manual-test').addEventListener('click', async () => {
     const lotSelect = document.getElementById('select-test-lottery');
     const loteriaId = lotSelect ? lotSelect.value : 'guacharo_activo';

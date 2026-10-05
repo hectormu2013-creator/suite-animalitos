@@ -87,7 +87,7 @@ function detenerSondeo() {
 /**
  * Ejecutor interno individual de un sondeo
  */
-function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFinalizar = false) {
+function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFinalizar = false, modoHibrido = false) {
   return new Promise((resolve, reject) => {
     let loteria = config.loterias.find(l => l.id === loteriaId);
     if (!loteria) {
@@ -95,7 +95,8 @@ function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFina
     }
     const montoSondeo = loteria ? loteria.montoSondeo : 3000;
 
-    console.log(`[ROBOT PREMIER] Iniciando sondeo para ${loteria.nombre} (${horaSorteo || 'Próximo Sorteo'}) con monto ${montoSondeo} Bs...`);
+    const tipoDesc = modoHibrido ? 'SONDEO HÍBRIDO (SELECCIÓN ACTUAL)' : 'Sondeo Automático';
+    console.log(`[ROBOT PREMIER] Iniciando ${tipoDesc} para ${loteria.nombre} (${horaSorteo || 'Próximo Sorteo'}) con monto ${montoSondeo} Bs...`);
 
     const psScript = path.join(__dirname, 'scripts', 'sondeo_completo.ps1');
     if (!fs.existsSync(psScript)) {
@@ -107,7 +108,7 @@ function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFina
       fs.writeFileSync(CONTROL_PATH, JSON.stringify({
         status: 'RUNNING',
         requestedAction: 'NONE',
-        details: `Iniciando sondeo para ${loteria.nombre} (${horaSorteo || 'Próximo'})`,
+        details: `${tipoDesc}: ${loteria.nombre} (${horaSorteo || 'Próximo'})`,
         loteria: loteria.nombre,
         horaSorteo: horaSorteo || '',
         currentAnimal: '',
@@ -119,7 +120,8 @@ function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFina
 
     const horaParam = horaSorteo ? ` -HoraSorteo "${horaSorteo}"` : '';
     const cerrarParam = cerrarAlFinalizar ? ' -CerrarAlFinalizar' : '';
-    const command = `powershell.exe -ExecutionPolicy Bypass -File "${psScript}" -Loteria "${loteria.nombre}" -MontoSondeo ${montoSondeo}${horaParam}${cerrarParam}`;
+    const hibridoParam = modoHibrido ? ' -ModoHibrido' : '';
+    const command = `powershell.exe -ExecutionPolicy Bypass -File "${psScript}" -Loteria "${loteria.nombre}" -MontoSondeo ${montoSondeo}${horaParam}${cerrarParam}${hibridoParam}`;
 
     const child = exec(command, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       activeChildProcess = null;
@@ -188,7 +190,7 @@ async function procesarColaSondeos() {
   const currentTask = sondeoQueue.shift();
 
   try {
-    const result = await ejecutarSondeoInternal(currentTask.config, currentTask.loteriaId, currentTask.horaSorteo, currentTask.cerrarAlFinalizar);
+    const result = await ejecutarSondeoInternal(currentTask.config, currentTask.loteriaId, currentTask.horaSorteo, currentTask.cerrarAlFinalizar, currentTask.modoHibrido);
     currentTask.resolve(result);
   } catch (err) {
     currentTask.reject(err);
@@ -204,9 +206,9 @@ async function procesarColaSondeos() {
 /**
  * Encolar o ejecutar sondeo en Premier Pluss 2.0
  */
-function ejecutarSondeoPremier(config, loteriaId, horaSorteo = '', cerrarAlFinalizar = false) {
+function ejecutarSondeoPremier(config, loteriaId, horaSorteo = '', cerrarAlFinalizar = false, modoHibrido = false) {
   return new Promise((resolve, reject) => {
-    sondeoQueue.push({ config, loteriaId, horaSorteo, cerrarAlFinalizar, resolve, reject });
+    sondeoQueue.push({ config, loteriaId, horaSorteo, cerrarAlFinalizar, modoHibrido, resolve, reject });
     if (isProcessingQueue) {
       console.log(`[ROBOT PREMIER COLA] Hay un sondeo en curso en la taquilla. ${loteriaId} (${horaSorteo || 'Próximo'}) queda en cola de espera (Posición #${sondeoQueue.length}).`);
     }
