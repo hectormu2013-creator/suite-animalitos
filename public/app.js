@@ -2224,6 +2224,51 @@ function initTriple7Module() {
       applyTriple7FiltersAndRender();
     });
   }
+
+  // Botones rápidos de orden por hora
+  const btnSortTimeAsc = document.getElementById('btn-sort-time-asc');
+  if (btnSortTimeAsc) {
+    btnSortTimeAsc.addEventListener('click', () => {
+      if (sortSelect) sortSelect.value = 'TIME_ASC';
+      applyTriple7FiltersAndRender();
+    });
+  }
+  const btnSortTimeDesc = document.getElementById('btn-sort-time-desc');
+  if (btnSortTimeDesc) {
+    btnSortTimeDesc.addEventListener('click', () => {
+      if (sortSelect) sortSelect.value = 'TIME_DESC';
+      applyTriple7FiltersAndRender();
+    });
+  }
+
+  // Cabeceras interactivas clickeables en la tabla de sorteos Triple 7
+  const thHora = document.getElementById('th-sort-hora');
+  if (thHora) {
+    thHora.addEventListener('click', () => {
+      if (sortSelect) {
+        sortSelect.value = sortSelect.value === 'TIME_ASC' ? 'TIME_DESC' : 'TIME_ASC';
+        applyTriple7FiltersAndRender();
+      }
+    });
+  }
+  const thLoteria = document.getElementById('th-sort-loteria');
+  if (thLoteria) {
+    thLoteria.addEventListener('click', () => {
+      if (sortSelect) {
+        sortSelect.value = 'LOTTERY_NAME';
+        applyTriple7FiltersAndRender();
+      }
+    });
+  }
+  const thEstado = document.getElementById('th-sort-estado');
+  if (thEstado) {
+    thEstado.addEventListener('click', () => {
+      if (sortSelect) {
+        sortSelect.value = 'BLOCKED_FIRST';
+        applyTriple7FiltersAndRender();
+      }
+    });
+  }
 }
 
 function timeStringToMinutes(timeStr) {
@@ -2403,7 +2448,7 @@ function renderTriple7Table(draws) {
       <td><code style="font-family:monospace; color:#38bdf8;">${draw.idsol || '--'}</code></td>
       <td>
         ${draw.bloqueado
-          ? '<span class="status-pill status-blocked" style="background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#f87171; padding:3px 8px; border-radius:6px; font-weight:700; font-size:12px;">🔴 Animales Bloqueados</span>'
+          ? `<span class="status-pill status-blocked" style="background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#f87171; padding:3px 8px; border-radius:6px; font-weight:700; font-size:12px;" title="${(draw.animalesBloqueados || []).join(', ')}">🔴 ${draw.animalesBloqueados && draw.animalesBloqueados.length > 0 ? `Bloqueados (${draw.animalesBloqueados.length}): ${draw.animalesBloqueados.join(', ')}` : 'Animales Bloqueados'}</span>`
           : '<span class="status-pill status-idle" style="background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.2); color:#94a3b8; padding:3px 8px; border-radius:6px; font-size:12px;">⚪ Sin Bloqueos</span>'
         }
       </td>

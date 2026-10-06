@@ -143,9 +143,45 @@ async function httpLoginTriple7(config, forceRefresh = false) {
 }
 
 /**
- * Parsea el HTML de lista_sor_ag.php extrayendo filas de sorteos, opciones y botones
+ * Consulta la cadena aquistring oficial de Triple 7 que lista todos los sorteos
+ * e idani realmente bloqueados en la base de datos de la plataforma.
+ * Devuelve un Map: idsol -> Array de idani bloqueados.
  */
-function parseDrawsFromHtml(html) {
+async function fetchTriple7BlockedMap(config, cookie) {
+  const blockedMap = new Map();
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const checkUrl = `https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php?idsol=0&idani=0&fecha=${today}`;
+    const res = await httpRequest(checkUrl, {
+      headers: {
+        'Cookie': cookie,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': 'https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php'
+      }
+    });
+
+    const body = res.body || '';
+    const matches = body.match(/\*(\d+)(-[0-9-]+)?/g) || [];
+    for (const block of matches) {
+      const clean = block.replace(/\*/g, '');
+      const parts = clean.split('-');
+      const idsol = parts[0];
+      if (idsol && idsol !== '0') {
+        const animals = parts.slice(1).filter(a => a && a !== '0');
+        blockedMap.set(idsol, animals);
+      }
+    }
+  } catch (e) {
+    console.warn('[TRIPLE 7] Aviso al consultar aquistring:', e.message);
+  }
+  return blockedMap;
+}
+
+/**
+ * Parsea el HTML de lista_sor_ag.php extrayendo filas de sorteos, opciones y botones.
+ * Utiliza blockedMap para confirmar exactamente qué sorteos están bloqueados sin falsos positivos.
+ */
+function parseDrawsFromHtml(html, blockedMap = new Map()) {
   const rows = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
   const result = [];
 
@@ -190,10 +226,28 @@ function parseDrawsFromHtml(html) {
       }
     }
 
-    // Verificar si tiene botón de reincorporación (animales ya bloqueados)
-    const hasUnblockBtn = /REINCORPORAR\s*ANIMALITOS/i.test(rowHtml) ||
-                          /reiniciar_animalitos\.php/i.test(rowHtml) ||
-                          /value=["']REINCORPORAR/i.test(rowHtml);
+    // Comprobación ESTRICTA de botón físico en columna 4 (evitando falsos positivos de scripts)
+    const col4 = tds[3] || '';
+    const hasUnblockBtnInCol4 = /input[^>]+value=["']REINCORPORAR/i.test(col4) ||
+                                /detalle_ticket\s*\(/i.test(col4);
+
+    // Un sorteo está bloqueado si su idsol está en el registro oficial de Triple 7 (aquistring)
+    // O si físicamente se renderizó el botón en la cuarta columna
+    const isActuallyBlocked = (idsol && blockedMap.has(idsol)) || hasUnblockBtnInCol4;
+    const blockedAnimalsRaw = (idsol && blockedMap.get(idsol)) || [];
+
+    // Resolver nombres legibles de animales bloqueados
+    const blockedNames = [];
+    if (blockedAnimalsRaw.length > 0) {
+      for (const aId of blockedAnimalsRaw) {
+        const opt = options.find(o => o.value === aId || o.nombre === aId);
+        if (opt) {
+          blockedNames.push(opt.text || opt.nombre);
+        } else {
+          blockedNames.push(aId);
+        }
+      }
+    }
 
     result.push({
       loteria,
@@ -201,7 +255,8 @@ function parseDrawsFromHtml(html) {
       idsol,
       selectId,
       options,
-      bloqueado: hasUnblockBtn
+      bloqueado: isActuallyBlocked,
+      animalesBloqueados: blockedNames.length > 0 ? blockedNames : blockedAnimalsRaw
     });
   }
 
@@ -224,7 +279,10 @@ async function _obtenerEstadoBloqueosHttp(config) {
     res = await httpRequest(targetUrl, { headers: { 'Cookie': cookie } });
   }
 
-  const draws = parseDrawsFromHtml(res.body);
+  // Consultar en paralelo la base de datos de bloqueos reales (aquistring)
+  const blockedMap = await fetchTriple7BlockedMap(config, cookie);
+
+  const draws = parseDrawsFromHtml(res.body, blockedMap);
 
   // Filtrar exclusivamente por las loterías configuradas y activas a las que se les aplican bloqueos
   const activeLotNames = (config && Array.isArray(config.loterias))
@@ -239,7 +297,8 @@ async function _obtenerEstadoBloqueosHttp(config) {
     ok: true,
     draws: drawsFiltrados,
     totalPlataforma: draws.length,
-    totalGestionados: drawsFiltrados.length
+    totalGestionados: drawsFiltrados.length,
+    totalBloqueadosActivos: drawsFiltrados.filter(d => d.bloqueado).length
   };
 }
 
@@ -291,6 +350,13 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
   const bloqueadosExitosos = [];
   const fallidos = [];
 
+  const ajaxHeaders = {
+    'Cookie': cookie,
+    'X-Requested-With': 'XMLHttpRequest',
+    'Referer': 'https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php',
+    'Accept': 'application/json, text/javascript, */*; q=0.01'
+  };
+
   for (const numStr of numerosParaBloquear) {
     const numRaw = numStr.toString().trim();
     const numInt = parseInt(numRaw, 10);
@@ -324,11 +390,17 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
       continue;
     }
 
-    // Ejecutar petición GET directa a la URL de bloqueo del animal
+    // Ejecutar petición GET AJAX idéntica al navegador para registrar el bloqueo
     const blockUrl = `https://ny7.undo.it/Venta_Animalitos/${matchedOpt.url}`;
     try {
-      const blockRes = await httpRequest(blockUrl, { headers: { 'Cookie': cookie } });
-      if (blockRes.status >= 200 && blockRes.status < 400) {
+      const blockRes = await httpRequest(blockUrl, { headers: ajaxHeaders });
+      // Validar confirmación de backend: Triple 7 responde con aquistring que incluye el idsol
+      const isConfirmed = blockRes.status === 200 && (
+        (blockRes.body && blockRes.body.includes(`*${targetDraw.idsol}`)) ||
+        (blockRes.body && blockRes.body.includes(targetDraw.idsol))
+      );
+
+      if (isConfirmed) {
         bloqueadosExitosos.push({ numero: numRaw, animal: matchedOpt.text });
       } else {
         fallidos.push(numRaw);
@@ -344,7 +416,7 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     fallidos,
     message: bloqueadosExitosos.length > 0
       ? `Bloqueados exitosamente ${bloqueadosExitosos.length} números en ${targetDraw.loteria} (${targetDraw.sorteo}): [${bloqueadosExitosos.map(b => b.numero).join(', ')}]`
-      : `No se pudieron bloquear los números en Triple 7.`
+      : `No se pudieron bloquear los números en Triple 7 (fallidos: [${fallidos.join(', ')}]).`
   };
 }
 
@@ -376,37 +448,25 @@ async function _reincorporarAnimalitosHttp(config, loteriaNombre, sorteoHora) {
     return { ok: false, message: `No se encontró sorteo ${loteriaNombre} (${horaBuscada}) en Triple 7.` };
   }
 
-  // Buscar parámetros de reinicio en el HTML de la fila
-  const resetMatch = (targetDraw.rawRowHtml || '').match(/detalle_ticket\(\s*["']?([^"',)]+)["']?\s*,\s*["']?([^"',)]+)["']?\s*,\s*["']?([^"',)]+)["']?\s*\)/i);
-  if (resetMatch) {
-    const postData = querystring.stringify({
-      nticket: resetMatch[1],
-      jtipo: resetMatch[2],
-      modulo: resetMatch[3]
-    });
-    await httpRequest('https://ny7.undo.it/Venta_Animalitos/reiniciar_animalitos.php', {
-      method: 'POST',
-      headers: {
-        'Cookie': cookie,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }, postData);
-  } else if (targetDraw.idsol) {
-    // Fallback con idsol
-    const postData = querystring.stringify({
-      idsol: targetDraw.idsol,
-      accion: 'reincorporar'
-    });
-    await httpRequest('https://ny7.undo.it/Venta_Animalitos/reiniciar_animalitos.php', {
-      method: 'POST',
-      headers: {
-        'Cookie': cookie,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }, postData).catch(() => {});
+  if (!targetDraw.idsol) {
+    return { ok: false, message: `No se pudo obtener el ID del sorteo (idsol) para ${loteriaNombre} (${horaBuscada}).` };
   }
+
+  // Llamar al endpoint oficial reiniciar_animalitos.php
+  const postData = querystring.stringify({
+    nticket: targetDraw.idsol,
+    jtipo: '0',
+    modulo: '2'
+  });
+
+  await httpRequest('https://ny7.undo.it/Venta_Animalitos/reiniciar_animalitos.php', {
+    method: 'POST',
+    headers: {
+      'Cookie': cookie,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(postData)
+    }
+  }, postData);
 
   return {
     ok: true,

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261005_trophy_scroll_sync_v2">
+  <link rel="stylesheet" href="style.css?v=20261006_real_triple7_block_v3">
 </head>
 <body>
   <div class="app-layout">
@@ -498,16 +498,20 @@
               <h3>Sorteos Abiertos en NY7 (Loterías Gestionadas)</h3>
               <span class="panel-subtitle">Monitoreo dinámico del estado de bloqueo de las loterías con reglas activas</span>
             </div>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <select id="t7-filter-loteria" class="form-input" style="padding:6px 12px; font-size:12px; width:auto; background:#1e293b; color:#fff; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">
                 <option value="ALL">Todas las Gestionadas</option>
               </select>
-              <select id="t7-sort-order" class="form-input" style="padding:6px 12px; font-size:12px; width:auto; background:#1e293b; color:#fff; border-radius:6px; border:1px solid rgba(255,255,255,0.15);" title="Ordenar sorteos mostrados">
+              <select id="t7-sort-order" class="form-input" style="padding:6px 12px; font-size:12px; width:auto; background:#1e293b; color:#fff; border-radius:6px; border:1px solid rgba(59,130,246,0.4);" title="Ordenar sorteos mostrados">
                 <option value="TIME_ASC">🕒 Orden: Hora de Sorteo (Temprano a Tarde)</option>
                 <option value="TIME_DESC">🕒 Orden: Hora de Sorteo (Tarde a Temprano)</option>
                 <option value="BLOCKED_FIRST">🔴 Orden: Primero con Bloqueos Activos</option>
                 <option value="LOTTERY_NAME">🏷️ Orden: Por Lotería</option>
               </select>
+              <div class="btn-group" style="display:inline-flex; gap:4px;">
+                <button class="btn btn-sm btn-secondary" id="btn-sort-time-asc" title="Ordenar de más temprano a más tarde" style="padding:4px 8px; font-size:11px;">🕒 Hora ⬆</button>
+                <button class="btn btn-sm btn-secondary" id="btn-sort-time-desc" title="Ordenar de más tarde a más temprano" style="padding:4px 8px; font-size:11px;">🕒 Hora ⬇</button>
+              </div>
               <span class="badge" id="t7-table-count-badge">0 sorteos</span>
             </div>
           </div>
@@ -515,10 +519,10 @@
             <table class="data-table" id="t7-draws-table">
               <thead>
                 <tr>
-                  <th>Lotería</th>
-                  <th>Hora Sorteo</th>
+                  <th id="th-sort-loteria" style="cursor:pointer;" title="Clic para ordenar por Lotería">Lotería ⬍</th>
+                  <th id="th-sort-hora" style="cursor:pointer; color:#60a5fa;" title="Clic para ordenar por Hora de Sorteo">Hora Sorteo ⬍</th>
                   <th>ID Sorteo (idsol)</th>
-                  <th>Estado en Triple 7</th>
+                  <th id="th-sort-estado" style="cursor:pointer;" title="Clic para ordenar por Estado">Estado en Triple 7 ⬍</th>
                   <th>Acción</th>
                 </tr>
               </thead>
@@ -827,6 +831,6 @@
 
   <div id="toast" class="toast">Guardado exitosamente</div>
 
-  <script src="app.js?v=20261005_trophy_scroll_sync_v2"></script>
+  <script src="app.js?v=20261006_real_triple7_block_v3"></script>
 </body>
 </html>

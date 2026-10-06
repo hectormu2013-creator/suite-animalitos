@@ -1,149 +1,144 @@
 {
   "general": {
-    "suitePort": 4500,
-    "autoStartScheduler": true,
-    "horaActivacionDiaria": "07:00",
-    "activacionDiariaActiva": true,
-    "maquinaLocalId": "maquina_2",
-    "maquinaEncargadaVerificacionesId": "maquina_2",
+    "triple7": {
+      "url": "https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php",
+      "user": "AREYES",
+      "enabled": true,
+      "loginUrl": "https://ny7.undo.it/index.php",
+      "password": "220126"
+    },
     "maquinas": [
       {
         "id": "maquina_1",
-        "nombre": "Nodo de Pesca Dedicado (Producción)",
+        "notas": "Taquilla de pesca 24/7 dedicada (Auto-reporta túnel Cloudflare)",
         "activa": true,
+        "ipOUrl": "",
+        "nombre": "Nodo de Pesca Dedicado (Producción)",
+        "keepOpen": true,
         "prioridad": 1,
-        "esEncargadaVerificaciones": false,
-        "tipoPlataforma": "PREMIER_PLUS_20",
-        "usuarioPremier": "TCOP101",
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
-        "keepOpen": true,
-        "ipOUrl": "",
-        "notas": "Taquilla de pesca 24/7 dedicada (Auto-reporta túnel Cloudflare)"
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "usuarioPremier": "TCOP101",
+        "esEncargadaVerificaciones": false
       },
       {
         "id": "maquina_2",
-        "nombre": "Estación de Trabajo / Dev (Hector)",
+        "notas": "Túnel en vivo: 11:00:20 AM",
         "activa": true,
+        "ipOUrl": "https://bone-decimal-moreover-households.trycloudflare.com",
+        "nombre": "Estación de Trabajo / Dev (Hector)",
+        "keepOpen": true,
         "prioridad": 2,
-        "esEncargadaVerificaciones": true,
-        "tipoPlataforma": "PREMIER_PLUS_20",
-        "usuarioPremier": "TCOP102",
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
-        "keepOpen": true,
-        "ipOUrl": "http://127.0.0.1:4500",
-        "notas": "Estación de trabajo y verificaciones oficiales Visual-FX"
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "ultimaConexion": "2026-10-06T17:02:21.417Z",
+        "usuarioPremier": "TCOP102",
+        "esEncargadaVerificaciones": true
       }
     ],
     "telegram": {
+      "chatId": "",
       "enabled": false,
-      "botToken": "",
-      "chatId": ""
+      "botToken": ""
     },
+    "suitePort": 4500,
     "premierPluss": {
-      "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
       "user": "TCOP102",
-      "password": "123",
       "keepOpen": true,
+      "password": "123",
+      "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
       "cerrarAlFinalizarDia": true
     },
-    "triple7": {
-      "enabled": true,
-      "loginUrl": "https://ny7.undo.it/index.php",
-      "url": "https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php",
-      "user": "AREYES",
-      "password": "220126"
-    },
+    "maquinaLocalId": "maquina_2",
+    "autoStartScheduler": true,
     "mantenimientoVentas": {
       "activo": true,
-      "maxTicketsDia": 2,
-      "montoPorTicketBs": 10,
       "horariosVenta": [
         "11:00",
         "16:00"
       ],
+      "maxTicketsDia": 2,
+      "montoPorTicketBs": 10,
       "ticketsEmitidosHoy": 0
-    }
+    },
+    "horaActivacionDiaria": "07:00",
+    "activacionDiariaActiva": true,
+    "maquinaEncargadaVerificacionesId": "maquina_2"
   },
   "loterias": [
     {
       "id": "guacharo_activo",
-      "nombre": "GUACHARO ACTIVO",
       "activo": true,
-      "minutosAntes": 30,
-      "minutosAntesPremier": 30,
-      "minutosAntesVisualFx": 40,
-      "minutosAntesAleatorios": 45,
-      "minutosAntesFijos": 50,
+      "nombre": "GUACHARO ACTIVO",
+      "horarios": [
+        "08:00",
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
       "montoSondeo": 3000,
-      "totalAnimales": 77,
-      "bloquearSoloRojos": true,
-      "bloqueoPremierAgotados": true,
       "bloqueoFijos": true,
+      "minutosAntes": 40,
       "numerosFijos": [
         "75"
       ],
-      "bloqueoPredictivosAtrasados": true,
-      "cantidadPredictivosABloquear": 3,
-      "bloqueoAleatorioSistema": true,
-      "cantidadAleatoriosABloquear": 3,
+      "totalAnimales": 77,
       "memoriaCupoCero": {
         "activo": true,
         "sorteosPersistencia": 3
       },
       "sondeosMultiples": [
-        { "id": 1, "activo": true, "minutosAntes": 50 },
-        { "id": 2, "activo": true, "minutosAntes": 40 },
-        { "id": 3, "activo": true, "minutosAntes": 30 },
-        { "id": 4, "activo": false, "minutosAntes": 20 },
-        { "id": 5, "activo": false, "minutosAntes": 10 }
+        {
+          "id": 1,
+          "activo": true,
+          "minutosAntes": 40
+        },
+        {
+          "id": 2,
+          "activo": true,
+          "minutosAntes": 30
+        },
+        {
+          "id": 3,
+          "activo": false,
+          "minutosAntes": 30
+        },
+        {
+          "id": 4,
+          "activo": false,
+          "minutosAntes": 20
+        },
+        {
+          "id": 5,
+          "activo": false,
+          "minutosAntes": 10
+        }
       ],
-      "horarios": [
-        "08:00",
-        "09:00",
-        "10:00",
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "15:00",
-        "16:00",
-        "17:00",
-        "18:00",
-        "19:00"
-      ]
+      "bloquearSoloRojos": true,
+      "minutosAntesFijos": 50,
+      "minutosAntesPremier": 40,
+      "minutosAntesVisualFx": 40,
+      "bloqueoPremierAgotados": true,
+      "minutosAntesAleatorios": 45,
+      "bloqueoAleatorioSistema": true,
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadAleatoriosABloquear": 3,
+      "cantidadPredictivosABloquear": 3
     },
     {
       "id": "lotto_activo",
-      "nombre": "LOTTO ACTIVO",
       "activo": true,
-      "minutosAntes": 28,
-      "minutosAntesPremier": 28,
-      "minutosAntesVisualFx": 40,
-      "minutosAntesAleatorios": 45,
-      "minutosAntesFijos": 35,
-      "montoSondeo": 3000,
-      "totalAnimales": 38,
-      "bloquearSoloRojos": true,
-      "bloqueoPremierAgotados": true,
-      "bloqueoFijos": true,
-      "numerosFijos": [],
-      "bloqueoPredictivosAtrasados": true,
-      "cantidadPredictivosABloquear": 2,
-      "bloqueoAleatorioSistema": true,
-      "cantidadAleatoriosABloquear": 2,
-      "memoriaCupoCero": {
-        "activo": true,
-        "sorteosPersistencia": 3
-      },
-      "sondeosMultiples": [
-        { "id": 1, "activo": true, "minutosAntes": 50 },
-        { "id": 2, "activo": true, "minutosAntes": 40 },
-        { "id": 3, "activo": true, "minutosAntes": 28 },
-        { "id": 4, "activo": false, "minutosAntes": 20 },
-        { "id": 5, "activo": false, "minutosAntes": 10 }
-      ],
+      "nombre": "LOTTO ACTIVO",
       "horarios": [
         "08:00",
         "09:00",
@@ -157,38 +152,58 @@
         "17:00",
         "18:00",
         "19:00"
-      ]
+      ],
+      "montoSondeo": 3000,
+      "bloqueoFijos": true,
+      "minutosAntes": 38,
+      "numerosFijos": [],
+      "totalAnimales": 38,
+      "memoriaCupoCero": {
+        "activo": true,
+        "sorteosPersistencia": 3
+      },
+      "sondeosMultiples": [
+        {
+          "id": 1,
+          "activo": true,
+          "minutosAntes": 38
+        },
+        {
+          "id": 2,
+          "activo": true,
+          "minutosAntes": 28
+        },
+        {
+          "id": 3,
+          "activo": false,
+          "minutosAntes": 28
+        },
+        {
+          "id": 4,
+          "activo": false,
+          "minutosAntes": 20
+        },
+        {
+          "id": 5,
+          "activo": false,
+          "minutosAntes": 10
+        }
+      ],
+      "bloquearSoloRojos": true,
+      "minutosAntesFijos": 50,
+      "minutosAntesPremier": 38,
+      "minutosAntesVisualFx": 40,
+      "bloqueoPremierAgotados": true,
+      "minutosAntesAleatorios": 45,
+      "bloqueoAleatorioSistema": true,
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadAleatoriosABloquear": 2,
+      "cantidadPredictivosABloquear": 2
     },
     {
       "id": "la_granjita",
-      "nombre": "LA GRANJITA",
       "activo": true,
-      "minutosAntes": 29,
-      "minutosAntesPremier": 29,
-      "minutosAntesVisualFx": 40,
-      "minutosAntesAleatorios": 45,
-      "minutosAntesFijos": 35,
-      "montoSondeo": 3000,
-      "totalAnimales": 38,
-      "bloquearSoloRojos": true,
-      "bloqueoPremierAgotados": true,
-      "bloqueoFijos": true,
-      "numerosFijos": [],
-      "bloqueoPredictivosAtrasados": true,
-      "cantidadPredictivosABloquear": 2,
-      "bloqueoAleatorioSistema": true,
-      "cantidadAleatoriosABloquear": 2,
-      "memoriaCupoCero": {
-        "activo": true,
-        "sorteosPersistencia": 3
-      },
-      "sondeosMultiples": [
-        { "id": 1, "activo": true, "minutosAntes": 50 },
-        { "id": 2, "activo": true, "minutosAntes": 40 },
-        { "id": 3, "activo": true, "minutosAntes": 29 },
-        { "id": 4, "activo": false, "minutosAntes": 20 },
-        { "id": 5, "activo": false, "minutosAntes": 10 }
-      ],
+      "nombre": "LA GRANJITA",
       "horarios": [
         "08:00",
         "09:00",
@@ -202,40 +217,58 @@
         "17:00",
         "18:00",
         "19:00"
-      ]
-    },
-    {
-      "id": "guacharo_millonario",
-      "nombre": "GUACHARO MILLONARIO",
-      "activo": true,
-      "minutosAntes": 27,
-      "minutosAntesPremier": 27,
-      "minutosAntesVisualFx": 40,
-      "minutosAntesAleatorios": 45,
-      "minutosAntesFijos": 50,
-      "montoSondeo": 3000,
-      "totalAnimales": 101,
-      "bloquearSoloRojos": true,
-      "bloqueoPremierAgotados": true,
-      "bloqueoFijos": true,
-      "numerosFijos": [
-        "99"
       ],
-      "bloqueoPredictivosAtrasados": true,
-      "cantidadPredictivosABloquear": 3,
-      "bloqueoAleatorioSistema": true,
-      "cantidadAleatoriosABloquear": 3,
+      "montoSondeo": 3000,
+      "bloqueoFijos": true,
+      "minutosAntes": 37,
+      "numerosFijos": [],
+      "totalAnimales": 38,
       "memoriaCupoCero": {
         "activo": true,
         "sorteosPersistencia": 3
       },
       "sondeosMultiples": [
-        { "id": 1, "activo": true, "minutosAntes": 50 },
-        { "id": 2, "activo": true, "minutosAntes": 40 },
-        { "id": 3, "activo": true, "minutosAntes": 27 },
-        { "id": 4, "activo": false, "minutosAntes": 20 },
-        { "id": 5, "activo": false, "minutosAntes": 10 }
+        {
+          "id": 1,
+          "activo": true,
+          "minutosAntes": 37
+        },
+        {
+          "id": 2,
+          "activo": true,
+          "minutosAntes": 27
+        },
+        {
+          "id": 3,
+          "activo": false,
+          "minutosAntes": 29
+        },
+        {
+          "id": 4,
+          "activo": false,
+          "minutosAntes": 20
+        },
+        {
+          "id": 5,
+          "activo": false,
+          "minutosAntes": 10
+        }
       ],
+      "bloquearSoloRojos": true,
+      "minutosAntesFijos": 50,
+      "minutosAntesPremier": 37,
+      "minutosAntesVisualFx": 40,
+      "bloqueoPremierAgotados": true,
+      "minutosAntesAleatorios": 45,
+      "bloqueoAleatorioSistema": true,
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadAleatoriosABloquear": 2,
+      "cantidadPredictivosABloquear": 2
+    },
+    {
+      "id": "guacharo_millonario",
+      "activo": true,
+      "nombre": "GUACHARO MILLONARIO",
       "horarios": [
         "08:30",
         "09:30",
@@ -249,7 +282,55 @@
         "17:30",
         "18:30",
         "19:30"
-      ]
+      ],
+      "montoSondeo": 3000,
+      "bloqueoFijos": true,
+      "minutosAntes": 40,
+      "numerosFijos": [
+        "99"
+      ],
+      "totalAnimales": 101,
+      "memoriaCupoCero": {
+        "activo": true,
+        "sorteosPersistencia": 3
+      },
+      "sondeosMultiples": [
+        {
+          "id": 1,
+          "activo": true,
+          "minutosAntes": 40
+        },
+        {
+          "id": 2,
+          "activo": true,
+          "minutosAntes": 30
+        },
+        {
+          "id": 3,
+          "activo": false,
+          "minutosAntes": 27
+        },
+        {
+          "id": 4,
+          "activo": false,
+          "minutosAntes": 20
+        },
+        {
+          "id": 5,
+          "activo": false,
+          "minutosAntes": 10
+        }
+      ],
+      "bloquearSoloRojos": true,
+      "minutosAntesFijos": 55,
+      "minutosAntesPremier": 40,
+      "minutosAntesVisualFx": 40,
+      "bloqueoPremierAgotados": true,
+      "minutosAntesAleatorios": 45,
+      "bloqueoAleatorioSistema": true,
+      "bloqueoPredictivosAtrasados": true,
+      "cantidadAleatoriosABloquear": 3,
+      "cantidadPredictivosABloquear": 3
     }
   ],
   "historial": []

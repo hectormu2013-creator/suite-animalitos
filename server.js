@@ -1377,12 +1377,15 @@ setInterval(async () => {
           try {
             const predictive = require('./predictive_service');
             const historyMgr = require('./history_manager');
+            delete require.cache[require.resolve('./triple7_robot')];
             const t7 = require('./triple7_robot');
 
             const fijosParaBloquear = predictive.getFixedBlockNumbers(cfg, lot.id);
             const numerosParaBloquear = fijosParaBloquear.map(f => f.numero);
 
-            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+            let t7Status = !cfg.general.triple7.enabled 
+              ? 'Desactivado' 
+              : (numerosParaBloquear.length === 0 ? 'Sin fijos configurados' : 'Procesando Triple 7');
             let t7Blocked = false;
 
             if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
@@ -1390,7 +1393,7 @@ setInterval(async () => {
               try {
                 const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
                 t7Blocked = t7Res.ok;
-                t7Status = t7Res.ok ? `Bloqueados (${numerosParaBloquear.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+                t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
               } catch (t7Err) {
                 t7Status = `Error T7: ${t7Err.message}`;
                 log(`Error en auto-bloqueo Triple 7 (Fijos): ${t7Err.message}`, 'log-danger');
@@ -1439,6 +1442,7 @@ setInterval(async () => {
           try {
             const historyMgr = require('./history_manager');
             const predictive = require('./predictive_service');
+            delete require.cache[require.resolve('./triple7_robot')];
             const t7 = require('./triple7_robot');
 
             // Obtener números ya bloqueados en este sorteo hoy para no repetir
@@ -1452,7 +1456,9 @@ setInterval(async () => {
             const aleatorios = predictive.getRandomSystemBlockNumbers(lot.id, lot.cantidadAleatoriosABloquear, yaBloqueados);
             const numerosParaBloquear = aleatorios.map(a => a.numero);
 
-            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+            let t7Status = !cfg.general.triple7.enabled 
+              ? 'Desactivado' 
+              : (numerosParaBloquear.length === 0 ? 'Sin aleatorios a bloquear' : 'Procesando Triple 7');
             let t7Blocked = false;
 
             if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
@@ -1460,7 +1466,7 @@ setInterval(async () => {
               try {
                 const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
                 t7Blocked = t7Res.ok;
-                t7Status = t7Res.ok ? `Bloqueados (${numerosParaBloquear.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+                t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
               } catch (t7Err) {
                 t7Status = `Error T7: ${t7Err.message}`;
                 log(`Error en auto-bloqueo Triple 7 (Aleatorios): ${t7Err.message}`, 'log-danger');
@@ -1509,12 +1515,15 @@ setInterval(async () => {
           try {
             const predictive = require('./predictive_service');
             const historyMgr = require('./history_manager');
+            delete require.cache[require.resolve('./triple7_robot')];
             const t7 = require('./triple7_robot');
 
             const atrasados = predictive.getMostDelayedNumbers(lot.id, lot.cantidadPredictivosABloquear);
             const numerosParaBloquear = atrasados.map(a => a.numero);
 
-            let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+            let t7Status = !cfg.general.triple7.enabled 
+              ? 'Desactivado' 
+              : (numerosParaBloquear.length === 0 ? 'Sin atrasados detectados' : 'Procesando Triple 7');
             let t7Blocked = false;
 
             if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
@@ -1522,7 +1531,7 @@ setInterval(async () => {
               try {
                 const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
                 t7Blocked = t7Res.ok;
-                t7Status = t7Res.ok ? `Bloqueados (${numerosParaBloquear.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+                t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
               } catch (t7Err) {
                 t7Status = `Error T7: ${t7Err.message}`;
                 log(`Error en auto-bloqueo Triple 7 (Visual-FX): ${t7Err.message}`, 'log-danger');
@@ -1585,13 +1594,16 @@ setInterval(async () => {
             try {
               const machinesMgr = require('./machines_manager');
               const historyMgr = require('./history_manager');
+              delete require.cache[require.resolve('./triple7_robot')];
               const t7 = require('./triple7_robot');
 
               const esUltimo = esUltimoSorteoDelDia(cfg, currentTotalMinutes);
               const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log, hStr, esUltimo);
               const rojosPremier = (result && result.rojos) || [];
 
-              let t7Status = cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado';
+              let t7Status = !cfg.general.triple7.enabled 
+                ? 'Desactivado' 
+                : (rojosPremier.length === 0 ? 'Sin agotados (No requerido)' : 'Procesando Triple 7');
               let t7Blocked = false;
 
               // Bloqueo en Triple 7 para el sorteo actual (asegurar hora válida hStr)
@@ -1601,7 +1613,7 @@ setInterval(async () => {
                 try {
                   const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, rojosPremier);
                   t7Blocked = t7Res.ok;
-                  t7Status = t7Res.ok ? `Bloqueados (${rojosPremier.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+                  t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
                 } catch (t7Err) {
                   t7Status = `Error T7: ${t7Err.message}`;
                   log(`Error en auto-bloqueo Triple 7 (Premier Sondeo ${sNum}): ${t7Err.message}`, 'log-danger');
