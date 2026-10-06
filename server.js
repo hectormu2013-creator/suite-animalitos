@@ -1037,10 +1037,11 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
     if (cfg.general.triple7.enabled && consolidated.listaFinalNumeros.length > 0) {
       log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para sorteo actual ${drawTargetT7}...`, 'log-info');
       try {
+        delete require.cache[require.resolve('./triple7_robot')];
         const t7 = require('./triple7_robot');
         const t7Res = await t7.bloquearNumeros(cfg, loteria.nombre, drawTargetT7, consolidated.listaFinalNumeros);
         record.t7Blocked = t7Res.ok;
-        record.t7Status = t7Res.ok ? `Bloqueados (${consolidated.listaFinalNumeros.length})` : `Error: ${t7Res.message}`;
+        record.t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length})` : `Error: ${t7Res.message}`;
         if (persistentRecord && persistentRecord.id) {
           historyMgr.updateT7Status(persistentRecord.id, record.t7Status, record.t7Blocked);
         }
@@ -1050,6 +1051,11 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
           historyMgr.updateT7Status(persistentRecord.id, record.t7Status, record.t7Blocked);
         }
         log(`Error en Triple 7: ${t7Err.message}`, 'log-danger');
+      }
+    } else {
+      record.t7Status = cfg.general.triple7.enabled ? 'Sin números para bloquear' : 'Desactivado';
+      if (persistentRecord && persistentRecord.id) {
+        historyMgr.updateT7Status(persistentRecord.id, record.t7Status, record.t7Blocked);
       }
     }
 
@@ -1248,6 +1254,15 @@ app.post('/api/restart', async (req, res) => {
   }, 1000);
 
   res.json({ ok: true, message: 'Proceso reiniciado desde cero' });
+});
+
+// API: Reinicio Limpio del Proceso Node.js (Servidor Local)
+app.post('/api/system/restart-clean', (req, res) => {
+  log('🔄 [SISTEMA] Reinicio limpio de Node.js solicitado. Liberando proceso...', 'log-warn');
+  res.json({ ok: true, message: 'Proceso Node.js finalizando para reinicio limpio.' });
+  setTimeout(() => {
+    process.exit(0);
+  }, 400);
 });
 
 // API: Enviar Test a Telegram
