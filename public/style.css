@@ -1724,7 +1724,7 @@ body {
   display: flex;
   gap: 18px;
   align-items: flex-start;
-  min-height: 580px;
+  min-height: 1100px;
 }
 
 @media (max-width: 992px) {
@@ -1734,7 +1734,7 @@ body {
 }
 
 .lottery-subnav-sidebar {
-  width: 270px;
+  width: 290px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -1782,7 +1782,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 380px;
+  max-height: 760px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -1843,9 +1843,9 @@ body {
   min-width: 0;
 }
 
-/* Scroll delimitado para evitar que la sección de loterías tienda a infinito */
+/* Scroll delimitado para evitar que la sección de loterías tienda a infinito (doble de capacidad visual) */
 .lotteries-list-scroll {
-  max-height: 640px;
+  max-height: 1280px;
   overflow-y: auto;
   padding-right: 12px;
   display: flex;

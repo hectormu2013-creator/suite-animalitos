@@ -114,13 +114,15 @@ function BuscarPosicionLoteriaPorOCR($bmpPantalla, $nombreLoteria) {
 
             if ($match) {
                 Write-Host " -> [OCR OK] Coincidencia encontrada: '$rawText' para '$nombreLoteria'" -ForegroundColor Green
-                $firstWord = $null
-                foreach ($w in $line.Words) { $firstWord = $w; break }
+                $firstWord = $line.Words | Select-Object -First 1
                 $topY = [int]$firstWord.BoundingRect.Y
                 $h = [int]$firstWord.BoundingRect.Height
                 $screenY = $cropY + $topY + [int]($h / 2)
+                $leftX = [int]$firstWord.BoundingRect.X
+                $screenX = [Math]::Max(80, [Math]::Min(150, ($cropX + $leftX + 25)))
                 return [PSCustomObject]@{
                     Encontrado = $true
+                    X = $screenX
                     Y = $screenY
                     TextoDetectado = $rawText
                 }
@@ -134,8 +136,49 @@ function BuscarPosicionLoteriaPorOCR($bmpPantalla, $nombreLoteria) {
 
     return [PSCustomObject]@{
         Encontrado = $false
+        X = 135
         Y = 0
         TextoDetectado = ""
+    }
+}
+
+function ObtenerPosicionBotonImpresora($bmpPantalla) {
+    $cropX = [Math]::Max(750, [int]($bmpPantalla.Width * 0.55))
+    $cropY = 30
+    $cropW = $bmpPantalla.Width - $cropX - 10
+    $cropH = 80
+    
+    $rect = New-Object System.Drawing.Rectangle $cropX, $cropY, $cropW, $cropH
+    $crop = $bmpPantalla.Clone($rect, $bmpPantalla.PixelFormat)
+    
+    $bluePoints = @()
+    for ($x = 0; $x -lt $crop.Width; $x++) {
+        for ($y = 0; $y -lt $crop.Height; $y++) {
+            $p = $crop.GetPixel($x, $y)
+            if ($p.R -lt 45 -and $p.G -gt 120 -and $p.B -gt 205) {
+                $bluePoints += [PSCustomObject]@{ X = $x; Y = $y }
+            }
+        }
+    }
+    $crop.Dispose()
+    
+    if ($bluePoints.Count -gt 0) {
+        $minX = ($bluePoints | Measure-Object -Property X -Minimum).Minimum
+        $btn1 = $bluePoints | Where-Object { $_.X -ge $minX -and $_.X -le ($minX + 48) }
+        if ($btn1.Count -ge 30) {
+            $avgX = [int](($btn1 | Measure-Object -Property X -Average).Average)
+            $avgY = [int](($btn1 | Measure-Object -Property Y -Average).Average)
+            return [PSCustomObject]@{
+                X = $cropX + $avgX
+                Y = $cropY + $avgY
+                Detectado = $true
+            }
+        }
+    }
+    return [PSCustomObject]@{
+        X = 1280
+        Y = 65
+        Detectado = $false
     }
 }
 
@@ -413,7 +456,8 @@ function AsegurarSoloProximoSorteo($isTester = $true) {
 
     $hayNoDeseados = $false
     foreach ($m in $marcadas) {
-        $esQ = ($m.CropX -lt 90 -and $m.CropY -lt 38)
+        # La casilla Q se ubica en la esquina superior izquierda del panel de sorteos (X < 430, Y < 95)
+        $esQ = ($m.X -lt 430 -and $m.Y -lt 95)
         if (-not $esQ) {
             $hayNoDeseados = $true
             break
@@ -421,20 +465,28 @@ function AsegurarSoloProximoSorteo($isTester = $true) {
     }
 
     if ($hayNoDeseados -or $marcadas.Count -gt 1) {
-        Write-Output " -> [SORTEO] Detectadas casillas marcadas previamente ($($marcadas.Count)). Limpiando..."
+        Write-Output " -> [SORTEO] Detectadas casillas adicionales marcadas previamente ($($marcadas.Count)). Limpiando..."
         foreach ($m in $marcadas) {
-            Write-Output "    -> Desmarcando casilla en X=$($m.X), Y=$($m.Y)..."
-            if ($isTester) {
-                [StepTester]::Click($m.X, $m.Y)
-            } else {
-                [PremierFullProbe]::Click($m.X, $m.Y)
+            $esEstaQ = ($m.X -lt 430 -and $m.Y -lt 95)
+            if (-not $esEstaQ) {
+                Write-Output "    -> Desmarcando casilla no deseada en X=$($m.X), Y=$($m.Y)..."
+                if ($isTester) {
+                    [StepTester]::Click($m.X, $m.Y)
+                } else {
+                    [PremierFullProbe]::Click($m.X, $m.Y)
+                }
+                Start-Sleep -Milliseconds 120
             }
-            Start-Sleep -Milliseconds 120
         }
         Start-Sleep -Milliseconds 200
-        Write-Output " -> [SORTEO] Marcando exclusivamente el proximo sorteo con tecla 'Q'..."
-        try { [System.Windows.Forms.SendKeys]::SendWait("q") } catch {}
-        Start-Sleep -Milliseconds 250
+
+        # Verificar si Q quedo marcado
+        $tieneQ = ($marcadas | Where-Object { $_.X -lt 430 -and $_.Y -lt 95 })
+        if (-not $tieneQ) {
+            Write-Output " -> [SORTEO] Marcando exclusivamente el proximo sorteo con tecla 'Q'..."
+            try { [System.Windows.Forms.SendKeys]::SendWait("q") } catch {}
+            Start-Sleep -Milliseconds 250
+        }
     } elseif ($marcadas.Count -eq 1) {
         Write-Output " -> [SORTEO] El proximo sorteo (Q) ya esta marcado correctamente."
     } else {
@@ -508,9 +560,10 @@ switch ($Paso) {
         }
 
         $lotY = $pos.Y
-        Write-Output " -> [OCR EXITO] '$($pos.TextoDetectado)' encontrada exactamente en Y=$lotY."
-        Write-Output " -> Haciendo clic en X=135, Y=$lotY..."
-        [StepTester]::Click(135, $lotY)
+        $lotX = if ($pos.X -gt 0) { $pos.X } else { 135 }
+        Write-Output " -> [OCR EXITO] '$($pos.TextoDetectado)' encontrada en X=$lotX, Y=$lotY."
+        Write-Output " -> Haciendo clic en X=$lotX, Y=$lotY..."
+        [StepTester]::Click($lotX, $lotY)
         Start-Sleep -Milliseconds 600
 
         # Asegurar que no haya sorteos previos marcados y marcar exclusivamente el proximo (Q)
@@ -574,18 +627,26 @@ switch ($Paso) {
     }
 
     5 {
-        Write-Output "`n[PASO 5] Probando Clic en Boton [Imprimir] (X=1280, Y=65)..."
+        Write-Output "`n[PASO 5] Probando Clic en Boton [Imprimir] (Deteccion visual dinamica)..."
         [StepTester]::ShowWindow($hwnd, 9) | Out-Null
         [StepTester]::ShowWindow($hwnd, 3) | Out-Null
         [StepTester]::SetForegroundWindow($hwnd) | Out-Null
         Start-Sleep -Milliseconds 400
 
-        Write-Output " -> Posicionando cursor y haciendo clic en boton [Imprimir] (X=1280, Y=65)..."
-        [StepTester]::Click(1280, 65)
-        Start-Sleep -Milliseconds 250
-        [StepTester]::Click(1280, 65)
-        Start-Sleep -Milliseconds 1500
+        $boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
+        $gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
+        $gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
+        $gPBtn.Dispose()
 
-        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Hizo clic en el icono azul de la Impresora?"
+        $posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
+        $bmpForPrintBtn.Dispose()
+
+        Write-Output " -> [BOTON IMPRESORA] Ubicacion dinamica: X=$($posImpresora.X), Y=$($posImpresora.Y) (Detectado: $($posImpresora.Detectado))."
+        Write-Output " -> Ejecutando UN SOLO CLIC limpio para validar cupos (CERO segundo clic para evitar impresion fisica)..."
+        [StepTester]::Click($posImpresora.X, $posImpresora.Y)
+        Start-Sleep -Milliseconds 2000
+
+        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Hizo UN solo clic en el icono azul de la Impresora y se mostraron los cupos sin mandar a imprimir?"
     }
 }
