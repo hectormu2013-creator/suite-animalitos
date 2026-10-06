@@ -2174,6 +2174,35 @@ function initTriple7Module() {
     btnRefresh.addEventListener('click', () => loadTriple7Draws(true));
   }
 
+  const btnDispararT7 = document.getElementById('btn-disparar-bloqueo-t7');
+  if (btnDispararT7) {
+    btnDispararT7.addEventListener('click', async () => {
+      const lotId = document.getElementById('t7-manual-loteria') ? document.getElementById('t7-manual-loteria').value : 'AUTO';
+      btnDispararT7.classList.add('loading');
+      btnDispararT7.disabled = true;
+      try {
+        showToast('Enviando estrategia 5-vías a Triple 7...', 'info');
+        const res = await fetch('/api/triple7/bloquear-estrategia-ahora', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loteriaId: lotId })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast(data.message || 'Bloqueo aplicado en Triple 7 con éxito', 'success');
+          await loadTriple7Draws(true);
+        } else {
+          showToast('Aviso: ' + (data.message || 'No se pudo aplicar bloqueo'), 'error');
+        }
+      } catch (err) {
+        showToast('Error comunicando con Triple 7: ' + err.message, 'error');
+      } finally {
+        btnDispararT7.classList.remove('loading');
+        btnDispararT7.disabled = false;
+      }
+    });
+  }
+
   const btnBlockManual = document.getElementById('btn-t7-manual-block');
   if (btnBlockManual) {
     btnBlockManual.addEventListener('click', handleTriple7ManualBlock);

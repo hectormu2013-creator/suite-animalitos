@@ -1177,6 +1177,61 @@ app.post('/api/triple7/bloquear', async (req, res) => {
   }
 });
 
+// API: Bloquear Estrategia Completa Ahora (Fijos + Aleatorios + Visual-FX + Memoria) para el próximo sorteo en Triple 7
+app.post('/api/triple7/bloquear-estrategia-ahora', async (req, res) => {
+  const cfg = getConfig();
+  const { loteriaId, horaSorteo } = req.body;
+  const predictive = require('./predictive_service');
+  const historyMgr = require('./history_manager');
+
+  let loteria = (cfg.loterias || []).find(l => l.id === loteriaId || l.nombre === loteriaId);
+  if (!loteria) {
+    loteria = (cfg.loterias || []).find(l => l.activo) || (cfg.loterias || [])[0];
+  }
+  if (!loteria) {
+    return res.status(400).json({ ok: false, message: 'No se encontró la lotería indicada' });
+  }
+
+  const targetHour = horaSorteo || predictive.calcularProximoSorteo(loteria.horarios) || '14:00';
+  const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, { rojos: [] });
+  const numeros = consolidated.listaFinalNumeros || [];
+
+  if (numeros.length === 0) {
+    return res.json({ ok: true, message: `No hay números configurados para bloquear en ${loteria.nombre} (${targetHour})`, total: 0 });
+  }
+
+  log(`[TRIPLE 7 DISPARO MANUAL] Bloqueando ${numeros.length} números (${loteria.nombre} ${targetHour}): [${numeros.join(', ')}]...`, 'log-info');
+  try {
+    delete require.cache[require.resolve('./triple7_robot')];
+    const t7 = require('./triple7_robot');
+    const result = await t7.bloquearNumeros(cfg, loteria.nombre, targetHour, numeros);
+
+    const t7Status = result.ok ? `Bloqueados (${result.bloqueadosExitosos.length}) en Triple 7` : `Error: ${result.message}`;
+    historyMgr.recordScan({
+      loteria: loteria.nombre,
+      sorteo: targetHour,
+      montoSondeo: loteria.montoSondeo || 3000,
+      totalAnimalesAnalizados: loteria.totalAnimales || 38,
+      rojos: numeros,
+      rojosPremier: [],
+      numFijos: consolidated.numFijos,
+      fijosSeleccionados: consolidated.fijosSeleccionados,
+      predictivosVisualFx: consolidated.predictivosSeleccionados,
+      aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+      memoriaCupoCero: consolidated.memoriaSeleccionados,
+      numMemoriaCupoCero: consolidated.numMemoria,
+      t7Status,
+      t7Blocked: result.ok
+    });
+
+    syncToCloudImmediate(false);
+    res.json(result);
+  } catch (err) {
+    log(`❌ [TRIPLE 7 ERROR] ${err.message}`, 'log-danger');
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 // API: Reincorporar (Desbloquear) Manualmente en Triple 7
 app.post('/api/triple7/reincorporar', async (req, res) => {
   const cfg = getConfig();
@@ -1609,24 +1664,29 @@ setInterval(async () => {
             try {
               const machinesMgr = require('./machines_manager');
               const historyMgr = require('./history_manager');
+              const predictive = require('./predictive_service');
               delete require.cache[require.resolve('./triple7_robot')];
               const t7 = require('./triple7_robot');
 
               const esUltimo = esUltimoSorteoDelDia(cfg, currentTotalMinutes);
               const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log, hStr, esUltimo);
-              const rojosPremier = (result && result.rojos) || [];
 
+              // Consolidar lista completa de las 5 vías de protección:
+              // 1. Premier Cupo 0 + 2. Fijos + 3. Visual-FX Atrasados + 4. Cobertura Aleatoria + 5. Memoria Persistente
+              const consolidated = predictive.buildConsolidatedBlockList(cfg, lot.id, result);
+              const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
+
+              const numerosParaTriple7 = consolidated.listaFinalNumeros || [];
               let t7Status = !cfg.general.triple7.enabled 
                 ? 'Desactivado' 
-                : (rojosPremier.length === 0 ? 'Sin agotados (No requerido)' : 'Procesando Triple 7');
+                : (numerosParaTriple7.length === 0 ? 'Sin números para bloquear' : 'Procesando Triple 7');
               let t7Blocked = false;
 
-              // Bloqueo en Triple 7 para el sorteo actual (asegurar hora válida hStr)
-              const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
-              if (cfg.general.triple7.enabled && rojosPremier.length > 0) {
-                log(`[AUTO-BLOQUEO TRIPLE 7 (SONDEO ${sNum})] Enviando ${rojosPremier.length} números agotados en Premier a Triple 7 para ${lot.nombre} (${targetDrawTime})...`, 'log-info');
+              // Bloqueo total consolidado en Triple 7 para el sorteo objetivo
+              if (cfg.general.triple7.enabled && numerosParaTriple7.length > 0) {
+                log(`[AUTO-BLOQUEO TRIPLE 7 (SONDEO ${sNum})] Enviando ${numerosParaTriple7.length} números consolidados a Triple 7 para ${lot.nombre} (${targetDrawTime}): [${numerosParaTriple7.join(', ')}]...`, 'log-info');
                 try {
-                  const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, rojosPremier);
+                  const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, numerosParaTriple7);
                   t7Blocked = t7Res.ok;
                   t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
                 } catch (t7Err) {
@@ -1637,6 +1697,7 @@ setInterval(async () => {
 
               // GESTIÓN DE MEMORIA PREMIER CUPO 0: Pre-bloqueo inmediato para los siguientes N sorteos
               let siguientesSorteos = [];
+              const rojosPremier = consolidated.rojosPremier || [];
               if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
                 try {
                   const cupoMem = require('./cupo_cero_memory');
@@ -1666,17 +1727,24 @@ setInterval(async () => {
 
               const rec = historyMgr.recordScan({
                 loteria: lot.nombre,
-                sorteo: result.sorteo || hStr,
+                sorteo: targetDrawTime,
                 montoSondeo: lot.montoSondeo || 3000,
-                totalAnimalesAnalizados: result.totalAnimalesAnalizados || 38,
-                rojosPremier: rojosPremier,
+                totalAnimalesAnalizados: result.totalAnimalesAnalizados || lot.totalAnimales || 38,
+                rojos: consolidated.listaFinalNumeros,
+                rojosPremier: consolidated.rojosPremier,
+                numFijos: consolidated.numFijos,
+                fijosSeleccionados: consolidated.fijosSeleccionados,
+                predictivosVisualFx: consolidated.predictivosSeleccionados,
+                aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+                memoriaCupoCero: consolidated.memoriaSeleccionados,
+                numMemoriaCupoCero: consolidated.numMemoria,
                 t7Status,
                 t7Blocked
               });
 
               syncToCloudImmediate(false);
 
-              log(`✅ [PREMIER PLUSS SONDEO ${sNum}/${sondeosActivos.length} COMPLETADO] ${lot.nombre} (${hStr} a -${premierMinutesBefore}m): Agotados detectados: [${rojosPremier.join(', ') || 'Ninguno'}] -> Triple 7: ${t7Status}`, 'log-success');
+              log(`✅ [PREMIER PLUSS SONDEO ${sNum}/${sondeosActivos.length} COMPLETADO] ${lot.nombre} (${hStr} a -${premierMinutesBefore}m): Total bloqueados: ${consolidated.totalNumerosABloquear} (Premier: [${rojosPremier.join(', ') || 'Ninguno'}]) -> Triple 7: ${t7Status}`, 'log-success');
 
               if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
                 const memMsg = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';

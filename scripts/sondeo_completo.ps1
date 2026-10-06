@@ -1060,18 +1060,27 @@ function ExtraerFilasDePantalla($bmpScreen) {
         if ($yC -ge 150 -and $yC -lt ($bmpScreen.Height - 40)) {
             $redCount = 0
             $orangeCount = 0
-            for ($sx = 1020; $sx -le 1180; $sx += 2) {
-                $px = $bmpScreen.GetPixel($sx, $yC)
-                if ($px.R -gt 200 -and $px.G -lt 70 -and $px.B -lt 70) {
-                    $redCount++
-                } elseif ($px.R -gt 200 -and $px.G -gt 130 -and $px.G -lt 220 -and $px.B -lt 80) {
-                    $orangeCount++
+            for ($sx = 1005; $sx -le 1145; $sx += 2) {
+                # Muestreo a tres alturas para maxima precision del fondo
+                foreach ($dy in @(-2, 0, 2)) {
+                    $sampY = $yC + $dy
+                    if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height) {
+                        $px = $bmpScreen.GetPixel($sx, $sampY)
+                        # Rojo puro de cupo cero en Premier Pluss (R alto > 180, G y B bajos < 85)
+                        if ($px.R -gt 180 -and $px.G -lt 85 -and $px.B -lt 85) {
+                            $redCount++
+                        } elseif ($px.R -gt 200 -and $px.G -gt 130 -and $px.G -lt 220 -and $px.B -lt 80) {
+                            $orangeCount++
+                        }
+                    }
                 }
             }
 
-            if ($redCount -gt 15) {
+            # Deteccion infalible de Cupo Cero: rojo visual o monto explicitamente 0
+            $esMontoCero = $rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')
+            if ($redCount -ge 8 -or ($esMontoCero -and $orangeCount -gt 5)) {
                 $rObj.Color = "ROJO"
-            } elseif ($orangeCount -gt 15) {
+            } elseif ($orangeCount -gt 10) {
                 $rObj.Color = "NARANJA"
             }
 
@@ -1100,47 +1109,75 @@ function ExtraerFilasDePantalla($bmpScreen) {
     return $extractedRows
 }
 
-# Captura de pantalla Vista 1 (Superior)
-Write-Output "[7/7] Analizando estado de cupos en la tabla (Vista Superior)..."
+# =====================================================================
+# PANEO MULTI-PANTALLA PROGRESIVO CONTINUO (SWEEP TOTAL SIN SALTOS)
+# Cubre el 100% de los animales para 38, 77 (Guacharo) y 101 (Guacharito Millonario)
+# =====================================================================
 $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$bmpFull1 = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-$g1 = [System.Drawing.Graphics]::FromImage($bmpFull1)
-$g1.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-
-# Guardar captura completa para historial
-$outFile = Join-Path $PSScriptRoot "..\premier_tabla_sondeo.png"
-$bmpFull1.Save($outFile, [System.Drawing.Imaging.ImageFormat]::Png)
-
 $todasLasFilas = @{}
-$rowsView1 = ExtraerFilasDePantalla $bmpFull1
-foreach ($r in $rowsView1) {
-    $todasLasFilas[$r.Num] = $r
+
+# Calcular numero de pasos de barrido segun la loteria
+$totalPasos = 2
+if ($animales.Count -gt 77) {
+    # Guacharito Millonario (101 animales): 7 vistas (Top + 5 tramos intermedios + Fondo)
+    $totalPasos = 7
+} elseif ($animales.Count -gt 38) {
+    # Guacharo Activo (77 animales): 5 vistas (Top + 3 tramos intermedios + Fondo)
+    $totalPasos = 5
+} elseif ($animales.Count -le 22) {
+    $totalPasos = 1
 }
-$g1.Dispose()
-$bmpFull1.Dispose()
 
-# Si son mas de 20 animales (La Granjita, Lotto Activo, Guacharo), scrollear tabla para capturar la Vista 2 (Inferior)
-if ($animales.Count -gt 20) {
-    Write-Output "[7/7] Desplazando tabla del ticket hacia abajo para Vista 2..."
-    [PremierFullProbe]::ScrollToBottom(1050, 400)
-    Start-Sleep -Milliseconds 600
+Write-Output "[7/7] Iniciando barrido continuo multi-pantalla ($totalPasos vistas para $($animales.Count) animales)..."
 
-    $bmpFull2 = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-    $g2 = [System.Drawing.Graphics]::FromImage($bmpFull2)
-    $g2.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+for ($paso = 1; $paso -le $totalPasos; $paso++) {
+    if ($paso -eq 1) {
+        Write-Output " -> [PANEO 1/$totalPasos] Analizando Vista Superior inicial..."
+    } elseif ($paso -eq $totalPasos) {
+        Write-Output " -> [PANEO $paso/$totalPasos] Desplazando tabla al fondo absoluto (Vista Final)..."
+        [PremierFullProbe]::ScrollToBottom(1050, 400)
+        Start-Sleep -Milliseconds 450
+    } else {
+        Write-Output " -> [PANEO $paso/$totalPasos] Avanzando tramo intermedio (~15 filas hacia abajo)..."
+        [PremierFullProbe]::ScrollWheel(1050, 400, 5, -120)
+        Start-Sleep -Milliseconds 320
+    }
 
-    $rowsView2 = ExtraerFilasDePantalla $bmpFull2
-    foreach ($r in $rowsView2) {
+    $bmpFull = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+    $g = [System.Drawing.Graphics]::FromImage($bmpFull)
+    $g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+
+    # En el primer paso guardamos la captura general para el historial
+    if ($paso -eq 1) {
+        $outFile = Join-Path $PSScriptRoot "..\premier_tabla_sondeo.png"
+        $bmpFull.Save($outFile, [System.Drawing.Imaging.ImageFormat]::Png)
+    }
+
+    $rowsView = ExtraerFilasDePantalla $bmpFull
+    $nuevos = 0
+    foreach ($r in $rowsView) {
         if (-not $todasLasFilas.ContainsKey($r.Num)) {
             $todasLasFilas[$r.Num] = $r
+            $nuevos++
         } else {
             # Si en cualquier vista se detecto ROJO o NARANJA, preservar el estado critico
-            if ($r.Color -eq "ROJO") { $todasLasFilas[$r.Num].Color = "ROJO" }
-            elseif ($r.Color -eq "NARANJA" -and $todasLasFilas[$r.Num].Color -ne "ROJO") { $todasLasFilas[$r.Num].Color = "NARANJA" }
+            if ($r.Color -eq "ROJO") {
+                $todasLasFilas[$r.Num].Color = "ROJO"
+            } elseif ($r.Color -eq "NARANJA" -and $todasLasFilas[$r.Num].Color -ne "ROJO") {
+                $todasLasFilas[$r.Num].Color = "NARANJA"
+            }
         }
     }
-    $g2.Dispose()
-    $bmpFull2.Dispose()
+    Write-Output "    [VISTA $paso/$totalPasos] $nuevos animales nuevos detectados (Progreso total: $($todasLasFilas.Count)/$($animales.Count))."
+
+    $g.Dispose()
+    $bmpFull.Dispose()
+}
+
+# Retornar la tabla al tope superior de forma limpia antes de limpiar
+if ($totalPasos -gt 1) {
+    [PremierFullProbe]::ScrollToTop(1050, 400)
+    Start-Sleep -Milliseconds 250
 }
 
 # =====================================================================
