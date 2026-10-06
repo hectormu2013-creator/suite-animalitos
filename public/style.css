@@ -1150,11 +1150,34 @@ body {
 .origin-dot-aleatorio { background-color: #06b6d4; box-shadow: 0 0 6px #06b6d4; }
 .origin-dot-trophy { background-color: #10b981; box-shadow: 0 0 6px #10b981; }
 
-/* Grid de Tarjetas de Trofeos & Auditoría */
+/* Grid de Tarjetas de Trofeos & Auditoría (Con Scroll Delimitado Anti-Infinito) */
 .trophy-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
   gap: 20px;
+  max-height: 560px;
+  overflow-y: auto;
+  padding-right: 8px;
+  padding-bottom: 12px;
+}
+
+.trophy-cards-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.trophy-cards-grid::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 4px;
+}
+
+.trophy-cards-grid::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.35);
+  border-radius: 4px;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.trophy-cards-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.7);
 }
 
 /* Tarjeta Base de Auditoría */

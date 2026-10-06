@@ -354,8 +354,8 @@ function syncToCloudImmediate(resetAll = false) {
     const historyMgr = require('./history_manager');
     const cupoMem = require('./cupo_cero_memory');
     const cfg = getConfig();
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const records = resetAll ? historyMgr.getHistory() : historyMgr.getHistory({ fecha: todayStr });
+    // Enviar siempre todo el historial persistente para garantizar sincronización 100% libre de desfases de zona horaria (UTC vs Local)
+    const records = historyMgr.getHistory();
     const memory = cupoMem.loadMemory();
     const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_2';
 
@@ -486,7 +486,10 @@ app.get('/api/status', (req, res) => {
   if (isVerifier && (Date.now() - lastFxSyncTime > 30000)) {
     lastFxSyncTime = Date.now();
     try {
-      historyMgr.syncResultsWithVisualFx();
+      const syncRes = historyMgr.syncResultsWithVisualFx();
+      if (syncRes && syncRes.trophiesCount > 0) {
+        syncToCloudImmediate(false);
+      }
     } catch (e) {}
   }
 
@@ -618,10 +621,11 @@ app.post('/api/sync/receive-history', (req, res) => {
         if (idx >= 0) {
           currentDb[idx] = rec;
         } else {
-          currentDb.unshift(rec);
+          currentDb.push(rec);
         }
       }
 
+      currentDb.sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
       fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(currentDb, null, 2), 'utf8');
       historyMgr.rewriteCSV(currentDb);
     }
@@ -757,6 +761,7 @@ app.post('/api/trophies/sync', (req, res) => {
   const historyMgr = require('./history_manager');
   const syncRes = historyMgr.syncResultsWithVisualFx();
   log(`[SINCRONIZACIÓN] ${syncRes.message}`, syncRes.trophiesCount > 0 ? 'log-success' : 'log-info');
+  syncToCloudImmediate(false);
   res.json(syncRes);
 });
 
@@ -774,6 +779,7 @@ app.post('/api/trophies/simulate', (req, res) => {
   }
   const result = historyMgr.verifyRecordWinner(targetRec.id, luckyNumber);
   log(`🏆 [SIMULACIÓN DE TROFEO] ¡Golpe evitado confirmado para el número ${luckyNumber}! Tarjeta resaltada con franja verde.`, 'log-success');
+  syncToCloudImmediate(false);
   res.json(result);
 });
 
@@ -934,6 +940,9 @@ async function handleExecuteSondeoNow(req, res) {
       const memText = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';
       enviarTelegram(cfg, `🦜 *${loteria.nombre} - Sorteo ${record.horaSorteo}*\n\n❌ *Premier Agotados (Cupo 0):* ${consolidated.rojosPremier.join(', ') || 'Ninguno'}${fijosText}${predText}${aleatText}${memText}\n🛡️ *Bloqueo Total:* ${consolidated.listaFinalNumeros.join(', ') || 'Ninguno'}\n🛡️ *Triple 7:* ${record.t7Status}`);
     }
+
+    // Sincronización instantánea con la nube (Render) para que la web tome los bloqueos en tiempo real
+    syncToCloudImmediate(false);
 
     res.json({ ok: true, message: `Sondeo de ${loteria.nombre} (${record.horaSorteo}) ejecutado con éxito`, result, consolidated, siguientesSorteosPrebloqueados: siguientesSorteos });
   } catch (err) {
@@ -1635,6 +1644,15 @@ setInterval(async () => {
     }
   }
 }, 30000);
+
+// Sincronización continua de fondo Nodo Local -> Render (cada 45 segundos)
+if (!process.env.RENDER && !process.env.IS_RENDER) {
+  setInterval(() => {
+    try {
+      syncToCloudImmediate(false);
+    } catch (e) {}
+  }, 45000);
+}
 
 app.listen(PORT, () => {
   log(`🚀 Servidor de la Suite activo en http://localhost:${PORT}`, 'log-success');

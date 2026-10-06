@@ -1286,13 +1286,27 @@ function formatHistoryDate(dateStr) {
   return dateStr;
 }
 
+// Ordenar registros de forma descendente estricta (más recientes arriba)
+function sortRecordsDescending(list) {
+  if (!Array.isArray(list)) return [];
+  return [...list].sort((a, b) => {
+    const timeA = new Date(a.timestamp || 0).getTime();
+    const timeB = new Date(b.timestamp || 0).getTime();
+    if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+    const strA = `${a.fecha || ''} ${a.horaSorteo || a.sorteo || ''}`;
+    const strB = `${b.fecha || ''} ${b.horaSorteo || b.sorteo || ''}`;
+    return strB.localeCompare(strA);
+  });
+}
+
 // Renderizar tabla de historial
 function renderHistoryTable(history) {
   const tbody = document.getElementById('history-table-body');
   document.getElementById('total-checked-badge').textContent = `${history.length} sorteos revisados`;
   
   tbody.innerHTML = '';
-  history.slice().reverse().forEach(item => {
+  const sorted = sortRecordsDescending(history);
+  sorted.forEach(item => {
     const tr = document.createElement('tr');
     
     // Verificación de Ganador y Aciertos
@@ -1619,7 +1633,7 @@ function renderTrophyCards(records, filter = 'all') {
   const container = document.getElementById('trophy-cards-container');
   if (!container) return;
 
-  let filtered = [...records].reverse();
+  let filtered = sortRecordsDescending(records);
 
   if (filter === 'trophies') {
     filtered = filtered.filter(r => r.ganador && r.ganador.bloqueoAcertado === true);
