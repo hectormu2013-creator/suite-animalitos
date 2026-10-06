@@ -31,7 +31,7 @@ function log(msg, level = 'log-info') {
   if (logsQueue.length > 100) logsQueue.shift();
 }
 
-// Cargar Configuración
+// Cargar Configuración (Memoria / Disco / Nube Supabase)
 function getConfig() {
   try {
     if (!fs.existsSync(CONFIG_PATH)) return null;
@@ -43,15 +43,62 @@ function getConfig() {
   }
 }
 
-// Guardar Configuración
+// Guardar Configuración (Disco Local y Nube Supabase)
 function saveConfig(cfg) {
   try {
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
+    // Persistencia instantánea en Supabase para que la versión Web nunca se reinicie
+    try {
+      const cloudStore = require('./cloud_store');
+      cloudStore.saveMasterConfig(cfg).catch(() => {});
+    } catch (e) {}
     return true;
   } catch (e) {
     log(`Error guardando config.json: ${e.message}`, 'log-danger');
     return false;
   }
+}
+
+// Cargar persistencia maestra de Supabase al arrancar
+(async function initCloudConfigOnStartup() {
+  try {
+    const cloudStore = require('./cloud_store');
+    const cloudRes = await cloudStore.getMasterConfig();
+    if (cloudRes && cloudRes.config) {
+      const localCfg = getConfig();
+      // Si estamos en Render, o si el disco local no tiene configuración, adoptarla
+      if (process.env.RENDER || process.env.IS_RENDER || !localCfg) {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
+        log(`☁️ [CONFIG MAESTRA NUBE] Configuración restaurada con éxito desde Supabase (Web Master).`, 'log-success');
+      }
+    }
+  } catch (e) {}
+})();
+
+// Sincronización continua: Localhost obedece los cambios realizados desde la Web
+let lastCloudConfigTime = null;
+async function pullConfigFromCloud() {
+  if (process.env.RENDER || process.env.IS_RENDER) return;
+  try {
+    const cloudStore = require('./cloud_store');
+    const cloudRes = await cloudStore.getMasterConfig();
+    if (cloudRes && cloudRes.config && cloudRes.updatedAt) {
+      if (!lastCloudConfigTime || new Date(cloudRes.updatedAt) > new Date(lastCloudConfigTime)) {
+        const localCfg = getConfig();
+        const cloudStr = JSON.stringify(cloudRes.config);
+        const localStr = JSON.stringify(localCfg);
+        if (cloudStr !== localStr) {
+          fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
+          log(`🌐 [SINCRONIZACIÓN WEB MASTER] Nuevos ajustes detectados desde el panel Web. Localhost actualizado automáticamente.`, 'log-success');
+        }
+        lastCloudConfigTime = cloudRes.updatedAt;
+      }
+    }
+  } catch (e) {}
+}
+
+if (!process.env.RENDER && !process.env.IS_RENDER) {
+  setInterval(pullConfigFromCloud, 20000);
 }
 
 const { execFile } = require('child_process');
@@ -76,8 +123,18 @@ function syncScheduledTask(hora, activo = true) {
 }
 
 // API: Obtener Config
-app.get('/api/config', (req, res) => {
-  const cfg = getConfig();
+app.get('/api/config', async (req, res) => {
+  let cfg = getConfig();
+  // En Render, si la memoria local está vacía o el cliente solicita versión fresca, consultar Supabase
+  if ((process.env.RENDER || process.env.IS_RENDER || !cfg)) {
+    try {
+      const cloudStore = require('./cloud_store');
+      const cloudRes = await cloudStore.getMasterConfig();
+      if (cloudRes && cloudRes.config) {
+        cfg = cloudRes.config;
+      }
+    } catch (e) {}
+  }
   if (cfg && cfg.general) {
     cfg.general.maquinas = machinesMgr.getMachinesList(cfg);
     if (!cfg.general.maquinaLocalId) cfg.general.maquinaLocalId = 'maquina_2';
@@ -86,7 +143,7 @@ app.get('/api/config', (req, res) => {
   res.json(cfg || {});
 });
 
-// API: Guardar Config
+// API: Guardar Config (La Web es la Instancia Principal)
 app.post('/api/config', async (req, res) => {
   const newCfg = req.body;
   if (newCfg && newCfg.general && Array.isArray(newCfg.general.maquinas)) {
@@ -98,9 +155,10 @@ app.post('/api/config', async (req, res) => {
       machinesMgr.setLocalMachineId(newCfg, newCfg.general.maquinaLocalId);
     }
   }
+
   const success = saveConfig(newCfg);
   if (success) {
-    log('Configuración actualizada y guardada con éxito.', 'log-success');
+    log('Configuración actualizada y guardada con éxito (Persistencia Web en Nube activa).', 'log-success');
 
     // Sincronizar tarea de Windows si viene en general
     if (newCfg.general && newCfg.general.horaActivacionDiaria !== undefined) {
@@ -113,7 +171,7 @@ app.post('/api/config', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, message: 'Guardado correctamente' });
+    res.json({ ok: true, message: 'Guardado correctamente en la nube y persistencia' });
   } else {
     res.status(500).json({ ok: false, message: 'Error al guardar archivo config.json' });
   }
@@ -384,7 +442,18 @@ function syncToCloudImmediate(resetAll = false) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         if (res.statusCode === 200) {
-          // Sync exitoso
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed && parsed.cloudConfig) {
+              const localCfg = getConfig();
+              const cloudStr = JSON.stringify(parsed.cloudConfig);
+              const localStr = JSON.stringify(localCfg);
+              if (cloudStr !== localStr) {
+                fs.writeFileSync(CONFIG_PATH, JSON.stringify(parsed.cloudConfig, null, 2), 'utf8');
+                log(`🌐 [SYNC NUBE -> LOCAL] Configuración sincronizada y actualizada desde la Web.`, 'log-success');
+              }
+            }
+          } catch (e) {}
         } else {
           console.warn(`[SYNC NUBE] HTTP ${res.statusCode}: ${res.statusMessage} - ${data.slice(0, 100)}`);
         }
@@ -394,6 +463,12 @@ function syncToCloudImmediate(resetAll = false) {
     syncReq.on('timeout', () => syncReq.destroy());
     syncReq.write(payload);
     syncReq.end();
+
+    // Guardar también en Supabase para persistencia perpetua
+    try {
+      const cloudStore = require('./cloud_store');
+      cloudStore.saveMasterHistory(records);
+    } catch (e) {}
   } catch (e) {
     console.error(`[SYNC NUBE ERROR] ${e.message}`);
   }
@@ -485,12 +560,11 @@ app.get('/api/status', (req, res) => {
   // REGLA ESTRICTA: Sólo la máquina designada como verificadora oficial consulta Visual-FX
   if (isVerifier && (Date.now() - lastFxSyncTime > 30000)) {
     lastFxSyncTime = Date.now();
-    try {
-      const syncRes = historyMgr.syncResultsWithVisualFx();
-      if (syncRes && syncRes.trophiesCount > 0) {
+    historyMgr.syncResultsWithVisualFx().then(syncRes => {
+      if (syncRes && syncRes.updatedCount > 0) {
         syncToCloudImmediate(false);
       }
-    } catch (e) {}
+    }).catch(() => {});
   }
 
   const persistentHistory = historyMgr.getHistory();
@@ -665,7 +739,14 @@ app.post('/api/sync/receive-history', (req, res) => {
     }
 
     log(`☁️ [SYNC NUBE] Recibidos y sincronizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
-    res.json({ ok: true, count: Array.isArray(records) ? records.length : 0 });
+    
+    // Guardar también en Supabase para respaldo permanente
+    try {
+      const cloudStore = require('./cloud_store');
+      cloudStore.saveMasterHistory(currentDb);
+    } catch (eCS) {}
+
+    res.json({ ok: true, count: Array.isArray(records) ? records.length : 0, cloudConfig: getConfig() });
   } catch (err) {
     log(`⚠️ Error en sync nube: ${err.message}`, 'log-danger');
     res.status(500).json({ ok: false, message: err.message });
@@ -756,13 +837,26 @@ app.post('/api/trophies/verify', async (req, res) => {
   res.json(result);
 });
 
-// API: Sincronizar Resultados con Visual-FX
-app.post('/api/trophies/sync', (req, res) => {
+// API: Sincronizar Resultados con Visual-FX y Scrapers en Vivo
+app.post('/api/trophies/sync', async (req, res) => {
   const historyMgr = require('./history_manager');
-  const syncRes = historyMgr.syncResultsWithVisualFx();
+  const syncRes = await historyMgr.syncResultsWithVisualFx();
   log(`[SINCRONIZACIÓN] ${syncRes.message}`, syncRes.trophiesCount > 0 ? 'log-success' : 'log-info');
-  syncToCloudImmediate(false);
+  if (syncRes.updatedCount > 0) syncToCloudImmediate(false);
   res.json(syncRes);
+});
+
+// API: Buscar y Actualizar Resultado Específico ("Por verificar") en Vivo
+app.post('/api/trophies/lookup-single-result', async (req, res) => {
+  const { recordId } = req.body;
+  if (!recordId) return res.status(400).json({ ok: false, message: 'Falta recordId' });
+  const historyMgr = require('./history_manager');
+  const result = await historyMgr.lookupAndUpdateRecord(recordId);
+  if (result.ok && result.found) {
+    log(`🎯 [RESULTADO EN VIVO ACTUALIZADO] N° ${result.winnerNumber} (${result.winnerName}) verificado para sorteo ${recordId} [${result.source || 'Scraper'}].`, result.bloqueoAcertado ? 'log-success' : 'log-info');
+    syncToCloudImmediate(false);
+  }
+  res.json(result);
 });
 
 // API: Simular Golpe Evitado (Para demostración y pruebas inmediatas de UI)

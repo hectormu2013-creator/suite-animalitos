@@ -144,14 +144,38 @@ function populateUIWithConfig(config) {
   renderMachinesManagement(config);
 }
 
+// Helper para icono de lotería
+function getLotteryIcon(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('lotto') || n.includes('activo')) return '🦁';
+  if (n.includes('gran') || n.includes('ruleta')) return '🎡';
+  if (n.includes('guacharo') || n.includes('gua')) return '🦜';
+  if (n.includes('selva') || n.includes('plus')) return '🌴';
+  if (n.includes('chance') || n.includes('animal')) return '🎲';
+  if (n.includes('maracay')) return '🐯';
+  return '🎯';
+}
+
 // Renderizar lista de loterías
 function renderLotteries(lotteries) {
   const container = document.getElementById('lotteries-container');
+  if (!container) return;
   container.innerHTML = '';
+
+  const subnavMenu = document.getElementById('lottery-subnav-menu');
+  if (subnavMenu) {
+    subnavMenu.innerHTML = '';
+  }
+
+  const countBadge = document.getElementById('lottery-subnav-count');
+  if (countBadge) {
+    countBadge.textContent = `${(lotteries || []).length} Lotería${(lotteries || []).length === 1 ? '' : 's'}`;
+  }
 
   lotteries.forEach((lot, index) => {
     const card = document.createElement('div');
     card.className = 'lottery-item-card';
+    card.id = `lottery-card-${index}`;
     card.innerHTML = `
       <div class="lottery-item-header">
         <div class="lottery-item-title">
@@ -334,6 +358,43 @@ function renderLotteries(lotteries) {
       </div>
     `;
     container.appendChild(card);
+
+    if (subnavMenu) {
+      const navBtn = document.createElement('button');
+      navBtn.type = 'button';
+      navBtn.className = `lottery-subnav-item ${index === 0 ? 'active' : ''}`;
+      navBtn.setAttribute('data-target', `lottery-card-${index}`);
+      const icon = getLotteryIcon(lot.nombre);
+      navBtn.innerHTML = `
+        <span class="subnav-item-icon">${icon}</span>
+        <span class="subnav-item-name">${lot.nombre}</span>
+        <span class="subnav-item-badge ${lot.activo ? 'badge-on' : 'badge-off'}">${lot.activo ? 'ACTIVO' : 'OFF'}</span>
+      `;
+      navBtn.addEventListener('click', () => {
+        document.querySelectorAll('.lottery-subnav-item').forEach(b => b.classList.remove('active'));
+        navBtn.classList.add('active');
+        const targetEl = document.getElementById(`lottery-card-${index}`);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          targetEl.classList.add('highlight-target');
+          setTimeout(() => targetEl.classList.remove('highlight-target'), 1500);
+        }
+      });
+      subnavMenu.appendChild(navBtn);
+    }
+
+    const toggle = card.querySelector('.lottery-active-toggle');
+    if (toggle) {
+      toggle.addEventListener('change', (e) => {
+        if (subnavMenu) {
+          const badge = subnavMenu.querySelectorAll('.lottery-subnav-item')[index]?.querySelector('.subnav-item-badge');
+          if (badge) {
+            badge.className = `subnav-item-badge ${e.target.checked ? 'badge-on' : 'badge-off'}`;
+            badge.textContent = e.target.checked ? 'ACTIVO' : 'OFF';
+          }
+        }
+      });
+    }
 
     // Cargar estadísticas en vivo de atrasos para esta lotería
     actualizarPreviewAtrasadosLoteria(lot.id);
@@ -632,6 +693,58 @@ function addNewMachineUI() {
   }
 }
 
+function addNewLotteryUI() {
+  if (!currentConfig || !Array.isArray(currentConfig.loterias)) return;
+
+  const count = currentConfig.loterias.length + 1;
+  const newLottery = {
+    id: `loteria_${Date.now()}`,
+    nombre: `Nueva Lotería ${count}`,
+    activo: true,
+    montoSondeo: 3000,
+    totalAnimales: 38,
+    horarios: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    minutosAntes: 30,
+    minutosAntesPremier: 30,
+    minutosAntesVisualFx: 35,
+    minutosAntesAleatorios: 20,
+    minutosAntesFijos: 35,
+    bloqueoPremierAgotados: true,
+    bloqueoPredictivosAtrasados: true,
+    cantidadPredictivosABloquear: 2,
+    bloqueoAleatorioSistema: true,
+    cantidadAleatoriosABloquear: 2,
+    bloqueoFijos: true,
+    numerosFijos: [],
+    sondeosMultiples: [
+      { id: 1, activo: true, minutosAntes: 50 },
+      { id: 2, activo: true, minutosAntes: 40 },
+      { id: 3, activo: true, minutosAntes: 30 },
+      { id: 4, activo: false, minutosAntes: 20 },
+      { id: 5, activo: false, minutosAntes: 10 }
+    ],
+    memoriaCupoCero: {
+      activo: true,
+      sorteosPersistencia: 3
+    }
+  };
+
+  currentConfig.loterias.push(newLottery);
+  renderLotteries(currentConfig.loterias);
+  showToast(`➕ ${newLottery.nombre} agregada. Recuerda guardar.`);
+  appendLog(`[LOTERIAS] Creada nueva ruleta/lotería: ${newLottery.nombre}`, 'log-info');
+
+  setTimeout(() => {
+    const lastIndex = currentConfig.loterias.length - 1;
+    const targetEl = document.getElementById(`lottery-card-${lastIndex}`);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      targetEl.classList.add('highlight-target');
+      setTimeout(() => targetEl.classList.remove('highlight-target'), 1500);
+    }
+  }, 100);
+}
+
 // Botones de acción
 function bindActionButtons() {
   // Sondeo Híbrido (Selección Actual en Premier Pluss)
@@ -781,10 +894,24 @@ function bindActionButtons() {
     }
   });
 
-  // Botón Guardar Loterías
+  // Botón Guardar Loterías (cabecera y lateral)
   const btnSaveLotteries = document.getElementById('btn-save-lotteries');
   if (btnSaveLotteries) {
     btnSaveLotteries.addEventListener('click', saveLotteriesConfig);
+  }
+  const btnSaveLotteriesSide = document.getElementById('btn-save-lotteries-side');
+  if (btnSaveLotteriesSide) {
+    btnSaveLotteriesSide.addEventListener('click', saveLotteriesConfig);
+  }
+
+  // Botón Agregar Lotería (cabecera y lateral)
+  const btnAddLottery = document.getElementById('btn-add-lottery');
+  if (btnAddLottery) {
+    btnAddLottery.addEventListener('click', addNewLotteryUI);
+  }
+  const btnAddLotterySide = document.getElementById('btn-add-lottery-side');
+  if (btnAddLotterySide) {
+    btnAddLotterySide.addEventListener('click', addNewLotteryUI);
   }
 
   // Botón Guardar Credenciales
@@ -1397,7 +1524,7 @@ function renderHistoryTable(history) {
         resultadoHtml = `<span class="tag tag-winner-normal" title="Resultado oficial">${item.ganador.numero} - ${item.ganador.nombre}</span>`;
       }
     } else {
-      resultadoHtml = `<span class="tag" style="color:var(--text-dim); background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.12); font-size:11px;">⏳ Por verificar</span>`;
+      resultadoHtml = `<button type="button" class="btn-verify-badge" data-id="${item.id}" title="Haga clic para buscar y verificar el resultado oficial de este sorteo en vivo">⏳ Por verificar <span style="font-size:10px;">🔍</span></button>`;
     }
 
     tr.innerHTML = `
@@ -1410,6 +1537,15 @@ function renderHistoryTable(history) {
       <td ${resultadoTdClass}>${resultadoHtml}</td>
     `;
     tbody.appendChild(tr);
+  });
+
+  // Vincular clics de búsqueda directa en vivo a los badges "Por verificar"
+  tbody.querySelectorAll('.btn-verify-badge').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const recId = btn.getAttribute('data-id');
+      if (recId) triggerSingleDrawLookup(recId, btn);
+    });
   });
 }
 
@@ -1815,9 +1951,9 @@ function renderTrophyCards(records, filter = 'all') {
         <div class="draw-result-box">
           <div class="quick-verify-form">
             <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Resultado Oficial:</span>
-            <input type="text" class="quick-verify-input" id="input-winner-${rec.id}" placeholder="N° (ej. 17)" maxlength="3">
-            <button class="btn btn-sm btn-primary btn-submit-verify" data-id="${rec.id}">
-              Verificar Ganador
+            <input type="text" class="quick-verify-input" id="input-winner-${rec.id}" placeholder="N° opcional" maxlength="3">
+            <button class="btn btn-sm btn-primary btn-submit-verify" data-id="${rec.id}" title="Haga clic para buscar y verificar automáticamente el resultado oficial, o escriba el número manual">
+              🔍 Buscar / Verificar
             </button>
           </div>
         </div>
@@ -1876,16 +2012,76 @@ function renderTrophyCards(records, filter = 'all') {
 }
 
 // Bind de verificación manual dentro de cada tarjeta
+// Actualizar estado general e historial de sorteos
+async function refreshStatusAndHistory() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    if (data.history && data.history.length > 0) {
+      renderHistoryTable(data.history);
+    }
+  } catch (e) {}
+}
+
+// Búsqueda y actualización en vivo de un sorteo individual ("Por verificar")
+async function triggerSingleDrawLookup(recordId, buttonEl) {
+  const originalText = buttonEl ? buttonEl.innerHTML : '';
+  if (buttonEl) {
+    buttonEl.disabled = true;
+    buttonEl.innerHTML = '<span style="display:inline-flex; align-items:center; gap:4px;">⏳ Buscando...</span>';
+  }
+
+  showToast('🔍 Consultando resultado oficial en vivo...');
+  appendLog(`[SCRAPER] Consultando resultado oficial en tiempo real para ID ${recordId}...`, 'log-info');
+
+  try {
+    const res = await fetch('/api/trophies/lookup-single-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recordId })
+    });
+    const data = await res.json();
+
+    if (data.ok && data.found) {
+      if (data.isHit) {
+        showToast(`🏆 ¡GOLPE EVITADO! Salió el ${data.winner.numero} (${data.winner.nombre})`);
+        appendLog(`[TROFEO] ¡GOLPE DE BANCA EVITADO! Salió el ${data.winner.numero} (${data.winner.nombre}) que ESTABA BLOQUEADO.`, 'log-success');
+      } else {
+        showToast(`✅ Verificado: Salió ${data.winner.numero} (${data.winner.nombre})`);
+        appendLog(`[VERIFICADO] Resultado oficial obtenido: ${data.winner.numero} - ${data.winner.nombre}`, 'log-info');
+      }
+
+      await Promise.all([refreshStatusAndHistory(), loadTrophies()]);
+    } else {
+      showToast(data.message || 'El resultado aún no ha sido publicado en los portales oficiales.');
+      appendLog(`[AVISO] ${data.message || 'Resultado no publicado aún'}`, 'log-warn');
+      if (buttonEl) {
+        buttonEl.disabled = false;
+        buttonEl.innerHTML = originalText || '⏳ Por verificar 🔍';
+      }
+    }
+  } catch (err) {
+    showToast(`Error de conexión: ${err.message}`);
+    appendLog(`[ERROR] Error al consultar resultado en vivo: ${err.message}`, 'log-danger');
+    if (buttonEl) {
+      buttonEl.disabled = false;
+      buttonEl.innerHTML = originalText || '⏳ Reintentar 🔍';
+    }
+  }
+}
+
+// Bind de verificación manual dentro de cada tarjeta
 function bindCardVerifyActions() {
-  // Botones de enviar ganador
+  // Botones de enviar ganador o buscar en vivo
   document.querySelectorAll('.btn-submit-verify').forEach(btn => {
     btn.addEventListener('click', async () => {
       const recId = btn.getAttribute('data-id');
       const inputEl = document.getElementById(`input-winner-${recId}`);
-      if (!inputEl) return;
-      const winnerNum = inputEl.value.trim();
+      const winnerNum = inputEl ? inputEl.value.trim() : '';
+
+      // Si no se especificó un número manual, invocar la búsqueda y auto-verificación en vivo
       if (!winnerNum) {
-        showToast('Ingresa el número que salió premiado');
+        triggerSingleDrawLookup(recId, btn);
         return;
       }
 
@@ -1906,12 +2102,16 @@ function bindCardVerifyActions() {
             showToast('Sorteo verificado (no estaba bloqueado)');
             appendLog(`[VERIFICADO] Número ${winnerNum} verificado`, 'log-info');
           }
-          await loadTrophies();
+          await Promise.all([refreshStatusAndHistory(), loadTrophies()]);
         } else {
           showToast(`Error: ${data.message}`);
+          btn.disabled = false;
+          btn.textContent = '🔍 Buscar / Verificar';
         }
       } catch (err) {
         showToast(`Error: ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = '🔍 Buscar / Verificar';
       }
     });
   });

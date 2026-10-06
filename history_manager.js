@@ -544,14 +544,14 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
 }
 
 /**
- * Sincronizar automáticamente resultados con el archivo de resultados de Visual-FX
- * (TOTALMENTE AUTÓNOMO: No requiere ingreso manual de resultados)
+ * Sincronizar automáticamente resultados con Visual-FX y scrapers oficiales en vivo
+ * (TOTALMENTE AUTÓNOMO: Funciona en Localhost y en Render con scrapers nativos)
  */
-function syncResultsWithVisualFx() {
+async function syncResultsWithVisualFx() {
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Sin registros históricos', updatedCount: 0, trophiesCount: 0 };
     
-    // Cargar bases de datos de Visual-FX
+    // Cargar bases de datos de Visual-FX si existen en disco
     let fxResults = null;
     let fxHistory = null;
 
@@ -562,25 +562,23 @@ function syncResultsWithVisualFx() {
       try { fxHistory = JSON.parse(fs.readFileSync(VISUAL_FX_HISTORY_PATH, 'utf8')); } catch (e) {}
     }
 
-    if (!fxResults && !fxHistory) {
-      return { ok: false, message: 'No se encontraron archivos de resultados de Visual-FX en disco', updatedCount: 0, trophiesCount: 0 };
-    }
-
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     let updatedCount = 0;
     let trophiesCount = 0;
 
-    history.forEach(rec => {
-      // Si ya está verificado y confirmado con trofeo, saltar
-      if (rec.ganador && rec.ganador.verificado && rec.ganador.bloqueoAcertado) return;
+    const scraper = require('./scraper_service');
 
-      const recDate = rec.fecha; // ej: 2026-10-02
+    for (const rec of history) {
+      // Si ya está verificado, saltar
+      if (rec.ganador && rec.ganador.verificado) continue;
+
+      const recDate = rec.fecha; // ej: 2026-10-06
       const gameKey = mapLoteriaToVisualFx(rec.loteria);
       const recTimeMinutes = parseTimeToMinutes(rec.sorteo || rec.horaSorteo);
 
       let candidateDraws = [];
 
-      // 1. Buscar en lottery_results.json
+      // 1. Buscar en lottery_results.json local
       if (fxResults) {
         const dayData = fxResults[recDate];
         if (dayData && dayData[gameKey] && Array.isArray(dayData[gameKey].draws)) {
@@ -596,44 +594,104 @@ function syncResultsWithVisualFx() {
         }
       }
 
-      if (candidateDraws.length > 0) {
-        // Encontrar sorteo que coincida por tiempo inteligente
-        let matchedDraw = null;
+      let matchedDraw = null;
 
+      if (candidateDraws.length > 0) {
         if (recTimeMinutes !== null) {
           matchedDraw = candidateDraws.find(d => {
             if (d.isPending || !d.number) return false;
             const drawMinutes = parseTimeToMinutes(d.time);
             if (drawMinutes === null) return false;
-            return Math.abs(drawMinutes - recTimeMinutes) <= 25; // Dentro de 25 min de coincidencia
+            return Math.abs(drawMinutes - recTimeMinutes) <= 25;
           });
         } else {
-          // Solo si no tiene hora específica de sorteo (ej: 'Próximo Sorteo')
           const completedDraws = candidateDraws.filter(d => !d.isPending && d.number);
-          if (completedDraws.length > 0) {
-            matchedDraw = completedDraws[completedDraws.length - 1];
-          }
-        }
-
-        if (matchedDraw && matchedDraw.number) {
-          const res = verifyRecordWinner(rec.id, matchedDraw.number, matchedDraw.name);
-          if (res.ok) {
-            updatedCount++;
-            if (res.bloqueoAcertado) trophiesCount++;
-          }
+          if (completedDraws.length > 0) matchedDraw = completedDraws[completedDraws.length - 1];
         }
       }
-    });
+
+      // 3. Si no se encontró en disco local, usar scraper_service en vivo (TuAzar / 1000Resultados)
+      if (!matchedDraw || !matchedDraw.number) {
+        try {
+          const liveLookup = await scraper.lookupDrawResult(rec.loteria, rec.sorteo || rec.horaSorteo, rec.fecha);
+          if (liveLookup && liveLookup.found && liveLookup.number) {
+            matchedDraw = { number: liveLookup.number, name: liveLookup.name };
+          }
+        } catch (eScrap) {}
+      }
+
+      if (matchedDraw && matchedDraw.number) {
+        const res = verifyRecordWinner(rec.id, matchedDraw.number, matchedDraw.name);
+        if (res.ok) {
+          updatedCount++;
+          if (res.bloqueoAcertado) trophiesCount++;
+        }
+      }
+    }
+
+    if (updatedCount > 0) {
+      try {
+        const cloudStore = require('./cloud_store');
+        cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+      } catch (eCloud) {}
+    }
 
     return {
       ok: true,
       updatedCount,
       trophiesCount,
-      message: `Extracción autónoma completada: ${updatedCount} sorteos verificados, ${trophiesCount} trofeos confirmados.`
+      message: `Extracción completada: ${updatedCount} sorteos verificados, ${trophiesCount} trofeos confirmados.`
     };
   } catch (err) {
     console.error(`[SYNC ERROR] ${err.message}`);
     return { ok: false, message: err.message, updatedCount: 0, trophiesCount: 0 };
+  }
+}
+
+/**
+ * Buscar y actualizar de forma inmediata e individual un sorteo pendiente por su ID
+ * Se ejecuta al hacer clic sobre el botón "Por verificar" en la tabla o en la tarjeta
+ */
+async function lookupAndUpdateRecord(recordId) {
+  try {
+    if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Base de datos no encontrada' };
+    const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    const rec = history.find(r => r.id === recordId);
+    if (!rec) return { ok: false, message: 'Registro no encontrado' };
+
+    const scraper = require('./scraper_service');
+    const drawTime = rec.sorteo || rec.horaSorteo;
+    const lookup = await scraper.lookupDrawResult(rec.loteria, drawTime, rec.fecha);
+
+    if (lookup.found && lookup.number) {
+      const verifyRes = verifyRecordWinner(rec.id, lookup.number, lookup.name);
+      
+      try {
+        const cloudStore = require('./cloud_store');
+        const freshHistory = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+        cloudStore.saveMasterHistory(freshHistory);
+      } catch (eC) {}
+
+      return {
+        ok: true,
+        found: true,
+        winnerNumber: lookup.number,
+        winnerName: lookup.name,
+        bloqueoAcertado: verifyRes.bloqueoAcertado,
+        mensaje: verifyRes.mensaje,
+        record: verifyRes.record,
+        source: lookup.source
+      };
+    } else {
+      return {
+        ok: true,
+        found: false,
+        pending: true,
+        mensaje: lookup.message || `El sorteo de ${rec.loteria} (${drawTime}) aún está en espera de publicación oficial.`
+      };
+    }
+  } catch (err) {
+    return { ok: false, message: `Error en búsqueda: ${err.message}` };
   }
 }
 
@@ -838,6 +896,7 @@ module.exports = {
   verifyRecordWinner,
   syncResultsWithVisualFx,
   syncScheduledDrawResult,
+  lookupAndUpdateRecord,
   getTrophyStats,
   updateT7Status,
   rewriteCSV,

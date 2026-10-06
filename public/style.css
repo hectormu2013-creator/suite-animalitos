@@ -1717,5 +1717,209 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+/* ========================================================
+   NAVEGACIÓN LATERAL INTERNA Y SCROLL DELIMITADO: LOTERÍAS & TOPES
+   ======================================================== */
+.lotteries-layout-container {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  min-height: 580px;
+}
 
+@media (max-width: 992px) {
+  .lotteries-layout-container {
+    flex-direction: column;
+  }
+}
 
+.lottery-subnav-sidebar {
+  width: 270px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 992px) {
+  .lottery-subnav-sidebar {
+    width: 100%;
+    position: static;
+  }
+}
+
+.subnav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.subnav-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.subnav-description {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.lottery-subnav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.lottery-subnav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  width: 100%;
+}
+
+.lottery-subnav-item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  transform: translateX(3px);
+}
+
+.lottery-subnav-item.active {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+}
+
+.lottery-subnav-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lottery-subnav-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.subnav-actions {
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lotteries-cards-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Scroll delimitado para evitar que la sección de loterías tienda a infinito */
+.lotteries-list-scroll {
+  max-height: 640px;
+  overflow-y: auto;
+  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.lotteries-list-scroll::-webkit-scrollbar,
+.lottery-subnav-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lotteries-list-scroll::-webkit-scrollbar-track,
+.lottery-subnav-menu::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 4px;
+}
+
+.lotteries-list-scroll::-webkit-scrollbar-thumb,
+.lottery-subnav-menu::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.35);
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.1);
+}
+
+.lotteries-list-scroll::-webkit-scrollbar-thumb:hover,
+.lottery-subnav-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.7);
+}
+
+.lottery-item-card.highlight-target {
+  animation: cardPulse 1.6s ease-out;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5) !important;
+}
+
+@keyframes cardPulse {
+  0% { box-shadow: 0 0 30px rgba(56, 189, 248, 0.85); border-color: #38bdf8; }
+  100% { box-shadow: none; }
+}
+
+/* Botón interactivo para "Por verificar" en Tabla de Historial */
+.btn-verify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-verify-badge:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.btn-verify-badge:active {
+  transform: scale(0.96);
+}
+
+.btn-verify-badge.loading {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  cursor: wait;
+}
