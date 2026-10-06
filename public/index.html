@@ -498,9 +498,15 @@
               <h3>Sorteos Abiertos en NY7 (Loterías Gestionadas)</h3>
               <span class="panel-subtitle">Monitoreo dinámico del estado de bloqueo de las loterías con reglas activas</span>
             </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <select id="t7-filter-loteria" class="form-input" style="padding:4px 10px; font-size:12px; width:auto; background:#1e293b; color:#fff; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <select id="t7-filter-loteria" class="form-input" style="padding:6px 12px; font-size:12px; width:auto; background:#1e293b; color:#fff; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">
                 <option value="ALL">Todas las Gestionadas</option>
+              </select>
+              <select id="t7-sort-order" class="form-input" style="padding:6px 12px; font-size:12px; width:auto; background:#1e293b; color:#fff; border-radius:6px; border:1px solid rgba(255,255,255,0.15);" title="Ordenar sorteos mostrados">
+                <option value="TIME_ASC">🕒 Orden: Hora de Sorteo (Temprano a Tarde)</option>
+                <option value="TIME_DESC">🕒 Orden: Hora de Sorteo (Tarde a Temprano)</option>
+                <option value="BLOCKED_FIRST">🔴 Orden: Primero con Bloqueos Activos</option>
+                <option value="LOTTERY_NAME">🏷️ Orden: Por Lotería</option>
               </select>
               <span class="badge" id="t7-table-count-badge">0 sorteos</span>
             </div>

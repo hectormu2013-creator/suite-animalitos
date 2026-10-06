@@ -142,9 +142,116 @@ async function saveMasterHistory(records) {
   }
 }
 
+/**
+ * Enviar un comando remoto desde la Web (Render) a la PC Local (Windows)
+ */
+async function dispatchCommand(commandName, payload = {}) {
+  const id = 'cmd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const commandObj = {
+    id,
+    command: commandName,
+    payload,
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
+    result: null
+  };
+
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store`;
+    await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify({
+        key: 'suite_command_queue',
+        data: commandObj,
+        updated_at: new Date().toISOString()
+      })
+    });
+    return commandObj;
+  } catch (e) {
+    console.warn(`[CLOUD_STORE] Error despachando comando en Supabase: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Obtener el último comando de la cola en Supabase
+ */
+async function getLatestCommand() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.suite_command_queue&select=data,updated_at`;
+    const res = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].data) {
+        return rows[0].data;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+/**
+ * Actualizar el estado y resultado de un comando en Supabase
+ */
+async function updateCommand(commandId, status, result = null) {
+  try {
+    const nowIso = new Date().toISOString();
+    const commandObj = {
+      id: commandId,
+      status,
+      result,
+      updatedAt: nowIso
+    };
+
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store`;
+    await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify({
+        key: 'suite_command_queue',
+        data: commandObj,
+        updated_at: nowIso
+      })
+    });
+    return true;
+  } catch (e) {
+    console.warn(`[CLOUD_STORE] Error actualizando comando en Supabase: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Esperar la finalización de un comando (polling en Supabase hasta timeoutMs)
+ */
+async function waitForCommandCompletion(commandId, timeoutMs = 38000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise(r => setTimeout(r, 1200));
+    const cmd = await getLatestCommand();
+    if (cmd && cmd.id === commandId) {
+      if (cmd.status === 'COMPLETED' || cmd.status === 'FAILED') {
+        return cmd;
+      }
+    }
+  }
+  return null;
+}
+
 module.exports = {
   getMasterConfig,
   saveMasterConfig,
   getMasterHistory,
-  saveMasterHistory
+  saveMasterHistory,
+  dispatchCommand,
+  getLatestCommand,
+  updateCommand,
+  waitForCommandCompletion
 };

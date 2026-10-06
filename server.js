@@ -877,9 +877,9 @@ app.post('/api/trophies/simulate', (req, res) => {
   res.json(result);
 });
 
-// API: Disparar Chequeo de Prueba / Sondeo Inmediato
+// API: Disparar Chequeo de Prueba / Sondeo Inmediato (Puente Nube -> Local)
 async function handleExecuteSondeoNow(req, res) {
-  const cfg = getConfig();
+  const cfg = getConfig() || {};
   const targetId = req.body && req.body.loteriaId;
   const modoHibrido = req.body && req.body.modoHibrido === true;
   const predictive = require('./predictive_service');
@@ -903,24 +903,82 @@ async function handleExecuteSondeoNow(req, res) {
         }
       }
     }
-    loteria = bestLot || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
+    loteria = bestLot || (cfg.loterias && cfg.loterias.find(l => l.activo)) || (cfg.loterias && cfg.loterias[0]) || { id: 'GUACHARO ACTIVO', nombre: 'GUACHARO ACTIVO' };
   } else {
-    loteria = cfg.loterias.find(l => l.id === targetId) || cfg.loterias.find(l => l.activo) || cfg.loterias[0];
+    loteria = (cfg.loterias && cfg.loterias.find(l => l.id === targetId)) || (cfg.loterias && cfg.loterias.find(l => l.activo)) || (cfg.loterias && cfg.loterias[0]) || { id: targetId, nombre: targetId };
   }
 
   let horaSorteo = (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(loteria.horarios) || '10:00';
+
+  // Si estamos en la nube (Render / Linux), despachar la orden a la taquilla física en Windows vía Supabase
+  if (process.platform !== 'win32') {
+    log(`☁️ [CLOUD BRIDGE] Orden de sondeo recibida en la nube para ${loteria.nombre}. Despachando a la taquilla local vía Supabase...`, 'log-warn');
+    try {
+      const cloudStore = require('./cloud_store');
+      const cmd = await cloudStore.dispatchCommand('TRIGGER_SONDEO', {
+        loteriaId: loteria.id,
+        loteriaNombre: loteria.nombre,
+        horaSorteo,
+        modoHibrido
+      });
+
+      if (!cmd) {
+        return res.status(500).json({ ok: false, message: 'Falla al conectar con la cola en la nube Supabase.' });
+      }
+
+      // Esperar hasta 36s si la taquilla física responde sincrónicamente
+      const completed = await cloudStore.waitForCommandCompletion(cmd.id, 36000);
+      if (completed && completed.status === 'COMPLETED' && completed.result) {
+        log(`✅ [CLOUD BRIDGE] Sondeo completado por la taquilla física para ${loteria.nombre}.`, 'log-success');
+        return res.json(completed.result);
+      } else if (completed && completed.status === 'FAILED') {
+        return res.status(500).json({ ok: false, message: completed.result?.message || 'Fallo en ejecución en taquilla local.' });
+      } else {
+        // La taquilla sigue ejecutando
+        return res.json({
+          ok: true,
+          queued: true,
+          commandId: cmd.id,
+          message: `Orden despachada a la taquilla física (${loteria.nombre}). Los resultados se reflejarán en vivo al terminar.`
+        });
+      }
+    } catch (bridgeErr) {
+      log(`Falla en puente de comandos: ${bridgeErr.message}`, 'log-danger');
+      return res.status(500).json({ ok: false, message: bridgeErr.message });
+    }
+  }
+
+  return handleExecuteSondeoNowInternal(req, res, loteria, horaSorteo, modoHibrido);
+}
+
+// Ejecución local interna en Windows con Premier Pluss
+async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, horaSorteoParam = '', modoHibridoParam = false) {
+  const cfg = getConfig() || {};
+  const predictive = require('./predictive_service');
+
+  let loteria = loteriaParam;
+  if (!loteria) {
+    const targetId = req.body && req.body.loteriaId;
+    if (!targetId || targetId === 'AUTO') {
+      loteria = (cfg.loterias && cfg.loterias.find(l => l.activo)) || (cfg.loterias && cfg.loterias[0]) || { id: 'GUACHARO ACTIVO', nombre: 'GUACHARO ACTIVO' };
+    } else {
+      loteria = (cfg.loterias && cfg.loterias.find(l => l.id === targetId)) || { id: targetId, nombre: targetId };
+    }
+  }
+
+  const modoHibrido = modoHibridoParam || (req.body && req.body.modoHibrido === true);
+  let horaSorteo = horaSorteoParam || (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(loteria.horarios) || '10:00';
 
   if (modoHibrido) {
     log(`🎯 [MODO HÍBRIDO ASISTIDO] Iniciando sondeo para selección actual en PremierPluss (${loteria.nombre})...`, 'log-warn');
   } else {
     log(`⚡ [EJECUTAR SONDEO AHORA] Iniciando ejecución manual en PremierPluss para ${loteria.nombre} (${horaSorteo})...`, 'log-warn');
   }
-  
+
   try {
     const machinesMgr = require('./machines_manager');
     const result = await machinesMgr.ejecutarPescaEnCascada(cfg, loteria.id, log, horaSorteo, false, modoHibrido);
-    
-    // Asegurar que result.sorteo tenga una hora válida para evitar rechazo en Triple 7
+
     if (!result.sorteo || !/\d{1,2}:\d{2}/.test(result.sorteo)) {
       result.sorteo = horaSorteo;
     }
@@ -1047,6 +1105,20 @@ async function handleExecuteSondeoNow(req, res) {
 
 app.post('/api/trigger-test', handleExecuteSondeoNow);
 app.post('/api/sondeo/trigger-now', handleExecuteSondeoNow);
+
+// API: Consultar estado de comando remoto (Cloud Bridge)
+app.get('/api/sondeo/command-status/:id', async (req, res) => {
+  try {
+    const cloudStore = require('./cloud_store');
+    const cmd = await cloudStore.getLatestCommand();
+    if (cmd && cmd.id === req.params.id) {
+      return res.json({ ok: true, status: cmd.status, result: cmd.result });
+    }
+    res.json({ ok: true, status: 'NOT_FOUND' });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 
 // API: Obtener Estado y Sorteos Activos en Triple 7
 app.get('/api/triple7/status', async (req, res) => {
@@ -1748,7 +1820,49 @@ if (!process.env.RENDER && !process.env.IS_RENDER) {
   }, 45000);
 }
 
+// Worker de recepción de órdenes remotas desde la Web (Render) vía Supabase
+let isProcessingCloudCommand = false;
+function startCloudCommandWorker() {
+  if (process.platform !== 'win32') return; // Solo la máquina física con Windows ejecuta
+
+  const cloudStore = require('./cloud_store');
+  setInterval(async () => {
+    if (isProcessingCloudCommand) return;
+    try {
+      const cmd = await cloudStore.getLatestCommand();
+      if (cmd && cmd.status === 'PENDING') {
+        const age = Date.now() - new Date(cmd.createdAt).getTime();
+        if (age > 120000) {
+          await cloudStore.updateCommand(cmd.id, 'EXPIRED', { message: 'Comando expirado por tiempo' });
+          return;
+        }
+
+        isProcessingCloudCommand = true;
+        log(`📥 [CLOUD BRIDGE] Orden recibida desde la Web: ${cmd.command} para ${cmd.payload?.loteriaNombre || cmd.payload?.loteriaId || 'AUTO'}`, 'log-warn');
+        await cloudStore.updateCommand(cmd.id, 'PROCESSING');
+
+        let sendResult = null;
+        const fakeReq = { body: cmd.payload || {} };
+        const fakeRes = {
+          json: (data) => { sendResult = data; },
+          status: (code) => ({ json: (data) => { sendResult = { ...data, statusCode: code }; } })
+        };
+
+        await handleExecuteSondeoNowInternal(fakeReq, fakeRes);
+        const ok = sendResult && sendResult.ok !== false && !sendResult.error;
+        await cloudStore.updateCommand(cmd.id, ok ? 'COMPLETED' : 'FAILED', sendResult);
+        log(`📤 [CLOUD BRIDGE] Orden ${cmd.id} reportada a la nube como: ${ok ? 'COMPLETADA CON ÉXITO' : 'FALLIDA'}`, ok ? 'log-success' : 'log-danger');
+      }
+    } catch (err) {
+      console.warn(`[CLOUD BRIDGE ERROR] ${err.message}`);
+    } finally {
+      isProcessingCloudCommand = false;
+    }
+  }, 2500);
+}
+
 app.listen(PORT, () => {
   log(`🚀 Servidor de la Suite activo en http://localhost:${PORT}`, 'log-success');
   startCloudflareTunnel();
+  startCloudCommandWorker();
 });

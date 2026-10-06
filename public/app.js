@@ -802,10 +802,43 @@ function bindActionButtons() {
       }
       const data = await res.json();
       if (data.ok) {
-        appendLog(`[EXITO] ✅ ${data.message}`, 'log-success');
-        showToast('Sondeo y Bloqueo completados');
-        if (typeof fetchDashboardData === 'function') fetchDashboardData();
-        if (typeof fetchTrophies === 'function') fetchTrophies();
+        if (data.queued && data.commandId) {
+          appendLog(`[PUENTE NUBE] ☁️ Orden enviada a la taquilla física local en Windows (${data.commandId}). Esperando sondeo de ${lotLabel}...`, 'log-warn');
+          showToast(`⚡ Conectando con taquilla física para ${lotLabel}...`);
+
+          // Polling para esperar que la taquilla local termine
+          let attempts = 0;
+          const pollTimer = setInterval(async () => {
+            attempts++;
+            if (attempts > 25) {
+              clearInterval(pollTimer);
+              appendLog(`[AVISO] ⏳ La taquilla local continúa procesando el sondeo en segundo plano.`, 'log-warn');
+              return;
+            }
+            try {
+              const statusRes = await fetch(`/api/sondeo/command-status/${data.commandId}`);
+              const statusData = await statusRes.json();
+              if (statusData.ok && statusData.status === 'COMPLETED') {
+                clearInterval(pollTimer);
+                appendLog(`[EXITO] ✅ Sondeo completado por la taquilla física local para ${lotLabel}.`, 'log-success');
+                showToast(`✅ Sondeo completado para ${lotLabel}`);
+                if (typeof fetchDashboardData === 'function') fetchDashboardData();
+                if (typeof fetchTrophies === 'function') fetchTrophies();
+                if (typeof loadTriple7Draws === 'function') loadTriple7Draws();
+              } else if (statusData.ok && statusData.status === 'FAILED') {
+                clearInterval(pollTimer);
+                appendLog(`[ERROR] ❌ La taquilla física reportó fallo: ${statusData.result?.message || 'Error en taquilla'}`, 'log-danger');
+                showToast('Fallo en taquilla física', 'error');
+              }
+            } catch (e) {}
+          }, 2000);
+        } else {
+          appendLog(`[EXITO] ✅ ${data.message}`, 'log-success');
+          showToast('Sondeo y Bloqueo completados');
+          if (typeof fetchDashboardData === 'function') fetchDashboardData();
+          if (typeof fetchTrophies === 'function') fetchTrophies();
+          if (typeof loadTriple7Draws === 'function') loadTriple7Draws();
+        }
       } else {
         appendLog(`[ERROR] ❌ ${data.message}`, 'log-danger');
         showToast(`Error: ${data.message}`, 'error');
@@ -2180,14 +2213,63 @@ function initTriple7Module() {
   const filterSelect = document.getElementById('t7-filter-loteria');
   if (filterSelect) {
     filterSelect.addEventListener('change', () => {
-      if (!cachedT7Draws) return;
-      const selected = filterSelect.value;
-      const filtered = selected === 'ALL'
-        ? cachedT7Draws
-        : cachedT7Draws.filter(d => d.loteria === selected);
-      renderTriple7Table(filtered);
+      applyTriple7FiltersAndRender();
     });
   }
+
+  // Ordenamiento dinámico por hora de sorteo, bloqueados o lotería
+  const sortSelect = document.getElementById('t7-sort-order');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      applyTriple7FiltersAndRender();
+    });
+  }
+}
+
+function timeStringToMinutes(timeStr) {
+  if (!timeStr) return 9999;
+  const match = timeStr.trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+  if (!match) return 9999;
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const ampm = match[3];
+  if (ampm === 'PM' && h < 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function applyTriple7FiltersAndRender() {
+  if (!cachedT7Draws) return;
+  const filterSelect = document.getElementById('t7-filter-loteria');
+  const sortSelect = document.getElementById('t7-sort-order');
+  const selectedLot = filterSelect ? filterSelect.value : 'ALL';
+  const sortOrder = sortSelect ? sortSelect.value : 'TIME_ASC';
+
+  let list = selectedLot === 'ALL'
+    ? [...cachedT7Draws]
+    : cachedT7Draws.filter(d => d.loteria === selectedLot);
+
+  list.sort((a, b) => {
+    const timeA = timeStringToMinutes(a.sorteo);
+    const timeB = timeStringToMinutes(b.sorteo);
+
+    if (sortOrder === 'TIME_ASC') {
+      return (timeA - timeB) || a.loteria.localeCompare(b.loteria);
+    } else if (sortOrder === 'TIME_DESC') {
+      return (timeB - timeA) || a.loteria.localeCompare(b.loteria);
+    } else if (sortOrder === 'BLOCKED_FIRST') {
+      const bA = a.bloqueado ? 1 : 0;
+      const bB = b.bloqueado ? 1 : 0;
+      if (bB !== bA) return bB - bA;
+      return (timeA - timeB) || a.loteria.localeCompare(b.loteria);
+    } else if (sortOrder === 'LOTTERY_NAME') {
+      const cmp = a.loteria.localeCompare(b.loteria);
+      return cmp !== 0 ? cmp : (timeA - timeB);
+    }
+    return 0;
+  });
+
+  renderTriple7Table(list);
 }
 
 function normalizarTextoLocal(str) {
@@ -2208,7 +2290,6 @@ async function loadTriple7Draws(isManual = false) {
   const metricUpdated = document.getElementById('t7-metric-updated-at');
   const countBadge = document.getElementById('t7-table-count-badge');
   const btnRefresh = document.getElementById('btn-refresh-triple7');
-  const filterSelect = document.getElementById('t7-filter-loteria');
 
   if (btnRefresh) btnRefresh.classList.add('loading');
   if (isManual && tbody) {
@@ -2251,13 +2332,8 @@ async function loadTriple7Draws(isManual = false) {
       // Actualizar opciones de lotería y sorteos en selector manual
       updateTriple7LotteryOptions();
 
-      // Renderizar tabla aplicando el filtro seleccionado actualmente
-      const currentFilter = filterSelect ? filterSelect.value : 'ALL';
-      const toRender = currentFilter === 'ALL'
-        ? drawsGestionados
-        : drawsGestionados.filter(d => d.loteria === currentFilter);
-
-      renderTriple7Table(toRender);
+      // Renderizar tabla aplicando filtro y ordenamiento seleccionado
+      applyTriple7FiltersAndRender();
 
       if (isManual) showToast(`Sorteos de Triple 7 actualizados (${total} gestionados)`);
     } else {
