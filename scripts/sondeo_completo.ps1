@@ -823,7 +823,17 @@ if (-not $ModoHibrido) {
     $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
     $bmpScreenForFind = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
     $gFind = [System.Drawing.Graphics]::FromImage($bmpScreenForFind)
-    $gFind.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+    try {
+        $gFind.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+    } catch {
+        Write-Output "⚠️ [AVISO PANTALLA] Reintentando captura OCR ($($_.Exception.Message))..."
+        Start-Sleep -Milliseconds 350
+        try {
+            $gFind.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+        } catch {
+            Write-Output "⚠️ [ERROR PANTALLA] No se pudo obtener el contexto de pantalla: $($_.Exception.Message)"
+        }
+    }
     $gFind.Dispose()
 
     $posLoteria = BuscarPosicionLoteriaPorOCR $bmpScreenForFind $Loteria
