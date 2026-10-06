@@ -74,7 +74,7 @@ async function saveMasterConfig(cfg) {
       updated_at: nowIso
     };
 
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store`;
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
     const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: HEADERS,

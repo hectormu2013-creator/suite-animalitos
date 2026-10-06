@@ -1,10 +1,10 @@
 {
-    "status":  "STOPPED",
+    "status":  "IDLE",
     "requestedAction":  "NONE",
-    "details":  "Detenido de emergencia por teclado (ESC/F8)",
-    "loteria":  "LOTTO ACTIVO",
+    "details":  "Premier Pluss no detectado - Abrelo en el escritorio",
+    "loteria":  "LA GRANJITA",
     "currentAnimal":  "",
     "progress":  "",
-    "pid":  26980,
-    "updatedAt":  "2026-10-05 13:32:27"
+    "pid":  30876,
+    "updatedAt":  "2026-10-06 15:33:22"
 }

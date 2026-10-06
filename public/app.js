@@ -204,6 +204,33 @@ function renderLotteries(lotteries) {
         <input type="text" class="form-input lot-input-horarios" data-index="${index}" value="${(lot.horarios || []).join(', ')}" placeholder="08:00, 09:00, 10:00...">
       </div>
 
+      <!-- Selector de Sorteos Habilitados para Sondeo (Control Granular Estadístico) -->
+      <div class="form-group" style="margin-bottom:14px; background:rgba(15,23,42,0.4); border:1px solid rgba(56,189,248,0.22); border-radius:10px; padding:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size:12px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:6px; margin:0;">
+            <span>🎯</span> Sorteos Habilitados para Sondeo en Premier Pluss
+          </label>
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="btn" style="padding:2px 8px; font-size:10px; background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; border-radius:4px; cursor:pointer;" onclick="toggleAllSondeoTimes(${index}, true)">Todos</button>
+            <button type="button" class="btn" style="padding:2px 8px; font-size:10px; background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#ef4444; border-radius:4px; cursor:pointer;" onclick="toggleAllSondeoTimes(${index}, false)">Ninguno</button>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">
+          Activa o desactiva qué sorteos específicos se deben sondear según el comportamiento estadístico de la premiación:
+        </div>
+        <div class="sondeo-times-chips" id="sondeo-chips-lot-${index}" style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${(lot.horarios || []).map(h => {
+            const isActivo = Array.isArray(lot.sorteosSondeoActivos) ? lot.sorteosSondeoActivos.includes(h) : true;
+            return `
+              <label class="sondeo-chip-label" style="display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; background:${isActivo ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${isActivo ? '#10b981' : 'rgba(255,255,255,0.15)'}; color:${isActivo ? '#34d399' : 'var(--text-muted)'}; user-select:none; transition:all 0.2s ease;">
+                <input type="checkbox" class="lot-sondeo-time-chk" data-lot-index="${index}" data-time="${h}" ${isActivo ? 'checked' : ''} onchange="this.parentElement.style.background = this.checked ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.05)'; this.parentElement.style.borderColor = this.checked ? '#10b981' : 'rgba(255,255,255,0.15)'; this.parentElement.style.color = this.checked ? '#34d399' : 'var(--text-muted)';">
+                <span>${h}</span>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
       <!-- Estrategias de Bloqueo y Tiempos Independientes en Triple 7 -->
       <div class="blocking-rules-box" style="background:rgba(255,255,255,0.02); border:1px solid rgba(56,189,248,0.25); border-radius:12px; padding:16px; margin-top:14px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
@@ -1224,11 +1251,36 @@ async function saveLotteriesConfig() {
 
       const rawHorarios = el.querySelector('.lot-input-horarios').value;
       lot.horarios = rawHorarios.split(/[,;\s]+/).map(h => h.trim()).filter(Boolean);
+
+      // Sorteos específicos habilitados para sondeo (Control Granular Estadístico)
+      const sondeoTimeCheckboxes = el.querySelectorAll('.lot-sondeo-time-chk');
+      if (sondeoTimeCheckboxes.length > 0) {
+        lot.sorteosSondeoActivos = Array.from(sondeoTimeCheckboxes)
+          .filter(chk => chk.checked)
+          .map(chk => chk.dataset.time);
+      } else {
+        lot.sorteosSondeoActivos = [...lot.horarios];
+      }
     }
   });
 
   await persistConfig();
 }
+
+// Helper global para seleccionar/deseleccionar todos los sorteos para sondeo de una lotería
+window.toggleAllSondeoTimes = function(lotIndex, enable) {
+  const container = document.getElementById(`sondeo-chips-lot-${lotIndex}`);
+  if (!container) return;
+  const checkboxes = container.querySelectorAll('.lot-sondeo-time-chk');
+  checkboxes.forEach(chk => {
+    chk.checked = enable;
+    if (chk.parentElement) {
+      chk.parentElement.style.background = enable ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.05)';
+      chk.parentElement.style.borderColor = enable ? '#10b981' : 'rgba(255,255,255,0.15)';
+      chk.parentElement.style.color = enable ? '#34d399' : 'var(--text-muted)';
+    }
+  });
+};
 
 // Guardar Credenciales
 async function saveCredentialsConfig() {

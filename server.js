@@ -1638,6 +1638,15 @@ setInterval(async () => {
       // 4. DISPARO DE SONDEO Y BLOQUEO EN PREMIER PLUSS (Hasta 5 Sondeos por Sorteo)
       // =========================================================================
       if (lot.bloqueoPremierAgotados !== false) {
+        // Verificar si este sorteo específico está habilitado para sondeo según decisión del usuario
+        const sorteosPermitidosSondeo = Array.isArray(lot.sorteosSondeoActivos) 
+          ? lot.sorteosSondeoActivos 
+          : (lot.horarios || []);
+        if (!sorteosPermitidosSondeo.includes(hStr)) {
+          // Sorteo excluido de sondeo por el usuario según estadísticas
+          continue;
+        }
+
         let sondeosActivos = [];
         if (Array.isArray(lot.sondeosMultiples) && lot.sondeosMultiples.length > 0) {
           sondeosActivos = lot.sondeosMultiples
