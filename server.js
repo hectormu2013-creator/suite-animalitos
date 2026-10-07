@@ -59,47 +59,120 @@ function saveConfig(cfg) {
   }
 }
 
-// Cargar persistencia maestra de Supabase al arrancar
+const IS_CLOUD = !!(process.env.RENDER || process.env.IS_RENDER);
+// Token compartido para que solo la Web (Render) pueda empujar configuración a los nodos locales
+const SYNC_TOKEN = process.env.SUITE_SYNC_TOKEN || 'fenix-suite-sync-2026';
+
+// Escribe en disco una configuración recibida de la nube SIN reenviarla a Supabase (evita bucles)
+// y conservando la identidad propia de este equipo (maquinaLocalId).
+function adoptCloudConfigLocally(cloudCfg) {
+  const localCfg = getConfig();
+  const merged = JSON.parse(JSON.stringify(cloudCfg));
+  if (localCfg && localCfg.general && localCfg.general.maquinaLocalId) {
+    if (!merged.general) merged.general = {};
+    merged.general.maquinaLocalId = localCfg.general.maquinaLocalId;
+  }
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf8');
+  return { localCfg, merged };
+}
+
+// En Render el disco es efímero: antes de modificar y re-guardar la config partimos de la copia
+// maestra en Supabase, para no pisar ajustes hechos desde la Web con una copia vieja del disco.
+async function getConfigFresh() {
+  if (IS_CLOUD) {
+    try {
+      const cloudRes = await require('./cloud_store').getMasterConfig();
+      if (cloudRes && cloudRes.config) {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
+        return cloudRes.config;
+      }
+    } catch (e) {}
+  }
+  return getConfig();
+}
+
+// Cargar persistencia maestra de Supabase al arrancar (única consulta; no hay polling periódico)
 (async function initCloudConfigOnStartup() {
   try {
     const cloudStore = require('./cloud_store');
     const cloudRes = await cloudStore.getMasterConfig();
-    if (cloudRes && cloudRes.config) {
-      const localCfg = getConfig();
-      // Si estamos en Render, o si el disco local no tiene configuración, adoptarla
-      if (process.env.RENDER || process.env.IS_RENDER || !localCfg) {
-        fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
-        log(`☁️ [CONFIG MAESTRA NUBE] Configuración restaurada con éxito desde Supabase (Web Master).`, 'log-success');
-      }
+    if (!cloudRes || !cloudRes.config) return;
+
+    if (IS_CLOUD || !getConfig()) {
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
+      log(`☁️ [CONFIG MAESTRA NUBE] Configuración restaurada con éxito desde Supabase (Web Master).`, 'log-success');
+      return;
+    }
+
+    // Nodo local: ponerse al día solo si hubo cambios en la Web mientras este equipo estaba apagado
+    const localMtime = fs.statSync(CONFIG_PATH).mtime;
+    if (cloudRes.updatedAt && new Date(cloudRes.updatedAt) > localMtime) {
+      adoptCloudConfigLocally(cloudRes.config);
+      log(`🌐 [ARRANQUE] Ajustes pendientes de la Web aplicados en este equipo.`, 'log-success');
     }
   } catch (e) {}
 })();
 
-// Sincronización continua: Localhost obedece los cambios realizados desde la Web
-let lastCloudConfigTime = null;
-async function pullConfigFromCloud() {
-  if (process.env.RENDER || process.env.IS_RENDER) return;
-  try {
-    const cloudStore = require('./cloud_store');
-    const cloudRes = await cloudStore.getMasterConfig();
-    if (cloudRes && cloudRes.config && cloudRes.updatedAt) {
-      if (!lastCloudConfigTime || new Date(cloudRes.updatedAt) > new Date(lastCloudConfigTime)) {
-        const localCfg = getConfig();
-        const cloudStr = JSON.stringify(cloudRes.config);
-        const localStr = JSON.stringify(localCfg);
-        if (cloudStr !== localStr) {
-          fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
-          log(`🌐 [SINCRONIZACIÓN WEB MASTER] Nuevos ajustes detectados desde el panel Web. Localhost actualizado automáticamente.`, 'log-success');
-        }
-        lastCloudConfigTime = cloudRes.updatedAt;
-      }
+// Render -> Nodos: empujar la configuración guardada a cada equipo vía su túnel
+async function pushConfigToMachines(cfg) {
+  if (!IS_CLOUD) return [];
+  const maquinas = (cfg && cfg.general && Array.isArray(cfg.general.maquinas)) ? cfg.general.maquinas : [];
+  const destinos = maquinas.filter(m =>
+    m.activa !== false &&
+    typeof m.ipOUrl === 'string' &&
+    /^https:\/\//i.test(m.ipOUrl) // solo túneles públicos; IPs LAN/localhost no son alcanzables desde Render
+  );
+
+  return Promise.all(destinos.map(async (m) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const r = await fetch(`${m.ipOUrl.replace(/\/$/, '')}/api/config/push-from-cloud`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-suite-sync-token': SYNC_TOKEN },
+        body: JSON.stringify(cfg),
+        signal: controller.signal
+      });
+      const ok = r.ok;
+      log(`${ok ? '📤' : '⚠️'} [PUSH CONFIG] ${m.nombre || m.id}: ${ok ? 'actualizado' : 'HTTP ' + r.status}`, ok ? 'log-success' : 'log-warn');
+      return { id: m.id, nombre: m.nombre, ok, status: r.status };
+    } catch (e) {
+      log(`⚠️ [PUSH CONFIG] ${m.nombre || m.id} no respondió (${e.name === 'AbortError' ? 'timeout' : e.message}). Se pondrá al día al reiniciar.`, 'log-warn');
+      return { id: m.id, nombre: m.nombre, ok: false, error: e.message };
+    } finally {
+      clearTimeout(timer);
     }
-  } catch (e) {}
+  }));
 }
 
-if (!process.env.RENDER && !process.env.IS_RENDER) {
-  setInterval(pullConfigFromCloud, 20000);
-}
+// Nodo local: recibir configuración empujada desde la Web (Render)
+app.post('/api/config/push-from-cloud', async (req, res) => {
+  if (IS_CLOUD) return res.status(400).json({ ok: false, message: 'Endpoint exclusivo de nodos locales' });
+  if (req.get('x-suite-sync-token') !== SYNC_TOKEN) {
+    return res.status(401).json({ ok: false, message: 'Token de sincronización inválido' });
+  }
+  const cloudCfg = req.body;
+  if (!cloudCfg || typeof cloudCfg !== 'object' || !Array.isArray(cloudCfg.loterias)) {
+    return res.status(400).json({ ok: false, message: 'Configuración inválida' });
+  }
+  try {
+    const { localCfg, merged } = adoptCloudConfigLocally(cloudCfg);
+    log(`🌐 [PUSH DESDE WEB] Nueva configuración recibida desde OnRender y aplicada en este equipo.`, 'log-success');
+
+    // La tarea programada de Windows solo puede actualizarse aquí (en Render no existe)
+    const gNew = merged.general || {};
+    const gOld = (localCfg && localCfg.general) || {};
+    if (gNew.horaActivacionDiaria !== undefined &&
+        (gNew.horaActivacionDiaria !== gOld.horaActivacionDiaria || gNew.activacionDiariaActiva !== gOld.activacionDiariaActiva)) {
+      syncScheduledTask(gNew.horaActivacionDiaria, gNew.activacionDiariaActiva !== false).then(t => {
+        if (t && t.ok) log(`⏰ [TAREA PROGRAMADA] ${t.message}`, 'log-info');
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 
 const { execFile } = require('child_process');
 
@@ -171,7 +244,10 @@ app.post('/api/config', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, message: 'Guardado correctamente en la nube y persistencia' });
+    // Desde la Web: notificar de inmediato a las computadoras con la automatización instalada
+    const pushResults = await pushConfigToMachines(newCfg);
+
+    res.json({ ok: true, message: 'Guardado correctamente en la nube y persistencia', pushResults });
   } else {
     res.status(500).json({ ok: false, message: 'Error al guardar archivo config.json' });
   }
@@ -441,20 +517,9 @@ function syncToCloudImmediate(resetAll = false) {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        if (res.statusCode === 200) {
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed && parsed.cloudConfig) {
-              const localCfg = getConfig();
-              const cloudStr = JSON.stringify(parsed.cloudConfig);
-              const localStr = JSON.stringify(localCfg);
-              if (cloudStr !== localStr) {
-                fs.writeFileSync(CONFIG_PATH, JSON.stringify(parsed.cloudConfig, null, 2), 'utf8');
-                log(`🌐 [SYNC NUBE -> LOCAL] Configuración sincronizada y actualizada desde la Web.`, 'log-success');
-              }
-            }
-          } catch (e) {}
-        } else {
+        // La configuración ya no viaja de vuelta en esta respuesta: Render la empuja
+        // directamente al nodo cuando se guarda en la Web (/api/config/push-from-cloud).
+        if (res.statusCode !== 200) {
           console.warn(`[SYNC NUBE] HTTP ${res.statusCode}: ${res.statusMessage} - ${data.slice(0, 100)}`);
         }
       });
@@ -512,12 +577,12 @@ app.post('/api/system/update', (req, res) => {
   }
 });
 
-app.post('/api/machines/report-tunnel', (req, res) => {
+app.post('/api/machines/report-tunnel', async (req, res) => {
   const { machineId, tunnelUrl, nombre } = req.body;
   if (!machineId || !tunnelUrl) {
     return res.status(400).json({ ok: false, message: 'Faltan machineId o tunnelUrl' });
   }
-  const cfg = getConfig();
+  const cfg = await getConfigFresh();
   if (cfg && cfg.general) {
     if (!Array.isArray(cfg.general.maquinas)) cfg.general.maquinas = [];
     let m = cfg.general.maquinas.find(x => x.id === machineId);
@@ -664,7 +729,7 @@ app.post('/api/memory/release-animal', async (req, res) => {
 });
 
 // --- API: SINCRONIZACIÓN EN TIEMPO REAL NUBE (LOCAL <-> RENDER) ---
-app.post('/api/sync/receive-history', (req, res) => {
+app.post('/api/sync/receive-history', async (req, res) => {
   try {
     const { records, memory, resetAll, machineId, tunnelUrl, machineName } = req.body;
     const historyMgr = require('./history_manager');
@@ -709,15 +774,20 @@ app.post('/api/sync/receive-history', (req, res) => {
     }
 
     if (machineId && tunnelUrl) {
-      const cfg = getConfig();
+      const cfg = await getConfigFresh();
       if (cfg && cfg.general) {
         if (!Array.isArray(cfg.general.maquinas)) cfg.general.maquinas = [];
         let m = cfg.general.maquinas.find(x => x.id === machineId);
+        let mustSave = false;
         if (m) {
+          // Solo re-guardar si cambió el túnel o la última conexión registrada tiene más de 5 min
+          const lastSeen = m.ultimaConexion ? new Date(m.ultimaConexion).getTime() : 0;
+          mustSave = m.ipOUrl !== tunnelUrl || m.activa === false || (Date.now() - lastSeen) > 5 * 60 * 1000;
           m.ipOUrl = tunnelUrl;
           m.activa = true;
           m.ultimaConexion = new Date().toISOString();
         } else {
+          mustSave = true;
           cfg.general.maquinas.push({
             id: machineId,
             nombre: machineName || 'Nodo Taquilla Dedicado (Producción)',
@@ -734,19 +804,14 @@ app.post('/api/sync/receive-history', (req, res) => {
             ultimaConexion: new Date().toISOString()
           });
         }
-        saveConfig(cfg);
+        if (mustSave) saveConfig(cfg);
       }
     }
 
     log(`☁️ [SYNC NUBE] Recibidos y sincronizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
-    
-    // Guardar también en Supabase para respaldo permanente
-    try {
-      const cloudStore = require('./cloud_store');
-      cloudStore.saveMasterHistory(currentDb);
-    } catch (eCS) {}
+    // Nota: el respaldo del historial en Supabase lo hace el nodo local en syncToCloudImmediate().
 
-    res.json({ ok: true, count: Array.isArray(records) ? records.length : 0, cloudConfig: getConfig() });
+    res.json({ ok: true, count: Array.isArray(records) ? records.length : 0 });
   } catch (err) {
     log(`⚠️ Error en sync nube: ${err.message}`, 'log-danger');
     res.status(500).json({ ok: false, message: err.message });

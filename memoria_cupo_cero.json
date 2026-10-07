@@ -443,13 +443,15 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 2,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
-      "sorteosProcesados": [],
+      "sorteosProcesados": [
+        "09:30"
+      ],
       "estado": "ACTIVO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
@@ -464,13 +466,15 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 2,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
-      "sorteosProcesados": [],
+      "sorteosProcesados": [
+        "09:30"
+      ],
       "estado": "ACTIVO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
@@ -485,13 +489,15 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 2,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
-      "sorteosProcesados": [],
+      "sorteosProcesados": [
+        "09:30"
+      ],
       "estado": "ACTIVO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
@@ -506,13 +512,15 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 2,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
-      "sorteosProcesados": [],
+      "sorteosProcesados": [
+        "09:30"
+      ],
       "estado": "ACTIVO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
@@ -527,14 +535,16 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 2,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30",
         "12:30"
       ],
-      "sorteosProcesados": [],
+      "sorteosProcesados": [
+        "09:30"
+      ],
       "estado": "ACTIVO",
       "timestamp": "2026-10-07T12:01:16.168Z",
       "ultimoSorteoDetectado": "09:30",
@@ -549,14 +559,16 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 2,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30",
         "12:30"
       ],
-      "sorteosProcesados": [],
+      "sorteosProcesados": [
+        "09:30"
+      ],
       "estado": "ACTIVO",
       "timestamp": "2026-10-07T12:01:16.168Z",
       "ultimoSorteoDetectado": "09:30",
@@ -571,14 +583,16 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 2,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30",
         "12:30"
       ],
-      "sorteosProcesados": [],
+      "sorteosProcesados": [
+        "09:30"
+      ],
       "estado": "ACTIVO",
       "timestamp": "2026-10-07T12:01:16.168Z",
       "ultimoSorteoDetectado": "09:30",

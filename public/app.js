@@ -1375,8 +1375,18 @@ async function persistConfig() {
     });
     const result = await res.json();
     if (result.ok) {
-      showToast('Configuración guardada exitosamente');
+      const push = Array.isArray(result.pushResults) ? result.pushResults : [];
+      const okCount = push.filter(p => p.ok).length;
+      showToast(push.length
+        ? `Configuración guardada · enviada a ${okCount}/${push.length} equipo(s)`
+        : 'Configuración guardada exitosamente');
       appendLog('[CONFIG] Parámetros guardados y actualizados en memoria.', 'log-success');
+      push.forEach(p => appendLog(
+        p.ok
+          ? `[PUSH] ✅ ${p.nombre || p.id}: configuración aplicada en el equipo.`
+          : `[PUSH] ⚠️ ${p.nombre || p.id}: sin respuesta (la tomará al reiniciar la automatización).`,
+        p.ok ? 'log-success' : 'log-warn'
+      ));
       populateUIWithConfig(currentConfig);
     }
   } catch (err) {
