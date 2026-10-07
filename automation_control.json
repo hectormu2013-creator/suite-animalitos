@@ -1,10 +1,10 @@
 {
     "status":  "IDLE",
     "requestedAction":  "NONE",
-    "details":  "Premier Pluss no detectado - Abrelo en el escritorio",
-    "loteria":  "LA GRANJITA",
+    "details":  "Sondeo completado con exito",
+    "loteria":  "GUACHARO MILLONARIO",
     "currentAnimal":  "",
     "progress":  "",
-    "pid":  30876,
-    "updatedAt":  "2026-10-06 15:33:22"
+    "pid":  41576,
+    "updatedAt":  "2026-10-07 09:01:23"
 }
