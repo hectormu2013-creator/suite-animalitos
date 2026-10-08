@@ -1228,13 +1228,19 @@ async function saveLotteriesConfig() {
       if (predToggle) lot.bloqueoPredictivosAtrasados = predToggle.checked;
 
       const cantSelect = el.querySelector('.lot-input-cantidad-predictivos');
-      if (cantSelect) lot.cantidadPredictivosABloquear = parseInt(cantSelect.value, 10) || 0;
+      if (cantSelect) {
+        const val = parseInt(cantSelect.value, 10);
+        lot.cantidadPredictivosABloquear = Number.isNaN(val) ? 0 : Math.max(0, val);
+      }
 
       const aleatToggle = el.querySelector('.lot-input-bloqueo-aleatorio');
       if (aleatToggle) lot.bloqueoAleatorioSistema = aleatToggle.checked;
 
       const aleatSelect = el.querySelector('.lot-input-cantidad-aleatorios');
-      if (aleatSelect) lot.cantidadAleatoriosABloquear = Math.min(parseInt(aleatSelect.value, 10) || 0, 3);
+      if (aleatSelect) {
+        const val = parseInt(aleatSelect.value, 10);
+        lot.cantidadAleatoriosABloquear = Number.isNaN(val) ? 0 : Math.min(Math.max(0, val), 3);
+      }
 
       const fijoToggle = el.querySelector('.lot-input-bloqueo-fijo');
       if (fijoToggle) lot.bloqueoFijos = fijoToggle.checked;

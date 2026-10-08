@@ -44,13 +44,13 @@ function getConfig() {
 }
 
 // Guardar Configuración (Disco Local y Nube Supabase)
-function saveConfig(cfg) {
+async function saveConfig(cfg) {
   try {
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
     // Persistencia instantánea en Supabase para que la versión Web nunca se reinicie
     try {
       const cloudStore = require('./cloud_store');
-      cloudStore.saveMasterConfig(cfg).catch(() => {});
+      await cloudStore.saveMasterConfig(cfg);
     } catch (e) {}
     return true;
   } catch (e) {
@@ -63,6 +63,9 @@ const IS_CLOUD = !!(process.env.RENDER || process.env.IS_RENDER);
 // Token compartido para que solo la Web (Render) pueda empujar configuración a los nodos locales
 const SYNC_TOKEN = process.env.SUITE_SYNC_TOKEN || 'fenix-suite-sync-2026';
 
+// Variable de control para saber cuándo se adoptó la última versión de la nube
+let lastAdoptedCloudUpdatedAt = null;
+
 // Escribe en disco una configuración recibida de la nube SIN reenviarla a Supabase (evita bucles)
 // y conservando la identidad propia de este equipo (maquinaLocalId).
 function adoptCloudConfigLocally(cloudCfg) {
@@ -74,6 +77,38 @@ function adoptCloudConfigLocally(cloudCfg) {
   }
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf8');
   return { localCfg, merged };
+}
+
+// Sincronización continua en vivo con la Nube (Supabase / Web Master)
+// Permite que cualquier cambio realizado en la Web (Atrasados, Aleatorios, Horarios de sondeo)
+// se aplique en vivo a la automatización local sin necesidad de reiniciar el servidor.
+async function syncConfigFromCloudLive() {
+  if (IS_CLOUD) return; // En Render no se requiere autodescarga desde Supabase
+  try {
+    const cloudStore = require('./cloud_store');
+    const cloudRes = await cloudStore.getMasterConfig();
+    if (!cloudRes || !cloudRes.config || !cloudRes.updatedAt) return;
+
+    if (!lastAdoptedCloudUpdatedAt || new Date(cloudRes.updatedAt) > new Date(lastAdoptedCloudUpdatedAt)) {
+      const currentDiskCfg = getConfig();
+      const cloudCfgJson = JSON.stringify(cloudRes.config.loterias);
+      const localCfgJson = currentDiskCfg ? JSON.stringify(currentDiskCfg.loterias) : '';
+
+      // Comprobar si hay cambios reales en las loterías o parámetros
+      if (cloudCfgJson !== localCfgJson) {
+        log(`🌐 [SINCRONIZACIÓN EN VIVO] Nueva configuración detectada desde la Web (${new Date(cloudRes.updatedAt).toLocaleTimeString()}). Aplicando cambios a la automatización local...`, 'log-success');
+        adoptCloudConfigLocally(cloudRes.config);
+      }
+      lastAdoptedCloudUpdatedAt = cloudRes.updatedAt;
+    }
+  } catch (e) {
+    // Falla de red silenciosa
+  }
+}
+
+// Polling continuo en nodo local cada 10 segundos
+if (!IS_CLOUD) {
+  setInterval(syncConfigFromCloudLive, 10000);
 }
 
 // En Render el disco es efímero: antes de modificar y re-guardar la config partimos de la copia
@@ -105,6 +140,7 @@ async function getConfigFresh() {
         const localMtime = fs.statSync(CONFIG_PATH).mtime;
         if (cloudRes.updatedAt && new Date(cloudRes.updatedAt) > localMtime) {
           adoptCloudConfigLocally(cloudRes.config);
+          lastAdoptedCloudUpdatedAt = cloudRes.updatedAt;
           log(`🌐 [ARRANQUE] Ajustes pendientes de la Web aplicados en este equipo.`, 'log-success');
         }
       }
@@ -250,8 +286,9 @@ app.post('/api/config', async (req, res) => {
     }
   }
 
-  const success = saveConfig(newCfg);
+  const success = await saveConfig(newCfg);
   if (success) {
+    lastAdoptedCloudUpdatedAt = new Date().toISOString();
     log('Configuración actualizada y guardada con éxito (Persistencia Web en Nube activa).', 'log-success');
 
     // Sincronizar tarea de Windows si viene en general
@@ -271,6 +308,23 @@ app.post('/api/config', async (req, res) => {
     res.json({ ok: true, message: 'Guardado correctamente en la nube y persistencia', pushResults });
   } else {
     res.status(500).json({ ok: false, message: 'Error al guardar archivo config.json' });
+  }
+});
+
+// API: Forzar sincronización desde la nube (Pull Manual o Automático)
+app.post('/api/config/sync-pull', async (req, res) => {
+  try {
+    const cloudStore = require('./cloud_store');
+    const cloudRes = await cloudStore.getMasterConfig();
+    if (cloudRes && cloudRes.config) {
+      adoptCloudConfigLocally(cloudRes.config);
+      lastAdoptedCloudUpdatedAt = cloudRes.updatedAt;
+      log('🌐 [SYNC-PULL] Configuración sincronizada y aplicada desde la nube a petición del cliente.', 'log-success');
+      return res.json({ ok: true, message: 'Configuración actualizada desde la nube exitosamente', config: cloudRes.config });
+    }
+    res.json({ ok: false, message: 'No se encontró configuración en la nube para sincronizar' });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
   }
 });
 
@@ -989,8 +1043,11 @@ async function handleExecuteSondeoNow(req, res) {
     let bestLot = null;
     let minDiff = 99999;
 
+    const getHorasSondeo = (l) => (Array.isArray(l.sorteosSondeoActivos) && l.sorteosSondeoActivos.length > 0) ? l.sorteosSondeoActivos : (l.horarios || []);
+
     for (const l of (cfg.loterias || []).filter(x => x.activo !== false)) {
-      const prox = predictive.calcularProximoSorteo(l.horarios);
+      const horasValidas = getHorasSondeo(l);
+      const prox = predictive.calcularProximoSorteo(horasValidas);
       if (prox) {
         const [h, m] = prox.split(':').map(Number);
         const drawMin = h * 60 + m;
@@ -1006,7 +1063,8 @@ async function handleExecuteSondeoNow(req, res) {
     loteria = (cfg.loterias && cfg.loterias.find(l => l.id === targetId)) || (cfg.loterias && cfg.loterias.find(l => l.activo)) || (cfg.loterias && cfg.loterias[0]) || { id: targetId, nombre: targetId };
   }
 
-  let horaSorteo = (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(loteria.horarios) || '10:00';
+  const horasSondeoLoteria = (Array.isArray(loteria.sorteosSondeoActivos) && loteria.sorteosSondeoActivos.length > 0) ? loteria.sorteosSondeoActivos : (loteria.horarios || []);
+  let horaSorteo = (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(horasSondeoLoteria) || '10:00';
 
   // Si estamos en la nube (Render / Linux), despachar la orden a la taquilla física en Windows vía Supabase
   if (process.platform !== 'win32') {
@@ -1065,7 +1123,8 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
   }
 
   const modoHibrido = modoHibridoParam || (req.body && req.body.modoHibrido === true);
-  let horaSorteo = horaSorteoParam || (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(loteria.horarios) || '10:00';
+  const horasActivasInternas = (Array.isArray(loteria.sorteosSondeoActivos) && loteria.sorteosSondeoActivos.length > 0) ? loteria.sorteosSondeoActivos : (loteria.horarios || []);
+  let horaSorteo = horaSorteoParam || (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(horasActivasInternas) || '10:00';
 
   if (modoHibrido) {
     log(`🎯 [MODO HÍBRIDO ASISTIDO] Iniciando sondeo para selección actual en PremierPluss (${loteria.nombre})...`, 'log-warn');
@@ -1577,6 +1636,9 @@ setInterval(async () => {
   // Solo la máquina local (Windows) ejecuta Premier Pluss y Triple 7.
   if (process.env.RENDER || process.env.IS_RENDER) return;
 
+  // Sincronización continua en vivo con la Nube antes de evaluar cada minuto
+  await syncConfigFromCloudLive();
+
   const cfg = getConfig();
   if (!cfg || !cfg.general.autoStartScheduler) return;
 
@@ -1801,12 +1863,19 @@ setInterval(async () => {
       // 4. DISPARO DE SONDEO Y BLOQUEO EN PREMIER PLUSS (Hasta 5 Sondeos por Sorteo)
       // =========================================================================
       if (lot.bloqueoPremierAgotados !== false) {
-        // Verificar si este sorteo específico está habilitado para sondeo según decisión del usuario
-        const sorteosPermitidosSondeo = Array.isArray(lot.sorteosSondeoActivos) 
-          ? lot.sorteosSondeoActivos 
-          : (lot.horarios || []);
-        if (!sorteosPermitidosSondeo.includes(hStr)) {
-          // Sorteo excluido de sondeo por el usuario según estadísticas
+        // Normalizar comparación de horas (soporta "09:00" vs "9:00")
+        const normH = (t) => {
+          if (!t) return '';
+          const m = String(t).match(/(\d{1,2}):(\d{2})/);
+          return m ? `${m[1].padStart(2, '0')}:${m[2]}` : String(t).trim();
+        };
+
+        const sorteosPermitidosSondeo = (Array.isArray(lot.sorteosSondeoActivos) && lot.sorteosSondeoActivos.length > 0)
+          ? lot.sorteosSondeoActivos.map(normH) 
+          : (lot.horarios || []).map(normH);
+
+        if (!sorteosPermitidosSondeo.includes(normH(hStr))) {
+          // Sorteo excluido de sondeo por el usuario según estadísticas o ajustes en la web
           continue;
         }
 
