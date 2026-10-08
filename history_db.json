@@ -41943,7 +41943,29 @@
     "t7Status": "Bloqueados (1) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null
+    "ganador": {
+      "verificado": true,
+      "numero": "15",
+      "nombre": "Zorro",
+      "bloqueoAcertado": true,
+      "origenAcierto": "ALEATORIO",
+      "origenTexto": "🎲 Cobertura Aleatoria",
+      "metodosAcierto": [
+        {
+          "id": "ALEATORIO",
+          "nombre": "Sistema Autónomo (Cobertura Aleatoria)",
+          "tag": "🎲 Cobertura Aleatoria",
+          "icono": "🎲"
+        }
+      ],
+      "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 15 (Zorro) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.",
+      "fechaVerificacion": "2026-10-08T23:06:25.443Z"
+    },
+    "revision": {
+      "estado": "RESUELTO",
+      "intentos": 1,
+      "fechaResolucion": "2026-10-08T23:05:26.696Z"
+    }
   },
   {
     "id": "2026-10-08_1791497756339",
@@ -42088,7 +42110,22 @@
     "t7Status": "Bloqueados (6) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null
+    "ganador": {
+      "verificado": true,
+      "numero": "00",
+      "nombre": "Delfin",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 00 (Delfin) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T23:10:26.256Z"
+    },
+    "revision": {
+      "estado": "RESUELTO",
+      "intentos": 2,
+      "fechaResolucion": "2026-10-08T23:10:26.014Z"
+    }
   },
   {
     "id": "2026-10-08_1791497757339",
@@ -42203,25 +42240,114 @@
     "t7Status": "Bloqueados (8) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null
+    "ganador": {
+      "verificado": true,
+      "numero": "18",
+      "nombre": "Burro",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 18 (Burro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T23:11:25.182Z"
+    },
+    "revision": {
+      "estado": "RESUELTO",
+      "intentos": 2,
+      "fechaResolucion": "2026-10-08T23:10:26.847Z"
+    }
   },
   {
     "id": "2026-10-08_1791498926932",
-    "timestamp": "2026-10-08T22:50:26.010Z",
+    "timestamp": "2026-10-08T23:02:04.725Z",
     "fecha": "2026-10-08",
-    "hora": "18:50:26",
+    "hora": "19:02:04",
     "horaSorteo": "19:30",
     "loteria": "GUACHARO MILLONARIO",
     "sorteo": "19:30",
     "montoSondeo": 5000,
     "totalAnimales": 101,
     "rojos": [
+      "09",
+      "17",
+      "24",
+      "27",
+      "42",
+      "59",
+      "79",
+      "83",
       "99",
       "11",
-      "25"
+      "25",
+      "23"
     ],
-    "rojosPremier": [],
-    "detallePremier": [],
+    "rojosPremier": [
+      "09",
+      "17",
+      "24",
+      "27",
+      "42",
+      "59",
+      "79",
+      "83",
+      "99"
+    ],
+    "detallePremier": [
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "17",
+        "nombre": "Pavo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "42",
+        "nombre": "Tucan",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "59",
+        "nombre": "Pantera",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "79",
+        "nombre": "Calamar",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "83",
+        "nombre": "Buho",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
     "numFijos": [
       "99"
     ],
@@ -42248,12 +42374,20 @@
       }
     ],
     "numAleatorios": [
-      "25"
+      "25",
+      "23"
     ],
     "aleatoriosSistema": [
       {
         "numero": "25",
         "nombre": "Gallina",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "23",
+        "nombre": "Zebra",
         "origen": "ALEATORIO",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
         "detalle": "Selección algorítmica del sistema"
@@ -42263,11 +42397,67 @@
     "memoriaCupoCero": [],
     "bloqueosConsolidados": [
       {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "17",
+        "nombre": "Pavo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "42",
+        "nombre": "Tucan",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "59",
+        "nombre": "Pantera",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "79",
+        "nombre": "Calamar",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "83",
+        "nombre": "Buho",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
         "numero": "99",
         "nombre": "Guacharito",
-        "origen": "FIJO",
-        "origenTexto": "Número Fijo (Siempre Bloqueado)",
-        "detalle": "Configuración fija del usuario (máx 3)"
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
       },
       {
         "numero": "11",
@@ -42282,10 +42472,17 @@
         "origen": "ALEATORIO",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
         "detalle": "Selección de riesgo del sistema (máx 3)"
+      },
+      {
+        "numero": "23",
+        "nombre": "Zebra",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
       }
     ],
-    "totalBloqueados": 3,
-    "t7Status": "Bloqueados (1) en Triple 7",
+    "totalBloqueados": 12,
+    "t7Status": "Bloqueados (7) en Triple 7",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
     "ganador": null

@@ -569,10 +569,11 @@ function Set-ControlState {
 
 function Check-SafetyAndControl {
     param(
-        [string]$stepName = ""
+        [string]$stepName = "",
+        [bool]$checkFile = $true
     )
     
-    # 1. Comprobar tecla de parada de emergencia global (ESC o F8)
+    # 1. Comprobar tecla de parada de emergencia global por hardware (ESC o F8) - 0ms en memoria
     if ([PremierFullProbe]::IsStopHotkeyPressed()) {
         Write-Output "`n`n[ALERTA DE SEGURIDAD] ¡Detencion de emergencia accionada por teclado (ESC / F8)!"
         Set-ControlState "STOPPED" "Detenido de emergencia por teclado (ESC/F8)"
@@ -587,20 +588,22 @@ function Check-SafetyAndControl {
         exit 99
     }
 
-    # 2. Comprobar orden de detencion desde el archivo de control / panel web
-    $action = Get-ControlAction
-    if ($action -eq "STOP") {
-        Write-Output "`n`n[CONTROL] Detencion total solicitada por el usuario desde el panel."
-        Set-ControlState "STOPPED" "Detenido desde panel web"
-        if ($hwnd -ne [IntPtr]::Zero) {
-            [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
-            try {
-                [System.Windows.Forms.SendKeys]::SendWait("n")
-                Start-Sleep -Milliseconds 150
-                [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-            } catch {}
+    # 2. Comprobar archivo de control solo cuando $checkFile sea $true (ahorra 90% de I/O de disco)
+    if ($checkFile) {
+        $action = Get-ControlAction
+        if ($action -eq "STOP") {
+            Write-Output "`n`n[CONTROL] Detencion total solicitada por el usuario desde el panel."
+            Set-ControlState "STOPPED" "Detenido desde panel web"
+            if ($hwnd -ne [IntPtr]::Zero) {
+                [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+                try {
+                    [System.Windows.Forms.SendKeys]::SendWait("n")
+                    Start-Sleep -Milliseconds 150
+                    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+                } catch {}
+            }
+            exit 99
         }
-        exit 99
     }
 
     # 3. Comprobar solicitud de pausa manual (por tecla F7 o por panel web)
@@ -961,29 +964,21 @@ if ($Loteria.ToUpper().Contains("MILLONARIO")) {
     $animales = @("00", "0") + (1..36 | ForEach-Object { "$_" })
 }
 
-Write-Output "[5/7] Ingresando los $($animales.Count) animales por teclado (Motor Universal Rapido)..."
+Write-Output "[5/7] Ingresando los $($animales.Count) animales por teclado (Motor Ultra Rapido)..."
 $idx = 0
 $total = $animales.Count
 foreach ($anim in $animales) {
     $idx++
-    Check-SafetyAndControl "Animal $anim ($idx/$total)"
-    if ($idx % 5 -eq 1 -or $idx -eq $total) {
+    $checkDisk = ($idx % 10 -eq 1 -or $idx -eq $total)
+    Check-SafetyAndControl "Animal $anim ($idx/$total)" $checkDisk
+    if ($checkDisk) {
         Set-ControlState "RUNNING" "Ingresando animal $anim" $anim "$idx/$total"
+        Write-Host -NoNewline "`r -> Ingresando animal [$idx/$total]: '$anim' [ESC/F8: Detener | F7: Pausa]...      "
     }
     
-    Write-Host -NoNewline "`r -> Ingresando animal [$idx/$total]: '$anim' [ESC/F8: Detener | F7: Pausa]...      "
-    
-    [System.Windows.Forms.SendKeys]::SendWait("{F5}")
-    Start-Sleep -Milliseconds 35
-    
-    [System.Windows.Forms.SendKeys]::SendWait("$anim")
-    Start-Sleep -Milliseconds 40
-    
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-    Start-Sleep -Milliseconds 50
-    
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-    Start-Sleep -Milliseconds 120
+    # Inyección atómica unificada: F5 + animal + doble ENTER en una sola llamada de buffer
+    [System.Windows.Forms.SendKeys]::SendWait("{F5}$anim{ENTER}{ENTER}")
+    Start-Sleep -Milliseconds 45
 }
 
 Write-Output "`n[OK] Los $($animales.Count) animales fueron ingresados al ticket."
