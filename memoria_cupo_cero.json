@@ -1484,16 +1484,19 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "16:30",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "17:30",
         "18:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "17:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-08T20:02:09.957Z",
       "ultimoSorteoDetectado": "17:30",
-      "timestampActualizacion": "2026-10-08T21:02:12.887Z"
+      "timestampActualizacion": "2026-10-08T21:02:12.887Z",
+      "fechaExpiracion": "2026-10-08T21:31:24.094Z"
     },
     {
       "id": "la_granjita_10_2026-10-08_1791491678643",
@@ -1504,13 +1507,16 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "17:00",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "18:00"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-08T20:34:38.643Z"
+      "sorteosProcesados": [
+        "18:00"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-08T20:34:38.643Z",
+      "fechaExpiracion": "2026-10-08T22:01:24.517Z"
     },
     {
       "id": "la_granjita_24_2026-10-08_1791491678643",
@@ -1521,13 +1527,16 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "17:00",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "18:00"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-08T20:34:38.643Z"
+      "sorteosProcesados": [
+        "18:00"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-08T20:34:38.643Z",
+      "fechaExpiracion": "2026-10-08T22:01:24.517Z"
     },
     {
       "id": "la_granjita_27_2026-10-08_1791491678643",
@@ -1538,13 +1547,16 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "17:00",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "18:00"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-08T20:34:38.643Z"
+      "sorteosProcesados": [
+        "18:00"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-08T20:34:38.643Z",
+      "fechaExpiracion": "2026-10-08T22:01:24.517Z"
     },
     {
       "id": "la_granjita_30_2026-10-08_1791491678643",
@@ -1555,13 +1567,160 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "17:00",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "18:00"
       ],
+      "sorteosProcesados": [
+        "18:00"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-08T20:34:38.643Z",
+      "fechaExpiracion": "2026-10-08T22:01:24.517Z"
+    },
+    {
+      "id": "la_granjita_02_2026-10-08_1791495263199",
+      "loteriaId": "la_granjita",
+      "loteriaNombre": "LA GRANJITA",
+      "numero": "02",
+      "nombre": "Toro",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:00"
+      ],
       "sorteosProcesados": [],
       "estado": "ACTIVO",
-      "timestamp": "2026-10-08T20:34:38.643Z"
+      "timestamp": "2026-10-08T21:34:23.199Z"
+    },
+    {
+      "id": "la_granjita_11_2026-10-08_1791495263199",
+      "loteriaId": "la_granjita",
+      "loteriaNombre": "LA GRANJITA",
+      "numero": "11",
+      "nombre": "Gato",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:00"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-08T21:34:23.199Z"
+    },
+    {
+      "id": "la_granjita_14_2026-10-08_1791495263199",
+      "loteriaId": "la_granjita",
+      "loteriaNombre": "LA GRANJITA",
+      "numero": "14",
+      "nombre": "Paloma",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:00"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-08T21:34:23.199Z"
+    },
+    {
+      "id": "la_granjita_17_2026-10-08_1791495263199",
+      "loteriaId": "la_granjita",
+      "loteriaNombre": "LA GRANJITA",
+      "numero": "17",
+      "nombre": "Pavo",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:00"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-08T21:34:23.199Z"
+    },
+    {
+      "id": "guacharo_millonario_24_2026-10-08_1791496561993",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "24",
+      "nombre": "Iguana",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-08T21:56:01.993Z",
+      "ultimoSorteoDetectado": "18:30",
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
+    },
+    {
+      "id": "guacharo_millonario_27_2026-10-08_1791496561993",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "27",
+      "nombre": "Perro",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-08T21:56:01.993Z",
+      "ultimoSorteoDetectado": "18:30",
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
+    },
+    {
+      "id": "guacharo_millonario_42_2026-10-08_1791496561993",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "42",
+      "nombre": "Tucan",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-08T21:56:01.993Z",
+      "ultimoSorteoDetectado": "18:30",
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
+    },
+    {
+      "id": "guacharo_millonario_59_2026-10-08_1791496561993",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "59",
+      "nombre": "Pantera",
+      "fechaOrigen": "2026-10-08",
+      "sorteoOrigen": "18:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:30"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-08T21:56:01.993Z",
+      "ultimoSorteoDetectado": "18:30",
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
     }
   ]
 }

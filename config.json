@@ -33,7 +33,7 @@
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-08T17:41:21.751Z",
+        "ultimaConexion": "2026-10-08T21:06:08.893Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -86,9 +86,9 @@
         "18:00",
         "19:00"
       ],
-      "montoSondeo": 3000,
+      "montoSondeo": 5000,
       "bloqueoFijos": true,
-      "minutosAntes": 30,
+      "minutosAntes": 50,
       "numerosFijos": [
         "75"
       ],
@@ -100,17 +100,17 @@
       "sondeosMultiples": [
         {
           "id": 1,
-          "activo": false,
-          "minutosAntes": 40
+          "activo": true,
+          "minutosAntes": 50
         },
         {
           "id": 2,
           "activo": true,
-          "minutosAntes": 30
+          "minutosAntes": 40
         },
         {
           "id": 3,
-          "activo": false,
+          "activo": true,
           "minutosAntes": 30
         },
         {
@@ -126,7 +126,7 @@
       ],
       "bloquearSoloRojos": true,
       "minutosAntesFijos": 50,
-      "minutosAntesPremier": 30,
+      "minutosAntesPremier": 50,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
         "09:00",
@@ -144,10 +144,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
+      "maximoBloqueosPorSorteo": 6,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 2,
-      "maximoBloqueosPorSorteo": 6
+      "cantidadPredictivosABloquear": 2
     },
     {
       "id": "lotto_activo",
@@ -167,7 +167,7 @@
         "18:00",
         "19:00"
       ],
-      "montoSondeo": 3000,
+      "montoSondeo": 5000,
       "bloqueoFijos": true,
       "minutosAntes": 28,
       "numerosFijos": [],
@@ -223,10 +223,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
+      "maximoBloqueosPorSorteo": 4,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1,
-      "maximoBloqueosPorSorteo": 6
+      "cantidadPredictivosABloquear": 1
     },
     {
       "id": "la_granjita",
@@ -246,7 +246,7 @@
         "18:00",
         "19:00"
       ],
-      "montoSondeo": 3000,
+      "montoSondeo": 5000,
       "bloqueoFijos": true,
       "minutosAntes": 27,
       "numerosFijos": [],
@@ -302,10 +302,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
+      "maximoBloqueosPorSorteo": 4,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1,
-      "maximoBloqueosPorSorteo": 6
+      "cantidadPredictivosABloquear": 1
     },
     {
       "id": "guacharo_millonario",
@@ -325,7 +325,7 @@
         "18:30",
         "19:30"
       ],
-      "montoSondeo": 3000,
+      "montoSondeo": 5000,
       "bloqueoFijos": true,
       "minutosAntes": 30,
       "numerosFijos": [
@@ -383,10 +383,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
+      "maximoBloqueosPorSorteo": 7,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1,
-      "maximoBloqueosPorSorteo": 6
+      "cantidadPredictivosABloquear": 1
     }
   ],
   "historial": []

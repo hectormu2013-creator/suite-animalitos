@@ -652,6 +652,63 @@ app.post('/api/system/update', (req, res) => {
   }
 });
 
+// API: Diagnóstico y Monitoreo Remoto para Antigravity / Administración
+app.get('/api/remote/inspect', async (req, res) => {
+  try {
+    const { execSync } = require('child_process');
+    let premierRunning = false;
+    let premierPid = null;
+    let premierTitle = '';
+    let memoryUsageMb = null;
+
+    try {
+      const psCmd = 'Get-Process PremierPlussPC20 -ErrorAction SilentlyContinue | Select-Object -Property Id, MainWindowTitle, @{Name="MemMB";Expression={[math]::Round($_.WorkingSet64/1MB, 2)}} | ConvertTo-Json -Compress';
+      const psOutput = execSync(`powershell -NoProfile -Command "${psCmd}"`, { encoding: 'utf8', timeout: 6000 }).trim();
+      if (psOutput) {
+        const parsed = JSON.parse(psOutput);
+        premierRunning = true;
+        premierPid = Array.isArray(parsed) ? parsed[0].Id : parsed.Id;
+        premierTitle = Array.isArray(parsed) ? parsed[0].MainWindowTitle : parsed.MainWindowTitle;
+        memoryUsageMb = Array.isArray(parsed) ? parsed[0].MemMB : parsed.MemMB;
+      }
+    } catch (e) {}
+
+    let screenshotBase64 = null;
+    if (req.query.screenshot === 'true') {
+      try {
+        const scriptCap = path.join(__dirname, 'scripts', 'capture_live_screen.ps1');
+        if (fs.existsSync(scriptCap)) {
+          execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptCap}"`, { timeout: 10000 });
+          const imgPath = path.join(__dirname, 'current_screen.png');
+          if (fs.existsSync(imgPath)) {
+            screenshotBase64 = fs.readFileSync(imgPath).toString('base64');
+          }
+        }
+      } catch (eCap) {}
+    }
+
+    const cfg = getConfig();
+    const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_desconocida';
+    const isVerifier = machinesMgr.isLocalMachineVerifier(cfg);
+
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      machineId: localId,
+      esVerificadora: isVerifier,
+      premierRunning,
+      premierPid,
+      premierTitle,
+      memoryUsageMb,
+      tunnelUrl: currentTunnelUrl,
+      hasScreenshot: !!screenshotBase64,
+      screenshot: screenshotBase64 ? `data:image/png;base64,${screenshotBase64}` : null
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/api/machines/report-tunnel', async (req, res) => {
   const { machineId, tunnelUrl, nombre } = req.body;
   if (!machineId || !tunnelUrl) {

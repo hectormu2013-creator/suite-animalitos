@@ -79,29 +79,61 @@ Remove-Item $zipPath -Force
 Remove-Item $extractTemp -Recurse -Force
 Write-Host " -> [OK] Archivos de la Suite actualizados en $targetDir." -ForegroundColor Green
 
-# 4.1 Configurar este equipo como el Nodo de Pesca Dedicado (maquina_1)
+# 4.1 Configurar este equipo como el Nodo de Pesca Dedicado y Principal (maquina_1)
 $cfgFile = Join-Path $targetDir "config.json"
-if (Test-Path $cfgFile) {
+$configSynced = $false
+try {
+    # Intentar obtener la configuración oficial viva desde Render
+    Write-Host " -> Sincronizando configuracion oficial desde la nube..." -ForegroundColor Gray
+    $cloudCfg = Invoke-RestMethod -Uri "$masterUrl/api/config" -TimeoutSec 8
+    if ($cloudCfg -and $cloudCfg.general) {
+        $cloudCfg.general.maquinaLocalId = "maquina_1"
+        $cloudCfg.general.maquinaEncargadaVerificacionesId = "maquina_1"
+        if ($cloudCfg.general.maquinas) {
+            foreach ($m in $cloudCfg.general.maquinas) {
+                if ($m.id -eq "maquina_1") {
+                    $m.activa = $true
+                    $m.prioridad = 1
+                    $m.esEncargadaVerificaciones = $true
+                    $m.nombre = "Nodo Taquilla Dedicado (Producción)"
+                }
+                if ($m.id -eq "maquina_2") {
+                    $m.esEncargadaVerificaciones = $false
+                    $m.prioridad = 2
+                }
+            }
+        }
+        $cloudCfg | ConvertTo-Json -Depth 10 | Set-Content $cfgFile -Encoding UTF8
+        $configSynced = $true
+        Write-Host " -> [OK] Configuracion viva de la nube sincronizada con exito." -ForegroundColor Green
+    }
+} catch {
+    Write-Host " -> [Info] Nube no disponible temporalmente. Aplicando configuracion base local..." -ForegroundColor Yellow
+}
+
+if (-not $configSynced -and (Test-Path $cfgFile)) {
     try {
         $cfgJson = Get-Content $cfgFile -Raw | ConvertFrom-Json
         if ($cfgJson.general) {
             $cfgJson.general.maquinaLocalId = "maquina_1"
+            $cfgJson.general.maquinaEncargadaVerificacionesId = "maquina_1"
             if ($cfgJson.general.maquinas) {
                 foreach ($m in $cfgJson.general.maquinas) {
                     if ($m.id -eq "maquina_1") {
                         $m.activa = $true
                         $m.prioridad = 1
+                        $m.esEncargadaVerificaciones = $true
                         $m.nombre = "Nodo Taquilla Dedicado (Producción)"
                     }
                     if ($m.id -eq "maquina_2") {
+                        $m.esEncargadaVerificaciones = $false
                         $m.prioridad = 2
-                        $m.esEncargadaVerificaciones = $true
                     }
                 }
             }
         }
         $cfgJson | ConvertTo-Json -Depth 10 | Set-Content $cfgFile -Encoding UTF8
-        Write-Host " -> [OK] Nodo preconfigurado como taquilla dedicada (maquina_1)." -ForegroundColor Green
+        Write-Host " -> [OK] Nodo preconfigurado como taquilla principal y verificadora (maquina_1)." -ForegroundColor Green
     } catch {
         Write-Host " -> [Aviso] Manteniendo config por defecto: $_" -ForegroundColor Yellow
     }
