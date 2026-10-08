@@ -974,10 +974,14 @@ function bindActionButtons() {
     btnAddLotterySide.addEventListener('click', addNewLotteryUI);
   }
 
-  // Botón Guardar Credenciales
+  // Botón Guardar Credenciales (Cabecera Superior y Pie de Página)
   const btnSaveCreds = document.getElementById('btn-save-credentials');
   if (btnSaveCreds) {
     btnSaveCreds.addEventListener('click', saveCredentialsConfig);
+  }
+  const btnSaveCredsTop = document.getElementById('btn-save-credentials-top');
+  if (btnSaveCredsTop) {
+    btnSaveCredsTop.addEventListener('click', saveCredentialsConfig);
   }
 
   // Red Multi-Máquinas: Botón Agregar Otra Máquina

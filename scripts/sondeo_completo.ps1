@@ -357,7 +357,7 @@ public class PremierFullProbe {
     }
 
     public static void ScrollToBottom(int x, int y) {
-        ScrollWheel(x, y, 50, -120);
+        ScrollWheel(x, y, 80, -120);
     }
 
     public static void ScrollToTop(int x, int y) {
@@ -778,6 +778,32 @@ if ($hwnd -eq [IntPtr]::Zero) {
 
 Set-ControlState "RUNNING" "Iniciando sondeo de $Loteria"
 
+function LimpiarTicketYPantallaPremier($momento = "INICIAL") {
+    Write-Output " -> [LIMPIEZA DE PANTALLA - $momento] Vaciando ticket residual y asegurando pantalla en 0 jugadas..."
+    [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
+    [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+    Start-Sleep -Milliseconds 150
+
+    try {
+        # Cancelar cualquier seleccion previa o caja de texto abierta con ESC y ENTER
+        [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
+        Start-Sleep -Milliseconds 150
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+        Start-Sleep -Milliseconds 150
+
+        # Pulsar 'n' (Nuevo Ticket / Limpiar) y confirmar con Enter
+        [System.Windows.Forms.SendKeys]::SendWait("n")
+        Start-Sleep -Milliseconds 300
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+        Start-Sleep -Milliseconds 250
+        [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
+        Start-Sleep -Milliseconds 150
+    } catch {}
+
+    [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
+    Write-Output " -> [LIMPIEZA DE PANTALLA - $momento OK] Ticket limpio y restablecido a 0 jugadas."
+}
+
 Write-Output "[1/7] Enfocando y maximizando Premier Pluss (Taquilla)..."
 [PremierFullProbe]::ShowWindow($hwnd, 9)
 [PremierFullProbe]::ShowWindow($hwnd, 3)
@@ -785,12 +811,9 @@ Write-Output "[1/7] Enfocando y maximizando Premier Pluss (Taquilla)..."
 Start-Sleep -Milliseconds 800
 
 if (-not $ModoHibrido) {
-    # Limpieza inicial segura: descartar excepciones previas y cancelar cualquier menu emergente con ESC
-    [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
-    try {
-        [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
-        Start-Sleep -Milliseconds 200
-    } catch {}
+    # [LIMPIEZA PREVENTIVA 1 DE 2]: Limpiar cualquier jugada residual dejada en pantalla antes de iniciar
+    Write-Output "[1.1/7] Ejecutando limpieza inicial preventiva de pantalla y ticket (1 de 2)..."
+    LimpiarTicketYPantallaPremier "INICIAL PREVENTIVA"
 
     # =====================================================================
     # ASEGURAR SIEMPRE PESTAÑA ANIMALITOS (F2)
@@ -1035,7 +1058,7 @@ function ExtraerFilasDePantalla($bmpScreen) {
 
             $rowKey = $null
             foreach ($k in $groupedRows.Keys) {
-                if ([Math]::Abs($k - $globalY) -le 9) {
+                if ([Math]::Abs($k - $globalY) -le 11) {
                     $rowKey = $k
                     break
                 }
@@ -1067,12 +1090,12 @@ function ExtraerFilasDePantalla($bmpScreen) {
         $rObj = $groupedRows[$k]
         $yC = [int]$rObj.Y
 
-        if ($yC -ge 150 -and $yC -lt ($bmpScreen.Height - 40)) {
+        if ($yC -ge 145 -and $yC -lt ($bmpScreen.Height - 30)) {
             $redCount = 0
             $orangeCount = 0
-            for ($sx = 1005; $sx -le 1145; $sx += 2) {
-                # Muestreo a tres alturas para maxima precision del fondo
-                foreach ($dy in @(-2, 0, 2)) {
+            for ($sx = 960; $sx -le 1220; $sx += 3) {
+                # Muestreo a 5 alturas para maxima precision del fondo sin importar la alineacion del texto
+                foreach ($dy in @(-3, -1, 0, 1, 3)) {
                     $sampY = $yC + $dy
                     if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height) {
                         $px = $bmpScreen.GetPixel($sx, $sampY)
@@ -1087,8 +1110,9 @@ function ExtraerFilasDePantalla($bmpScreen) {
             }
 
             # Deteccion infalible de Cupo Cero: rojo visual o monto explicitamente 0
-            $esMontoCero = $rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')
-            if ($redCount -ge 8 -or ($esMontoCero -and $orangeCount -gt 5)) {
+            $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
+            $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
+            if ($redCount -ge 8 -or ($esMontoCero -and ($orangeCount -gt 3 -or $redCount -ge 4))) {
                 $rObj.Color = "ROJO"
             } elseif ($orangeCount -gt 10) {
                 $rObj.Color = "NARANJA"
@@ -1129,8 +1153,8 @@ $todasLasFilas = @{}
 # Calcular numero de pasos de barrido segun la loteria
 $totalPasos = 2
 if ($animales.Count -gt 77) {
-    # Guacharito Millonario (101 animales): 7 vistas (Top + 5 tramos intermedios + Fondo)
-    $totalPasos = 7
+    # Guacharito Millonario (101 animales): 9 vistas completas con estabilizacion de fondo
+    $totalPasos = 9
 } elseif ($animales.Count -gt 38) {
     # Guacharo Activo (77 animales): 5 vistas (Top + 3 tramos intermedios + Fondo)
     $totalPasos = 5
@@ -1144,13 +1168,13 @@ for ($paso = 1; $paso -le $totalPasos; $paso++) {
     if ($paso -eq 1) {
         Write-Output " -> [PANEO 1/$totalPasos] Analizando Vista Superior inicial..."
     } elseif ($paso -eq $totalPasos) {
-        Write-Output " -> [PANEO $paso/$totalPasos] Desplazando tabla al fondo absoluto (Vista Final)..."
+        Write-Output " -> [PANEO $paso/$totalPasos] Desplazando tabla al fondo absoluto (Vista Final estabilizada)..."
         [PremierFullProbe]::ScrollToBottom(1050, 400)
-        Start-Sleep -Milliseconds 450
+        Start-Sleep -Milliseconds 900
     } else {
-        Write-Output " -> [PANEO $paso/$totalPasos] Avanzando tramo intermedio (~15 filas hacia abajo)..."
-        [PremierFullProbe]::ScrollWheel(1050, 400, 5, -120)
-        Start-Sleep -Milliseconds 320
+        Write-Output " -> [PANEO $paso/$totalPasos] Avanzando tramo intermedio con renderizado seguro..."
+        [PremierFullProbe]::ScrollWheel(1050, 400, 6, -120)
+        Start-Sleep -Milliseconds 550
     }
 
     $bmpFull = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
@@ -1191,19 +1215,10 @@ if ($totalPasos -gt 1) {
 }
 
 # =====================================================================
-# REGLA DE ORO DE SEGURIDAD ABSOLUTA: LIMPIAR TICKET CON TECLA 'N'
+# REGLA DE ORO DE SEGURIDAD ABSOLUTA: LIMPIAR TICKET CON TECLA 'N' (LIMPIEZA 2 DE 2)
 # =====================================================================
-Write-Output "`n[REGLA DE ORO] Cancelando jugada y limpiando pantalla de Premier Pluss..."
-try {
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-    Start-Sleep -Milliseconds 250
-    [System.Windows.Forms.SendKeys]::SendWait("n")
-    Start-Sleep -Milliseconds 350
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-    Start-Sleep -Milliseconds 200
-} catch {}
-[PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
-
+Write-Output "`n[REGLA DE ORO] Cancelando jugada y limpiando pantalla de Premier Pluss (2 de 2)..."
+LimpiarTicketYPantallaPremier "FINAL"
 Write-Output "[SEGURIDAD OK] Pantalla restablecida a 0 jugadas."
 
 # Comprobar si corresponde cierre limpio al finalizar el ultimo sorteo del dia
