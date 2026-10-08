@@ -1667,15 +1667,18 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "18:30",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "19:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "19:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-08T21:56:01.993Z",
       "ultimoSorteoDetectado": "18:30",
-      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z",
+      "fechaExpiracion": "2026-10-08T23:31:25.775Z"
     },
     {
       "id": "guacharo_millonario_27_2026-10-08_1791496561993",
@@ -1686,15 +1689,18 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "18:30",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "19:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "19:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-08T21:56:01.993Z",
       "ultimoSorteoDetectado": "18:30",
-      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z",
+      "fechaExpiracion": "2026-10-08T23:31:25.775Z"
     },
     {
       "id": "guacharo_millonario_42_2026-10-08_1791496561993",
@@ -1705,15 +1711,18 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "18:30",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "19:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "19:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-08T21:56:01.993Z",
       "ultimoSorteoDetectado": "18:30",
-      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z",
+      "fechaExpiracion": "2026-10-08T23:31:25.775Z"
     },
     {
       "id": "guacharo_millonario_59_2026-10-08_1791496561993",
@@ -1724,15 +1733,18 @@
       "fechaOrigen": "2026-10-08",
       "sorteoOrigen": "18:30",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "19:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "19:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-08T21:56:01.993Z",
       "ultimoSorteoDetectado": "18:30",
-      "timestampActualizacion": "2026-10-08T22:02:02.055Z"
+      "timestampActualizacion": "2026-10-08T22:02:02.055Z",
+      "fechaExpiracion": "2026-10-08T23:31:25.775Z"
     }
   ]
 }
