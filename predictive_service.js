@@ -344,113 +344,206 @@ function getFixedBlockNumbers(config, loteriaId) {
  * @param {string} loteriaId - ID de la lotería
  * @param {object} premierResult - Resultado de la detección de Premier Pluss
  */
+/**
+ * Consolidar lista final de números para bloqueo combinando las 5 vías con jerarquía estricta y tope máximo:
+ * 1. Resultantes del sondeo para el sorteo actual (Premier Pluss Cupo 0)
+ * 2. Persistentes del sorteo inmediatamente anterior (Memoria Cupo 0, distancia = 1)
+ * 3. Persistentes del segundo sorteo anterior (Memoria Cupo 0, distancia = 2 o remotos)
+ * 4. Provenientes de más tiempo sin salir (Visual-FX Atrasados) y Números Fijos
+ * 5. Generados por el sistema aleatorio (Cobertura de Riesgo del Sistema)
+ *
+ * REGLA DE ORO DE RENTABILIDAD:
+ * Se respeta estrictamente el límite maximoBloqueosPorSorteo (entre 0 y 10).
+ * Si la suma de candidatos excede el tope, se corta de forma estricta según el orden de prioridad
+ * para garantizar la máxima disponibilidad de ventas en la taquilla.
+ *
+ * @param {object} config - Configuración de loterías
+ * @param {string} loteriaId - ID de la lotería
+ * @param {object} premierResult - Resultado de la detección de Premier Pluss
+ * @param {string} sorteoHora - Hora objetivo del sorteo (ej: '16:00' o '04:00 PM')
+ */
 function buildConsolidatedBlockList(config, loteriaId, premierResult, sorteoHora = '') {
   let lot = (config.loterias || []).find(l => l.id === loteriaId);
   if (!lot) lot = (config.loterias || []).find(l => l.activo) || (config.loterias && config.loterias[0]);
 
-  // 1. Premier Pluss Agotados (Solo Cupo 0)
-  const rojosPremier = (premierResult && premierResult.rojos) || [];
-  const bloqueadosPremier = (lot.bloqueoPremierAgotados !== false) ? rojosPremier : [];
+  // Límite máximo de números a bloquear por sorteo (Rango estricto 0 a 10, por defecto 6)
+  const maxBloqueosConfigurado = lot.maximoBloqueosPorSorteo !== undefined 
+    ? parseInt(lot.maximoBloqueosPorSorteo, 10) 
+    : 6;
+  const maxBloqueos = Math.min(Math.max(isNaN(maxBloqueosConfigurado) ? 6 : maxBloqueosConfigurado, 0), 10);
 
-  // 2. Números Fijos (Máximo 3, Mínimo 0)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const targetDrawTime = sorteoHora || (premierResult && premierResult.sorteo) || '';
+
+  // 1. PRIORIDAD 1: Sondeo actual Premier Pluss (Cupo 0 directo)
+  const rojosPremier = (premierResult && premierResult.rojos) || [];
+  const bloqueadosPremier = (lot.bloqueoPremierAgotados !== false) 
+    ? rojosPremier.map(n => normalizeAnimalKey(n)) 
+    : [];
+
+  // 2 y 3. PRIORIDAD 2 y 3: Memoria Cupo Cero Premier clasificada por antigüedad
+  let persistentes = { inmediatamenteAnterior: [], segundoAnterior: [], otrosAnteriores: [] };
+  if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false) {
+    try {
+      const cupoMem = require('./cupo_cero_memory');
+      persistentes = cupoMem.obtenerPersistentesPorAntiguedad(lot.id, todayStr, targetDrawTime, lot.horarios || []);
+    } catch (eMem) {
+      console.warn(`[PREDICTIVE] Error leyendo memoria clasificada: ${eMem.message}`);
+    }
+  }
+
+  // 4. PRIORIDAD 4: Más tiempo sin salir (Visual-FX Atrasados) y Fijos configurados
   const fijosSeleccionados = getFixedBlockNumbers(config, lot.id);
   const numFijos = fijosSeleccionados.map(f => f.numero);
 
   // Consultar si este sorteo ya tiene números predictivos o aleatorios asignados hoy (ej: por alarma previa)
-  const todayStr = new Date().toISOString().slice(0, 10);
   let existingRec = null;
   try {
     const historyMgr = require('./history_manager');
     const hist = historyMgr.getHistory({ fecha: todayStr });
-    const sTarget = sorteoHora || (premierResult && premierResult.sorteo) || '';
-    if (sTarget) {
+    if (targetDrawTime) {
       existingRec = hist.find(r => 
         (r.loteria || '').toLowerCase().includes(lot.nombre.toLowerCase().slice(0, 5)) &&
-        (r.sorteo === sTarget || r.horaSorteo === sTarget)
+        (r.sorteo === targetDrawTime || r.horaSorteo === targetDrawTime)
       );
     }
   } catch (e) {}
 
-  // 3. Modelo Predictivo Visual-FX (Atrasados dinámicos)
   const cantidadPredictivos = parseInt(lot.cantidadPredictivosABloquear, 10) || 0;
   const activarPredictivos = lot.bloqueoPredictivosAtrasados !== false && cantidadPredictivos > 0;
-
-  let predictivosSeleccionados = [];
+  let predictivosCandidatos = [];
   if (activarPredictivos) {
     if (existingRec && Array.isArray(existingRec.predictivosVisualFx) && existingRec.predictivosVisualFx.length > 0) {
-      // Reutilizar exactamente los atrasados ya asignados a este sorteo hoy
-      predictivosSeleccionados = existingRec.predictivosVisualFx.slice(0, cantidadPredictivos);
+      predictivosCandidatos = existingRec.predictivosVisualFx.slice(0, cantidadPredictivos);
     } else {
-      const yaBloqueados = [...bloqueadosPremier, ...numFijos];
-      const atrasados = getMostDelayedNumbers(lot.id, cantidadPredictivos);
-      predictivosSeleccionados = atrasados.filter(item => !yaBloqueados.includes(item.numero));
+      predictivosCandidatos = getMostDelayedNumbers(lot.id, Math.max(cantidadPredictivos, 5));
     }
   }
 
-  // 4. Sistema Autónomo (Números Aleatorios, máximo 3)
+  // 5. PRIORIDAD 5: Sistema Autónomo (Cobertura Aleatoria, máximo 3)
   const cantidadAleatorios = parseInt(lot.cantidadAleatoriosABloquear, 10) || 0;
   const activarAleatorios = lot.bloqueoAleatorioSistema !== false && cantidadAleatorios > 0;
-
-  let aleatoriosSeleccionados = [];
+  let aleatoriosCandidatos = [];
   if (activarAleatorios) {
     if (existingRec && Array.isArray(existingRec.aleatoriosSistema) && existingRec.aleatoriosSistema.length > 0) {
-      // Reutilizar exactamente los aleatorios ya escogidos previamente para este mismo sorteo hoy
-      aleatoriosSeleccionados = existingRec.aleatoriosSistema.slice(0, Math.min(cantidadAleatorios, 3));
+      aleatoriosCandidatos = existingRec.aleatoriosSistema.slice(0, Math.min(cantidadAleatorios, 3));
     } else {
-      const yaBloqueados = [
+      // Excluir números ya vistos en prioridades superiores para la selección aleatoria inicial
+      const poolExcluir = [
         ...bloqueadosPremier,
+        ...persistentes.inmediatamenteAnterior.map(p => p.numero),
+        ...persistentes.segundoAnterior.map(p => p.numero),
         ...numFijos,
-        ...predictivosSeleccionados.map(p => p.numero)
+        ...predictivosCandidatos.map(p => p.numero)
       ];
-      aleatoriosSeleccionados = getRandomSystemBlockNumbers(lot.id, Math.min(cantidadAleatorios, 3), yaBloqueados);
+      aleatoriosCandidatos = getRandomSystemBlockNumbers(lot.id, Math.min(cantidadAleatorios, 3), poolExcluir);
     }
   }
 
-  // 5. Memoria de Cupo Cero Premier (Arrastre Preventivo de Sorteos Anteriores)
-  let memoriaSeleccionados = [];
-  if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false) {
-    try {
-      const cupoMem = require('./cupo_cero_memory');
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const activosMemoria = cupoMem.obtenerNumerosActivos(lot.id, todayStr);
-      memoriaSeleccionados = activosMemoria.map(m => ({
-        numero: m.numero,
-        nombre: m.nombre,
-        sorteoOrigen: m.sorteoOrigen,
-        sorteosRestantes: m.sorteosRestantes,
-        origen: 'MEMORIA_CUPO_0',
-        origenTexto: `Memoria Premier (${m.sorteosRestantes} sorteos rest.)`
-      }));
-    } catch (eMem) {}
+  // =========================================================================
+  // ENSAMBLE SECUENCIAL CON TOPE ESTRICTO (0 a 10) Y JERARQUÍA DE 5 NIVELES
+  // =========================================================================
+  const listaFinalNumeros = [];
+  const listaFinalDetallada = [];
+  const yaIncluidos = new Set();
+
+  function agregarCandidato(item, nivel, nivelNombre) {
+    if (listaFinalNumeros.length >= maxBloqueos) return false;
+    const raw = typeof item === 'string' ? item : (item.numero || item);
+    const num = normalizeAnimalKey(raw);
+    if (!num || yaIncluidos.has(num)) return false;
+
+    yaIncluidos.add(num);
+    listaFinalNumeros.push(num);
+
+    const obj = (typeof item === 'object' && item !== null) ? { ...item } : {
+      numero: num,
+      nombre: getAnimalDisplayName(num)
+    };
+    obj.numero = num;
+    obj.prioridadNivel = nivel;
+    obj.prioridadNombre = nivelNombre;
+    listaFinalDetallada.push(obj);
+    return true;
   }
 
-  // Lista única final de números para bloqueo
-  const listaNumerosFinal = Array.from(new Set([
-    ...bloqueadosPremier,
-    ...numFijos,
-    ...predictivosSeleccionados.map(p => p.numero),
-    ...aleatoriosSeleccionados.map(a => a.numero),
-    ...memoriaSeleccionados.map(m => m.numero)
-  ]));
+  // 1️⃣ PRIORIDAD 1: Resultantes del sondeo para el sorteo actual (Premier Cupo 0)
+  for (const n of bloqueadosPremier) {
+    if (listaFinalNumeros.length >= maxBloqueos) break;
+    agregarCandidato({
+      numero: n,
+      nombre: getAnimalDisplayName(n),
+      origen: 'PREMIER_CUPO_0',
+      origenTexto: 'Sondeo Premier Pluss (Cupo 0 Actual)'
+    }, 1, '1. Sondeo Premier Actual');
+  }
+
+  // 2️⃣ PRIORIDAD 2: Persistentes del sorteo inmediatamente anterior
+  for (const m of persistentes.inmediatamenteAnterior) {
+    if (listaFinalNumeros.length >= maxBloqueos) break;
+    agregarCandidato(m, 2, '2. Persistente Sorteo Anterior');
+  }
+
+  // 3️⃣ PRIORIDAD 3: Persistentes del segundo sorteo anterior
+  for (const m of persistentes.segundoAnterior) {
+    if (listaFinalNumeros.length >= maxBloqueos) break;
+    agregarCandidato(m, 3, '3. Persistente 2do Anterior');
+  }
+  // Si aún queda cupo y hay de sorteos más antiguos:
+  for (const m of (persistentes.otrosAnteriores || [])) {
+    if (listaFinalNumeros.length >= maxBloqueos) break;
+    agregarCandidato(m, 3, '3. Persistente Anterior Remoto');
+  }
+
+  // 4️⃣ PRIORIDAD 4: Más tiempo sin salir (Visual-FX Atrasados) y Números Fijos
+  for (const f of fijosSeleccionados) {
+    if (listaFinalNumeros.length >= maxBloqueos) break;
+    agregarCandidato(f, 4, '4. Número Fijo Configurado');
+  }
+  for (const p of predictivosCandidatos) {
+    if (listaFinalNumeros.length >= maxBloqueos) break;
+    agregarCandidato(p, 4, '4. Más Tiempo Sin Salir (Visual-FX)');
+  }
+
+  // 5️⃣ PRIORIDAD 5: Generados por el sistema aleatorio (Cobertura)
+  for (const a of aleatoriosCandidatos) {
+    if (listaFinalNumeros.length >= maxBloqueos) break;
+    agregarCandidato(a, 5, '5. Cobertura Aleatoria');
+  }
+
+  // Desgloses por categoría para auditoría y visualización
+  const fijosAceptados = listaFinalDetallada.filter(d => d.prioridadNivel === 4 && (d.origen === 'FIJO' || d.prioridadNombre.includes('Fijo')));
+  const predictivosAceptados = listaFinalDetallada.filter(d => d.prioridadNivel === 4 && !d.prioridadNombre.includes('Fijo'));
+  const aleatoriosAceptados = listaFinalDetallada.filter(d => d.prioridadNivel === 5);
+  const memoriaAceptados = listaFinalDetallada.filter(d => d.prioridadNivel === 2 || d.prioridadNivel === 3);
 
   return {
     loteria: lot.nombre,
+    maximoBloqueosConfigurado: maxBloqueos,
     bloquearPremierActivo: lot.bloqueoPremierAgotados !== false,
     rojosPremier,
     bloquearFijosActivo: lot.bloqueoFijos !== false,
-    fijosSeleccionados,
-    numFijos,
+    fijosSeleccionados: fijosAceptados,
+    numFijos: fijosAceptados.map(f => f.numero),
     bloquearPredictivosActivo: activarPredictivos,
     cantidadPredictivosConfigurada: cantidadPredictivos,
-    predictivosSeleccionados,
+    predictivosSeleccionados: predictivosAceptados,
     bloquearAleatoriosActivo: activarAleatorios,
     cantidadAleatoriosConfigurada: cantidadAleatorios,
-    aleatoriosSeleccionados,
+    aleatoriosSeleccionados: aleatoriosAceptados,
     bloquearMemoriaActivo: lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false,
-    memoriaSeleccionados,
-    numMemoria: memoriaSeleccionados.map(m => m.numero),
-    listaFinalNumeros: listaNumerosFinal,
-    totalNumerosABloquear: listaNumerosFinal.length
+    memoriaSeleccionados: memoriaAceptados,
+    numMemoria: memoriaAceptados.map(m => m.numero),
+    listaFinalNumeros,
+    listaFinalDetallada,
+    totalNumerosABloquear: listaFinalNumeros.length,
+    detallePrioridades: {
+      p1_sondeoActual: listaFinalDetallada.filter(d => d.prioridadNivel === 1).map(d => d.numero),
+      p2_persistenteAnterior: listaFinalDetallada.filter(d => d.prioridadNivel === 2).map(d => d.numero),
+      p3_persistente2doAnterior: listaFinalDetallada.filter(d => d.prioridadNivel === 3).map(d => d.numero),
+      p4_masTiempoSinSalirYFijos: listaFinalDetallada.filter(d => d.prioridadNivel === 4).map(d => d.numero),
+      p5_aleatorios: listaFinalDetallada.filter(d => d.prioridadNivel === 5).map(d => d.numero)
+    }
   };
 }
 

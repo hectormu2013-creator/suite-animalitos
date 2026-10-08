@@ -229,6 +229,103 @@ function verificarYAutoLiberarPorGanador(loteriaId, numeroGanador, nombreGanador
 }
 
 /**
+ * Obtener números persistentes clasificados por antigüedad relativa al sorteo actual:
+ * - inmediatamenteAnterior (distancia = 1 sorteo anterior): Prioridad 2
+ * - segundoAnterior (distancia = 2 sorteos anteriores): Prioridad 3
+ * - otrosAnteriores (distancia >= 3 sorteos anteriores): Prioridad 3b
+ * @param {string} loteriaId
+ * @param {string} fechaActual
+ * @param {string} sorteoActual
+ * @param {Array<string>} horarios
+ */
+function obtenerPersistentesPorAntiguedad(loteriaId, fechaActual, sorteoActual, horarios = []) {
+  const activos = obtenerNumerosActivos(loteriaId, fechaActual);
+  if (!activos || activos.length === 0) {
+    return { inmediatamenteAnterior: [], segundoAnterior: [], otrosAnteriores: [], todos: [] };
+  }
+
+  function toMinutes(tStr) {
+    if (!tStr) return -1;
+    const clean = tStr.trim().toUpperCase();
+    const isPM = clean.includes('PM');
+    const isAM = clean.includes('AM');
+    const match = clean.match(/(\d{1,2}):(\d{2})/);
+    if (!match) return -1;
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    if (isPM && h < 12) h += 12;
+    if (isAM && h === 12) h = 0;
+    return h * 60 + m;
+  }
+
+  // Ordenar lista de horarios cronológicamente
+  const sortedHorarios = [...(horarios || [])].sort((a, b) => toMinutes(a) - toMinutes(b));
+  const targetMins = toMinutes(sorteoActual);
+
+  // Encontrar el índice de sorteoActual en sortedHorarios
+  let targetIdx = sortedHorarios.findIndex(h => toMinutes(h) === targetMins);
+
+  const inmediatamenteAnterior = [];
+  const segundoAnterior = [];
+  const otrosAnteriores = [];
+
+  for (const item of activos) {
+    const origenMins = toMinutes(item.sorteoOrigen);
+    // Si el sorteo origen es el mismo sorteo actual o posterior, no es persistente de un sorteo previo
+    if (targetMins !== -1 && origenMins >= targetMins) {
+      continue;
+    }
+
+    let distancia = -1;
+    if (targetIdx !== -1) {
+      const origenIdx = sortedHorarios.findIndex(h => toMinutes(h) === origenMins);
+      if (origenIdx !== -1 && targetIdx > origenIdx) {
+        distancia = targetIdx - origenIdx;
+      }
+    }
+
+    // Si no se encontró índice exacto, estimar por conteo de sorteos intermedios
+    if (distancia === -1 && targetMins > origenMins && targetMins !== -1) {
+      const intermedios = sortedHorarios.filter(h => {
+        const m = toMinutes(h);
+        return m > origenMins && m < targetMins;
+      });
+      distancia = intermedios.length + 1;
+    }
+
+    const payload = {
+      numero: item.numero,
+      nombre: item.nombre,
+      sorteoOrigen: item.sorteoOrigen,
+      sorteosRestantes: item.sorteosRestantes,
+      sorteosConfigurados: item.sorteosConfigurados,
+      distanciaSorteos: distancia > 0 ? distancia : 1,
+      origen: 'MEMORIA_CUPO_0',
+      origenTexto: distancia === 1 
+        ? `Persistente Sorteo Anterior (${item.sorteoOrigen})` 
+        : distancia === 2 
+          ? `Persistente 2do Anterior (${item.sorteoOrigen})` 
+          : `Persistente Anterior (${item.sorteoOrigen}, hace ${distancia}s)`
+    };
+
+    if (distancia === 1) {
+      inmediatamenteAnterior.push(payload);
+    } else if (distancia === 2) {
+      segundoAnterior.push(payload);
+    } else {
+      otrosAnteriores.push(payload);
+    }
+  }
+
+  return {
+    inmediatamenteAnterior,
+    segundoAnterior,
+    otrosAnteriores,
+    todos: [...inmediatamenteAnterior, ...segundoAnterior, ...otrosAnteriores]
+  };
+}
+
+/**
  * Obtener estadísticas y resumen para la UI
  */
 function getMemorySummary(fechaActual) {
@@ -265,6 +362,7 @@ function getMemorySummary(fechaActual) {
 module.exports = {
   registrarAgotadosPremier,
   obtenerNumerosActivos,
+  obtenerPersistentesPorAntiguedad,
   descontarSorteo,
   verificarYAutoLiberarPorGanador,
   obtenerSiguientesSorteos,

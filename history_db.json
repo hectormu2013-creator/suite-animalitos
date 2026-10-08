@@ -38599,5 +38599,2599 @@
       "intentos": 2,
       "ultimoIntento": "2026-10-07T23:40:11.465Z"
     }
+  },
+  {
+    "id": "2026-10-08_1791474471598",
+    "timestamp": "2026-10-08T15:49:36.667Z",
+    "fecha": "2026-10-08",
+    "hora": "11:49:36",
+    "horaSorteo": "12:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "12:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75",
+      "05",
+      "31"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "05"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "sorteosAtraso": 164,
+        "diasAtraso": 14,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 164 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "31"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "31",
+        "nombre": "Lapa",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "164 sorteos sin salir"
+      },
+      {
+        "numero": "31",
+        "nombre": "Lapa",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "10",
+      "nombre": "Tigre",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 10 (Tigre) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T16:01:23.051Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791474500870",
+    "timestamp": "2026-10-08T15:50:24.847Z",
+    "fecha": "2026-10-08",
+    "hora": "11:50:24",
+    "horaSorteo": "12:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "12:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "01",
+      "27",
+      "24",
+      "14"
+    ],
+    "rojosPremier": [
+      "01",
+      "27"
+    ],
+    "detallePremier": [
+      {
+        "numero": "01",
+        "nombre": "Carnero",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "24"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "sorteosAtraso": 54,
+        "diasAtraso": 5,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 54 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "14"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "01",
+        "nombre": "Carnero",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "54 sorteos sin salir"
+      },
+      {
+        "numero": "14",
+        "nombre": "Paloma",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (3) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "10",
+      "nombre": "Tigre",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 10 (Tigre) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T16:01:23.526Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791474508271",
+    "timestamp": "2026-10-08T19:31:58.827Z",
+    "fecha": "2026-10-08",
+    "hora": "15:31:58",
+    "horaSorteo": "16:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "16:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 72,
+    "rojos": [
+      "75",
+      "05",
+      "09",
+      "18"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "05",
+      "09"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "sorteosAtraso": 164,
+        "diasAtraso": 14,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 164 sorteos)"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "sorteosAtraso": 122,
+        "diasAtraso": 10,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 122 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "18"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "18",
+        "nombre": "Burro",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "164 sorteos sin salir"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "122 sorteos sin salir"
+      },
+      {
+        "numero": "18",
+        "nombre": "Burro",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "17",
+      "nombre": "Pavo",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 17 (Pavo) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T20:01:26.378Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791474531068",
+    "timestamp": "2026-10-08T15:51:15.485Z",
+    "fecha": "2026-10-08",
+    "hora": "11:51:15",
+    "horaSorteo": "12:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "12:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "10",
+      "11",
+      "27",
+      "30",
+      "24"
+    ],
+    "rojosPremier": [
+      "10",
+      "11",
+      "27"
+    ],
+    "detallePremier": [
+      {
+        "numero": "10",
+        "nombre": "Tigre",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "30"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "sorteosAtraso": 95,
+        "diasAtraso": 8,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 95 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "24"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "10",
+        "nombre": "Tigre",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "95 sorteos sin salir"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 5,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "10",
+      "nombre": "Tigre",
+      "bloqueoAcertado": true,
+      "origenAcierto": "PREMIER",
+      "origenTexto": "🔴 Premier Cupo 0",
+      "metodosAcierto": [
+        {
+          "id": "PREMIER",
+          "nombre": "Premier Pluss (Cupo 0)",
+          "tag": "🔴 Premier Cupo 0",
+          "icono": "🔴"
+        }
+      ],
+      "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 10 (Tigre) y estaba BLOQUEADO por Premier Pluss (Cupo 0).",
+      "fechaVerificacion": "2026-10-08T16:01:24.245Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791474561795",
+    "timestamp": "2026-10-08T16:01:42.122Z",
+    "fecha": "2026-10-08",
+    "hora": "12:01:42",
+    "horaSorteo": "12:30",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "12:30",
+    "montoSondeo": 3000,
+    "totalAnimales": 101,
+    "rojos": [
+      "16",
+      "67",
+      "99",
+      "11",
+      "00"
+    ],
+    "rojosPremier": [
+      "16",
+      "67"
+    ],
+    "detallePremier": [
+      {
+        "numero": "16",
+        "nombre": "Oso",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "67",
+        "nombre": "Avestruz",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "11"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "sorteosAtraso": 410,
+        "diasAtraso": 35,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 410 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "00"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "00",
+        "nombre": "Delfin",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "16",
+        "nombre": "Oso",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "67",
+        "nombre": "Avestruz",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "410 sorteos sin salir"
+      },
+      {
+        "numero": "00",
+        "nombre": "Ballena",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 5,
+    "t7Status": "Bloqueados (5) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "26",
+      "nombre": "Vaca",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 26 (Vaca) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T16:35:25.409Z"
+    },
+    "revision": {
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-08T16:35:20.763Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791475821837",
+    "timestamp": "2026-10-08T16:31:27.268Z",
+    "fecha": "2026-10-08",
+    "hora": "12:31:27",
+    "horaSorteo": "13:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "13:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 77,
+    "rojos": [
+      "97",
+      "75",
+      "05",
+      "06"
+    ],
+    "rojosPremier": [
+      "97"
+    ],
+    "detallePremier": [
+      {
+        "numero": "97",
+        "nombre": "Loro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "05"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "sorteosAtraso": 165,
+        "diasAtraso": 14,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 165 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "06"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "06",
+        "nombre": "Rana",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "97",
+        "nombre": "Loro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "165 sorteos sin salir"
+      },
+      {
+        "numero": "06",
+        "nombre": "Rana",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (3) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "02",
+      "nombre": "Toro",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T17:01:26.465Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791476121039",
+    "timestamp": "2026-10-08T16:33:07.689Z",
+    "fecha": "2026-10-08",
+    "hora": "12:33:07",
+    "horaSorteo": "13:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "13:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "02",
+      "27",
+      "24",
+      "30"
+    ],
+    "rojosPremier": [
+      "02",
+      "27"
+    ],
+    "detallePremier": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "24"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "sorteosAtraso": 55,
+        "diasAtraso": 5,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 55 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "30"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "55 sorteos sin salir"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (5) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "02",
+      "nombre": "Toro",
+      "bloqueoAcertado": true,
+      "origenAcierto": "PREMIER",
+      "origenTexto": "🔴 Premier Cupo 0",
+      "metodosAcierto": [
+        {
+          "id": "PREMIER",
+          "nombre": "Premier Pluss (Cupo 0)",
+          "tag": "🔴 Premier Cupo 0",
+          "icono": "🔴"
+        }
+      ],
+      "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 02 (Toro) y estaba BLOQUEADO por Premier Pluss (Cupo 0).",
+      "fechaVerificacion": "2026-10-08T17:01:26.920Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791476121815",
+    "timestamp": "2026-10-08T16:34:07.461Z",
+    "fecha": "2026-10-08",
+    "hora": "12:34:07",
+    "horaSorteo": "13:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "13:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "02",
+      "30",
+      "32"
+    ],
+    "rojosPremier": [
+      "02"
+    ],
+    "detallePremier": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "30"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "sorteosAtraso": 96,
+        "diasAtraso": 8,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 96 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "32"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "32",
+        "nombre": "Ardilla",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "96 sorteos sin salir"
+      },
+      {
+        "numero": "32",
+        "nombre": "Ardilla",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (5) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "02",
+      "nombre": "Toro",
+      "bloqueoAcertado": true,
+      "origenAcierto": "PREMIER",
+      "origenTexto": "🔴 Premier Cupo 0",
+      "metodosAcierto": [
+        {
+          "id": "PREMIER",
+          "nombre": "Premier Pluss (Cupo 0)",
+          "tag": "🔴 Premier Cupo 0",
+          "icono": "🔴"
+        }
+      ],
+      "mensaje": "🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue 02 (Toro) y estaba BLOQUEADO por Premier Pluss (Cupo 0).",
+      "fechaVerificacion": "2026-10-08T17:01:27.351Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791477321600",
+    "timestamp": "2026-10-08T17:01:40.339Z",
+    "fecha": "2026-10-08",
+    "hora": "13:01:40",
+    "horaSorteo": "13:30",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "13:30",
+    "montoSondeo": 3000,
+    "totalAnimales": 101,
+    "rojos": [
+      "16",
+      "27",
+      "67",
+      "99",
+      "11",
+      "34"
+    ],
+    "rojosPremier": [
+      "16",
+      "27",
+      "67"
+    ],
+    "detallePremier": [
+      {
+        "numero": "16",
+        "nombre": "Oso",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "67",
+        "nombre": "Avestruz",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "11"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "sorteosAtraso": 411,
+        "diasAtraso": 35,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 411 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "34"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "34",
+        "nombre": "Venado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "16",
+        "nombre": "Oso",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "67",
+        "nombre": "Avestruz",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "411 sorteos sin salir"
+      },
+      {
+        "numero": "34",
+        "nombre": "Venado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 6,
+    "t7Status": "Bloqueados (6) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "60",
+      "nombre": "Camaleon",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 60 (Camaleon) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T17:35:28.897Z"
+    },
+    "revision": {
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-08T17:35:21.696Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791479421109",
+    "timestamp": "2026-10-08T17:31:47.139Z",
+    "fecha": "2026-10-08",
+    "hora": "13:31:47",
+    "horaSorteo": "14:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "14:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75",
+      "05",
+      "44"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "05"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "sorteosAtraso": 166,
+        "diasAtraso": 14,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 166 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "44"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "44",
+        "nombre": "Chiguir",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "166 sorteos sin salir"
+      },
+      {
+        "numero": "44",
+        "nombre": "Chiguir",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (3) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "04",
+      "nombre": "Alacran",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 04 (Alacran) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T18:01:26.538Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791479722271",
+    "timestamp": "2026-10-08T17:33:27.561Z",
+    "fecha": "2026-10-08",
+    "hora": "13:33:27",
+    "horaSorteo": "14:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "14:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "24",
+      "30"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "24"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "sorteosAtraso": 56,
+        "diasAtraso": 5,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 56 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "30"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "56 sorteos sin salir"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 2,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "04",
+      "nombre": "Alacran",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 04 (Alacran) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T18:01:27.063Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791479723304",
+    "timestamp": "2026-10-08T17:34:31.539Z",
+    "fecha": "2026-10-08",
+    "hora": "13:34:31",
+    "horaSorteo": "14:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "14:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "28",
+      "30",
+      "21"
+    ],
+    "rojosPremier": [
+      "28"
+    ],
+    "detallePremier": [
+      {
+        "numero": "28",
+        "nombre": "Zamuro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "30"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "sorteosAtraso": 97,
+        "diasAtraso": 8,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 97 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "21"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "28",
+        "nombre": "Zamuro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "97 sorteos sin salir"
+      },
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (3) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "04",
+      "nombre": "Alacran",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 04 (Alacran) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T18:01:27.617Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791480922651",
+    "timestamp": "2026-10-08T18:02:09.009Z",
+    "fecha": "2026-10-08",
+    "hora": "14:02:09",
+    "horaSorteo": "14:30",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "14:30",
+    "montoSondeo": 3000,
+    "totalAnimales": 101,
+    "rojos": [
+      "42",
+      "62",
+      "99",
+      "11",
+      "34"
+    ],
+    "rojosPremier": [
+      "42",
+      "62"
+    ],
+    "detallePremier": [
+      {
+        "numero": "42",
+        "nombre": "Tucan",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "62",
+        "nombre": "Cachicamo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "11"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "sorteosAtraso": 412,
+        "diasAtraso": 35,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 412 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "34"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "34",
+        "nombre": "Venado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "42",
+        "nombre": "Tucan",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "62",
+        "nombre": "Cachicamo",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "412 sorteos sin salir"
+      },
+      {
+        "numero": "34",
+        "nombre": "Venado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 5,
+    "t7Status": "Bloqueados (5) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "14",
+      "nombre": "Paloma",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 14 (Paloma) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T18:35:26.389Z"
+    },
+    "revision": {
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-08T18:35:22.609Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791483022072",
+    "timestamp": "2026-10-08T18:31:52.744Z",
+    "fecha": "2026-10-08",
+    "hora": "14:31:52",
+    "horaSorteo": "15:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "15:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75",
+      "05",
+      "09",
+      "49"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "05",
+      "09"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "sorteosAtraso": 167,
+        "diasAtraso": 14,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 167 sorteos)"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "sorteosAtraso": 121,
+        "diasAtraso": 10,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 121 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "49"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "49",
+        "nombre": "Tiburon",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "167 sorteos sin salir"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "121 sorteos sin salir"
+      },
+      {
+        "numero": "49",
+        "nombre": "Tiburon",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "20",
+      "nombre": "Cochino",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 20 (Cochino) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T19:01:26.896Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791483325870",
+    "timestamp": "2026-10-08T18:33:31.630Z",
+    "fecha": "2026-10-08",
+    "hora": "14:33:31",
+    "horaSorteo": "15:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "15:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "24",
+      "13"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "24"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "sorteosAtraso": 57,
+        "diasAtraso": 5,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 57 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "13"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "13",
+        "nombre": "Mono",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "57 sorteos sin salir"
+      },
+      {
+        "numero": "13",
+        "nombre": "Mono",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 2,
+    "t7Status": "Bloqueados (2) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "20",
+      "nombre": "Cochino",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 20 (Cochino) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T19:01:27.518Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791483327426",
+    "timestamp": "2026-10-08T18:34:42.257Z",
+    "fecha": "2026-10-08",
+    "hora": "14:34:42",
+    "horaSorteo": "15:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "15:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "30",
+      "06"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "30"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "sorteosAtraso": 98,
+        "diasAtraso": 8,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 98 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "06"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "06",
+        "nombre": "Rana",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "98 sorteos sin salir"
+      },
+      {
+        "numero": "06",
+        "nombre": "Rana",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 2,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "20",
+      "nombre": "Cochino",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 20 (Cochino) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T19:01:28.161Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791484523440",
+    "timestamp": "2026-10-08T19:02:10.069Z",
+    "fecha": "2026-10-08",
+    "hora": "15:02:10",
+    "horaSorteo": "15:30",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "15:30",
+    "montoSondeo": 3000,
+    "totalAnimales": 101,
+    "rojos": [
+      "99",
+      "11",
+      "40"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "11"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "sorteosAtraso": 413,
+        "diasAtraso": 35,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 413 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "40"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "40",
+        "nombre": "Avispa",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "413 sorteos sin salir"
+      },
+      {
+        "numero": "40",
+        "nombre": "Avispa",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "85",
+      "nombre": "Hamster",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 85 (Hamster) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T19:35:27.401Z"
+    },
+    "revision": {
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-08T19:35:22.950Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791486925813",
+    "timestamp": "2026-10-08T19:33:38.975Z",
+    "fecha": "2026-10-08",
+    "hora": "15:33:38",
+    "horaSorteo": "16:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "16:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "02",
+      "24",
+      "26"
+    ],
+    "rojosPremier": [
+      "02"
+    ],
+    "detallePremier": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "24"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "sorteosAtraso": 58,
+        "diasAtraso": 5,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 58 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "26"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "26",
+        "nombre": "Vaca",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "58 sorteos sin salir"
+      },
+      {
+        "numero": "26",
+        "nombre": "Vaca",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (3) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "17",
+      "nombre": "Pavo",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 17 (Pavo) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T20:01:27.110Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791486927092",
+    "timestamp": "2026-10-08T19:34:52.090Z",
+    "fecha": "2026-10-08",
+    "hora": "15:34:52",
+    "horaSorteo": "16:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "16:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "02",
+      "30",
+      "34"
+    ],
+    "rojosPremier": [
+      "02"
+    ],
+    "detallePremier": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "30"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "sorteosAtraso": 99,
+        "diasAtraso": 8,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 99 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "34"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "34",
+        "nombre": "Venado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "99 sorteos sin salir"
+      },
+      {
+        "numero": "34",
+        "nombre": "Venado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (3) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "17",
+      "nombre": "Pavo",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 17 (Pavo) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T20:01:27.810Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791488125717",
+    "timestamp": "2026-10-08T20:02:10.892Z",
+    "fecha": "2026-10-08",
+    "hora": "16:02:10",
+    "horaSorteo": "16:30",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "16:30",
+    "montoSondeo": 3000,
+    "totalAnimales": 101,
+    "rojos": [
+      "27",
+      "99",
+      "11",
+      "33"
+    ],
+    "rojosPremier": [
+      "27"
+    ],
+    "detallePremier": [
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "11"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "sorteosAtraso": 414,
+        "diasAtraso": 35,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 414 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "33"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "33",
+        "nombre": "Pescado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "414 sorteos sin salir"
+      },
+      {
+        "numero": "33",
+        "nombre": "Pescado",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "70",
+      "nombre": "Bisonte",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 70 (Bisonte) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T20:40:26.472Z"
+    },
+    "revision": {
+      "estado": "AGOTADO_2_INTENTOS",
+      "intentos": 2,
+      "ultimoIntento": "2026-10-08T20:40:23.811Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791490223961",
+    "timestamp": "2026-10-08T20:31:57.417Z",
+    "fecha": "2026-10-08",
+    "hora": "16:31:57",
+    "horaSorteo": "17:00",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "17:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75",
+      "05",
+      "09",
+      "00"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "05",
+      "09"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "sorteosAtraso": 169,
+        "diasAtraso": 14,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 169 sorteos)"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "sorteosAtraso": 123,
+        "diasAtraso": 10,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 123 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "00"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "00",
+        "nombre": "Delfin",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "05",
+        "nombre": "Leon",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "169 sorteos sin salir"
+      },
+      {
+        "numero": "09",
+        "nombre": "Aguila",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "123 sorteos sin salir"
+      },
+      {
+        "numero": "00",
+        "nombre": "Ballena",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 4,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "32",
+      "nombre": "Ardilla",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 32 (Ardilla) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T21:01:25.957Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791490526745",
+    "timestamp": "2026-10-08T20:41:05.570Z",
+    "fecha": "2026-10-08",
+    "hora": "16:41:05",
+    "horaSorteo": "17:00",
+    "loteria": "LOTTO ACTIVO",
+    "sorteo": "17:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "02",
+      "24",
+      "21"
+    ],
+    "rojosPremier": [
+      "02"
+    ],
+    "detallePremier": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "24"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "sorteosAtraso": 59,
+        "diasAtraso": 5,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 59 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "21"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "59 sorteos sin salir"
+      },
+      {
+        "numero": "21",
+        "nombre": "Gallo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 3,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "32",
+      "nombre": "Ardilla",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 32 (Ardilla) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T21:01:26.490Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791490528129",
+    "timestamp": "2026-10-08T20:34:40.042Z",
+    "fecha": "2026-10-08",
+    "hora": "16:34:40",
+    "horaSorteo": "17:00",
+    "loteria": "LA GRANJITA",
+    "sorteo": "17:00",
+    "montoSondeo": 3000,
+    "totalAnimales": 38,
+    "rojos": [
+      "02",
+      "10",
+      "24",
+      "27",
+      "30",
+      "36"
+    ],
+    "rojosPremier": [
+      "02",
+      "10",
+      "24",
+      "27",
+      "30"
+    ],
+    "detallePremier": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "10",
+        "nombre": "Tigre",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [],
+    "fijosSeleccionados": [],
+    "numPredictivos": [
+      "30"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "sorteosAtraso": 100,
+        "diasAtraso": 8,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 100 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "36"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "36",
+        "nombre": "Culebra",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "02",
+        "nombre": "Toro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "10",
+        "nombre": "Tigre",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "24",
+        "nombre": "Iguana",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "30",
+        "nombre": "Caiman",
+        "origen": "AMBOS",
+        "origenTexto": "Múltiple Coincidencia",
+        "detalle": "Coincidencia entre varios modelos de bloqueo"
+      },
+      {
+        "numero": "36",
+        "nombre": "Culebra",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 6,
+    "t7Status": "Bloqueados (7) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": {
+      "verificado": true,
+      "numero": "32",
+      "nombre": "Ardilla",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 32 (Ardilla) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-08T21:01:27.022Z"
+    }
+  },
+  {
+    "id": "2026-10-08_1791491725799",
+    "timestamp": "2026-10-08T21:02:13.453Z",
+    "fecha": "2026-10-08",
+    "hora": "17:02:13",
+    "horaSorteo": "17:30",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "17:30",
+    "montoSondeo": 3000,
+    "totalAnimales": 101,
+    "rojos": [
+      "27",
+      "99",
+      "11",
+      "58",
+      "63"
+    ],
+    "rojosPremier": [
+      "27"
+    ],
+    "detallePremier": [
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0 / Agotado)"
+      }
+    ],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [
+      "11"
+    ],
+    "predictivosVisualFx": [
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "sorteosAtraso": 415,
+        "diasAtraso": 35,
+        "origen": "PREDICTIVO",
+        "origenTexto": "Visual-FX (Atrasado: 415 sorteos)"
+      }
+    ],
+    "numAleatorios": [
+      "58",
+      "63"
+    ],
+    "aleatoriosSistema": [
+      {
+        "numero": "58",
+        "nombre": "Hormiga",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      },
+      {
+        "numero": "63",
+        "nombre": "Cangrejo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección algorítmica del sistema"
+      }
+    ],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "27",
+        "nombre": "Perro",
+        "origen": "PREMIER",
+        "origenTexto": "Premier Pluss (Cupo 0)",
+        "detalle": "Agotado en taquilla"
+      },
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      },
+      {
+        "numero": "11",
+        "nombre": "Gato",
+        "origen": "PREDICTIVO",
+        "origenTexto": "Modelo Predictivo Visual-FX",
+        "detalle": "415 sorteos sin salir"
+      },
+      {
+        "numero": "58",
+        "nombre": "Hormiga",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      },
+      {
+        "numero": "63",
+        "nombre": "Cangrejo",
+        "origen": "ALEATORIO",
+        "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
+        "detalle": "Selección de riesgo del sistema (máx 3)"
+      }
+    ],
+    "totalBloqueados": 5,
+    "t7Status": "Bloqueados (4) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
   }
 ]

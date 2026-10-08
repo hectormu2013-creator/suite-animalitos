@@ -11,7 +11,7 @@
       {
         "id": "maquina_1",
         "notas": "Taquilla de pesca 24/7 dedicada (Auto-reporta túnel Cloudflare)",
-        "activa": true,
+        "activa": false,
         "ipOUrl": "",
         "nombre": "Nodo de Pesca Dedicado (Producción)",
         "keepOpen": true,
@@ -24,16 +24,16 @@
       },
       {
         "id": "maquina_2",
-        "notas": "Túnel en vivo: 12:57:07 AM",
+        "notas": "Túnel en vivo: 3:33:06 PM",
         "activa": true,
-        "ipOUrl": "https://lakes-prayers-languages-steps.trycloudflare.com",
+        "ipOUrl": "https://tractor-experiments-connector-terrorist.trycloudflare.com",
         "nombre": "Estación de Trabajo / Dev (Hector)",
         "keepOpen": true,
         "prioridad": 2,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-08T01:07:56.125Z",
+        "ultimaConexion": "2026-10-08T17:41:21.751Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -129,6 +129,7 @@
       "minutosAntesPremier": 30,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "09:00",
         "10:00",
         "11:00",
         "12:00",
@@ -145,7 +146,8 @@
       "bloqueoAleatorioSistema": true,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1
+      "cantidadPredictivosABloquear": 2,
+      "maximoBloqueosPorSorteo": 6
     },
     {
       "id": "lotto_activo",
@@ -206,6 +208,7 @@
       "minutosAntesPremier": 28,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "09:00",
         "10:00",
         "11:00",
         "12:00",
@@ -222,7 +225,8 @@
       "bloqueoAleatorioSistema": true,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1
+      "cantidadPredictivosABloquear": 1,
+      "maximoBloqueosPorSorteo": 6
     },
     {
       "id": "la_granjita",
@@ -283,6 +287,7 @@
       "minutosAntesPremier": 27,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "09:00",
         "10:00",
         "11:00",
         "12:00",
@@ -299,7 +304,8 @@
       "bloqueoAleatorioSistema": true,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1
+      "cantidadPredictivosABloquear": 1,
+      "maximoBloqueosPorSorteo": 6
     },
     {
       "id": "guacharo_millonario",
@@ -362,6 +368,7 @@
       "minutosAntesPremier": 30,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "09:30",
         "10:30",
         "11:30",
         "12:30",
@@ -378,7 +385,8 @@
       "bloqueoAleatorioSistema": true,
       "bloqueoPredictivosAtrasados": true,
       "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1
+      "cantidadPredictivosABloquear": 1,
+      "maximoBloqueosPorSorteo": 6
     }
   ],
   "historial": []

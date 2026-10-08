@@ -1140,7 +1140,9 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
       result.sorteo = horaSorteo;
     }
     
-    // Consolidar lista de bloqueos (1. Premier + 2. Números Fijos + 3. Visual-FX + 4. Sistema Aleatorio + 5. Memoria Cupo 0)
+    // Consolidar lista de bloqueos respetando jerarquía de 5 prioridades y límite máximo (0-10)
+    delete require.cache[require.resolve('./cupo_cero_memory')];
+    delete require.cache[require.resolve('./predictive_service')];
     const predictive = require('./predictive_service');
     const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, result, result.sorteo || horaSorteo);
 
@@ -1149,7 +1151,7 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
     const descAleatorios = (consolidated.aleatoriosSeleccionados || []).map(a => `${a.numero} ${a.nombre}`).join(', ');
     const descMemoria = (consolidated.memoriaSeleccionados || []).map(m => `${m.numero} ${m.nombre} (${m.sorteosRestantes}s)`).join(', ');
 
-    log(`🎯 [ESTRATEGIA 5-VÍAS] 🔴 Premier Cupo 0: [${consolidated.rojosPremier.join(', ') || 'Ninguno'}] | 📌 Fijos: [${descFijos || 'Ninguno'}] | 🔮 Visual-FX: [${descPredictivos || 'Ninguno'}] | 🎲 Aleatorios: [${descAleatorios || 'Ninguno'}] | 🧠 Memoria Persistente: [${descMemoria || 'Ninguna'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}`, 'log-info');
+    log(`🎯 [ESTRATEGIA 5-VÍAS | MÁX ${consolidated.maximoBloqueosConfigurado}] 1. Sorteo Actual: [${consolidated.detallePrioridades.p1_sondeoActual.join(', ') || 'Ninguno'}] | 2. Persistente Anterior: [${consolidated.detallePrioridades.p2_persistenteAnterior.join(', ') || 'Ninguno'}] | 3. 2do Anterior: [${consolidated.detallePrioridades.p3_persistente2doAnterior.join(', ') || 'Ninguno'}] | 4. Atrasados/Fijos: [${consolidated.detallePrioridades.p4_masTiempoSinSalirYFijos.join(', ') || 'Ninguno'}] | 5. Aleatorios: [${consolidated.detallePrioridades.p5_aleatorios.join(', ') || 'Ninguno'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}/${consolidated.maximoBloqueosConfigurado}`, 'log-info');
 
     // Registrar en historial persistente (JSON DB + Excel CSV)
     const historyMgr = require('./history_manager');
@@ -1194,7 +1196,7 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
     // Si Triple 7 está habilitado y hay números para bloquear en el sorteo actual
     const drawTargetT7 = (result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : horaSorteo;
     if (cfg.general.triple7.enabled && consolidated.listaFinalNumeros.length > 0) {
-      log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para sorteo actual ${drawTargetT7}...`, 'log-info');
+      log(`Enviando ${consolidated.listaFinalNumeros.length} números a Triple 7 para sorteo actual ${drawTargetT7} (Tope máx ${consolidated.maximoBloqueosConfigurado}): [${consolidated.listaFinalNumeros.join(', ')}]...`, 'log-info');
       try {
         delete require.cache[require.resolve('./triple7_robot')];
         const t7 = require('./triple7_robot');
@@ -1218,7 +1220,9 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
       }
     }
 
-    // GESTIÓN DE MEMORIA PREMIER CUPO 0: Pre-bloqueo inmediato de sorteos siguientes
+    // GESTIÓN DE MEMORIA PREMIER CUPO 0: Registrar persistencia en base de datos local
+    // (OJO: No se pre-bloquean a ciegas horas antes en Triple 7 para proteger las ventas;
+    // cada sorteo futuro aplicará sus números persistentes en su turno respetando la jerarquía de prioridad y el tope máximo)
     let siguientesSorteos = [];
     if (loteria.memoriaCupoCero && loteria.memoriaCupoCero.activo !== false && (consolidated.rojosPremier || []).length > 0) {
       try {
@@ -1228,24 +1232,11 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
         siguientesSorteos = cupoMem.obtenerSiguientesSorteos(loteria.horarios || [], result.sorteo, persistencia);
 
         if (siguientesSorteos.length > 0) {
-          log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia (${persistencia} sorteos). Pre-bloqueando [${consolidated.rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}...`, 'log-info');
+          log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia registrada (${persistencia} sorteos) para: [${consolidated.rojosPremier.join(', ')}] en futuros sorteos (${siguientesSorteos.join(', ')}). Ventas preservadas abiertas hasta su turno.`, 'log-info');
           cupoMem.registrarAgotadosPremier(loteria.id, loteria.nombre, result.sorteo, todayStr, consolidated.rojosPremier, persistencia, siguientesSorteos);
-
-          if (cfg.general.triple7.enabled) {
-            const t7 = require('./triple7_robot');
-            for (const sFuturo of siguientesSorteos) {
-              try {
-                log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: Enviando [${consolidated.rojosPremier.join(', ')}]...`, 'log-info');
-                const t7FuturoRes = await t7.bloquearNumeros(cfg, loteria.nombre, sFuturo, consolidated.rojosPremier);
-                log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: ${t7FuturoRes.ok ? 'Bloqueado con éxito' : t7FuturoRes.message}`, t7FuturoRes.ok ? 'log-success' : 'log-warn');
-              } catch (eFuturo) {
-                log(`Aviso al pre-bloquear ${sFuturo} en Triple 7: ${eFuturo.message}`, 'log-danger');
-              }
-            }
-          }
         }
       } catch (errMem) {
-        log(`Aviso en pre-bloqueo de memoria: ${errMem.message}`, 'log-warn');
+        log(`Aviso en registro de memoria: ${errMem.message}`, 'log-warn');
       }
     }
 
@@ -1907,6 +1898,8 @@ setInterval(async () => {
             try {
               const machinesMgr = require('./machines_manager');
               const historyMgr = require('./history_manager');
+              delete require.cache[require.resolve('./cupo_cero_memory')];
+              delete require.cache[require.resolve('./predictive_service')];
               const predictive = require('./predictive_service');
               delete require.cache[require.resolve('./triple7_robot')];
               const t7 = require('./triple7_robot');
@@ -1925,9 +1918,11 @@ setInterval(async () => {
                 : (numerosParaTriple7.length === 0 ? 'Sin números para bloquear' : 'Procesando Triple 7');
               let t7Blocked = false;
 
-              // Bloqueo total consolidado en Triple 7 para el sorteo objetivo
+              log(`🎯 [ESTRATEGIA 5-VÍAS | MÁX ${consolidated.maximoBloqueosConfigurado}] ${lot.nombre} (${targetDrawTime}) -> 1. Sorteo Actual: [${consolidated.detallePrioridades.p1_sondeoActual.join(', ') || 'Ninguno'}] | 2. Persistente Anterior: [${consolidated.detallePrioridades.p2_persistenteAnterior.join(', ') || 'Ninguno'}] | 3. 2do Anterior: [${consolidated.detallePrioridades.p3_persistente2doAnterior.join(', ') || 'Ninguno'}] | 4. Atrasados/Fijos: [${consolidated.detallePrioridades.p4_masTiempoSinSalirYFijos.join(', ') || 'Ninguno'}] | 5. Aleatorios: [${consolidated.detallePrioridades.p5_aleatorios.join(', ') || 'Ninguno'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}/${consolidated.maximoBloqueosConfigurado}`, 'log-info');
+
+              // Bloqueo total consolidado en Triple 7 para el sorteo objetivo (respetando límite máximo de 0 a 10)
               if (cfg.general.triple7.enabled && numerosParaTriple7.length > 0) {
-                log(`[AUTO-BLOQUEO TRIPLE 7 (SONDEO ${sNum})] Enviando ${numerosParaTriple7.length} números consolidados a Triple 7 para ${lot.nombre} (${targetDrawTime}): [${numerosParaTriple7.join(', ')}]...`, 'log-info');
+                log(`[AUTO-BLOQUEO TRIPLE 7 (SONDEO ${sNum})] Enviando ${numerosParaTriple7.length} números consolidados a Triple 7 para ${lot.nombre} (${targetDrawTime}, Tope máx ${consolidated.maximoBloqueosConfigurado}): [${numerosParaTriple7.join(', ')}]...`, 'log-info');
                 try {
                   const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, numerosParaTriple7);
                   t7Blocked = t7Res.ok;
@@ -1938,7 +1933,9 @@ setInterval(async () => {
                 }
               }
 
-              // GESTIÓN DE MEMORIA PREMIER CUPO 0: Pre-bloqueo inmediato para los siguientes N sorteos
+              // GESTIÓN DE MEMORIA PREMIER CUPO 0: Registrar persistencia en base de datos local
+              // (OJO: No se pre-bloquean a ciegas horas antes en Triple 7 para proteger las ventas;
+              // cada sorteo futuro aplicará sus números persistentes en su turno respetando la jerarquía de prioridad y el tope máximo)
               let siguientesSorteos = [];
               const rojosPremier = consolidated.rojosPremier || [];
               if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
@@ -1948,23 +1945,11 @@ setInterval(async () => {
                   siguientesSorteos = cupoMem.obtenerSiguientesSorteos(lot.horarios || [], result.sorteo || hStr, persistencia);
 
                   if (siguientesSorteos.length > 0) {
-                    log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia activa (${persistencia} sorteos). Pre-bloqueando [${rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}...`, 'log-info');
+                    log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia activa (${persistencia} sorteos). Registrados [${rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}. Ventas preservadas abiertas hasta su turno.`, 'log-info');
                     cupoMem.registrarAgotadosPremier(lot.id, lot.nombre, result.sorteo || hStr, todayStr, rojosPremier, persistencia, siguientesSorteos);
-
-                    if (cfg.general.triple7.enabled) {
-                      for (const sFuturo of siguientesSorteos) {
-                        try {
-                          log(`🧠 [PRE-BLOQUEO TRIPLE 7] Bloqueando ${lot.nombre} (${sFuturo}): [${rojosPremier.join(', ')}]...`, 'log-info');
-                          const t7FuturoRes = await t7.bloquearNumeros(cfg, lot.nombre, sFuturo, rojosPremier);
-                          log(`🧠 [PRE-BLOQUEO TRIPLE 7] Sorteo ${sFuturo}: ${t7FuturoRes.ok ? 'Bloqueado con éxito' : t7FuturoRes.message}`, t7FuturoRes.ok ? 'log-success' : 'log-warn');
-                        } catch (eFuturo) {
-                          log(`Aviso al pre-bloquear ${sFuturo} en Triple 7: ${eFuturo.message}`, 'log-danger');
-                        }
-                      }
-                    }
                   }
                 } catch (errMem) {
-                  log(`Aviso en pre-bloqueo de memoria: ${errMem.message}`, 'log-warn');
+                  log(`Aviso en registro de memoria: ${errMem.message}`, 'log-warn');
                 }
               }
 

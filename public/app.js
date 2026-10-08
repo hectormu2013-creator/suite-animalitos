@@ -379,7 +379,47 @@ function renderLotteries(lotteries) {
             </div>
           </div>
           <div style="font-size:11px; color:#94a3b8; margin-top:8px; line-height:1.4;">
-            💡 Al pescar un número con cupo 0 en PremierPluss, se bloqueará de inmediato para los siguientes <b>N sorteos seleccionados</b> en Triple 7. Se descuenta al pasar cada sorteo y <b>se auto-libera para todos los sorteos restantes si sale premiado</b> 🏆.
+            💡 Al pescar un número con cupo 0 en PremierPluss, se guarda en memoria para los siguientes <b>N sorteos seleccionados</b>. Se incorpora a la lista de bloqueo en cada sorteo posterior según prioridad y <b>se auto-libera si sale premiado</b> 🏆.
+          </div>
+        </div>
+
+        <!-- 6. Regla de Máxima Cantidad de Números a Bloquear (Control de Rentabilidad de Ventas) -->
+        <div style="background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.3); border-radius:8px; padding:14px; margin-top:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:16px;">🛡️</span>
+              <strong style="color:#60a5fa; font-size:14px;">Límite Máximo de Números a Bloquear por Sorteo</strong>
+              <span class="badge" style="background:#1d4ed8; color:#fff; font-size:11px; padding:2px 8px; border-radius:10px; font-weight:700;">Protección de Ventas</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; color:#93c5fd; font-weight:600;">Máximo Permitido:</label>
+              <select class="form-input lot-input-maximo-bloqueos" data-index="${index}" style="width:auto; padding:5px 12px; font-size:13px; background:#1e293b; color:#fff; font-weight:700; border-color:#3b82f6;">
+                <option value="0" ${(lot.maximoBloqueosPorSorteo === 0) ? 'selected' : ''}>0 (No bloquear ninguno)</option>
+                <option value="1" ${(lot.maximoBloqueosPorSorteo === 1) ? 'selected' : ''}>1 número máximo</option>
+                <option value="2" ${(lot.maximoBloqueosPorSorteo === 2) ? 'selected' : ''}>2 números máximo</option>
+                <option value="3" ${(lot.maximoBloqueosPorSorteo === 3) ? 'selected' : ''}>3 números máximo</option>
+                <option value="4" ${(lot.maximoBloqueosPorSorteo === 4) ? 'selected' : ''}>4 números máximo</option>
+                <option value="5" ${(lot.maximoBloqueosPorSorteo === 5) ? 'selected' : ''}>5 números máximo</option>
+                <option value="6" ${(lot.maximoBloqueosPorSorteo === 6 || lot.maximoBloqueosPorSorteo === undefined) ? 'selected' : ''}>6 números máximo (Recomendado)</option>
+                <option value="7" ${(lot.maximoBloqueosPorSorteo === 7) ? 'selected' : ''}>7 números máximo</option>
+                <option value="8" ${(lot.maximoBloqueosPorSorteo === 8) ? 'selected' : ''}>8 números máximo</option>
+                <option value="9" ${(lot.maximoBloqueosPorSorteo === 9) ? 'selected' : ''}>9 números máximo</option>
+                <option value="10" ${(lot.maximoBloqueosPorSorteo === 10) ? 'selected' : ''}>10 números máximo (Tope)</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:10px; font-size:12px; color:#cbd5e1; line-height:1.5; background:rgba(15,23,42,0.6); padding:10px; border-radius:6px; border-left:3px solid #3b82f6;">
+            <div style="font-weight:700; color:#93c5fd; margin-bottom:4px;">📊 Jerarquía Estricta de Prioridad de Bloqueo (Corta al alcanzar el límite configurado):</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:6px; font-size:11.5px; margin-top:6px;">
+              <div>🥇 <b style="color:#ef4444;">1ª Prioridad:</b> Sondeo actual (Premier Cupo 0)</div>
+              <div>🥈 <b style="color:#f472b6;">2ª Prioridad:</b> Persistente sorteo anterior</div>
+              <div>🥉 <b style="color:#fb7185;">3ª Prioridad:</b> Persistente 2º sorteo anterior</div>
+              <div>4️⃣ <b style="color:#34d399;">4ª Prioridad:</b> Más tiempo sin salir / Fijos</div>
+              <div>5️⃣ <b style="color:#fbbf24;">5ª Prioridad:</b> Cobertura aleatoria autónoma</div>
+            </div>
+            <div style="font-size:11px; color:#94a3b8; margin-top:8px;">
+              ℹ️ Los números de menor prioridad no se enviarán a Triple 7 si el cupo máximo ya fue completado por prioridades superiores, garantizando que la taquilla mantenga fluidez en sus ventas.
+            </div>
           </div>
         </div>
       </div>
@@ -1258,6 +1298,13 @@ async function saveLotteriesConfig() {
       if (memToggle) lot.memoriaCupoCero.activo = memToggle.checked;
       const persistSelect = el.querySelector('.lot-input-persistencia-memoria');
       if (persistSelect) lot.memoriaCupoCero.sorteosPersistencia = Math.min(Math.max(parseInt(persistSelect.value, 10) || 3, 1), 5);
+
+      // Regla de Máxima Cantidad de Números a Bloquear por Sorteo (0 a 10)
+      const maxBloqSelect = el.querySelector('.lot-input-maximo-bloqueos');
+      if (maxBloqSelect) {
+        const val = parseInt(maxBloqSelect.value, 10);
+        lot.maximoBloqueosPorSorteo = Number.isNaN(val) ? 6 : Math.min(Math.max(val, 0), 10);
+      }
 
       const rawHorarios = el.querySelector('.lot-input-horarios').value;
       lot.horarios = rawHorarios.split(/[,;\s]+/).map(h => h.trim()).filter(Boolean);
