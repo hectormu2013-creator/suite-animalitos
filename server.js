@@ -1142,7 +1142,7 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
     
     // Consolidar lista de bloqueos (1. Premier + 2. Números Fijos + 3. Visual-FX + 4. Sistema Aleatorio + 5. Memoria Cupo 0)
     const predictive = require('./predictive_service');
-    const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, result);
+    const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, result, result.sorteo || horaSorteo);
 
     const descFijos = (consolidated.fijosSeleccionados || []).map(f => `${f.numero} ${f.nombre}`).join(', ');
     const descPredictivos = (consolidated.predictivosSeleccionados || []).map(p => `${p.numero} ${p.nombre} (${p.sorteosAtraso}s)`).join(', ');
@@ -1163,7 +1163,9 @@ async function handleExecuteSondeoNowInternal(req, res, loteriaParam = null, hor
       numFijos: consolidated.numFijos,
       fijosSeleccionados: consolidated.fijosSeleccionados,
       predictivosVisualFx: consolidated.predictivosSeleccionados,
+      cantidadPredictivosConfigurada: parseInt(loteria.cantidadPredictivosABloquear, 10) || 0,
       aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+      cantidadAleatoriosConfigurada: parseInt(loteria.cantidadAleatoriosABloquear, 10) || 0,
       memoriaCupoCero: consolidated.memoriaSeleccionados,
       numMemoriaCupoCero: consolidated.numMemoria,
       t7Status: cfg.general.triple7.enabled ? 'Procesando Triple 7' : 'Desactivado',
@@ -1914,8 +1916,8 @@ setInterval(async () => {
 
               // Consolidar lista completa de las 5 vías de protección:
               // 1. Premier Cupo 0 + 2. Fijos + 3. Visual-FX Atrasados + 4. Cobertura Aleatoria + 5. Memoria Persistente
-              const consolidated = predictive.buildConsolidatedBlockList(cfg, lot.id, result);
               const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
+              const consolidated = predictive.buildConsolidatedBlockList(cfg, lot.id, result, targetDrawTime);
 
               const numerosParaTriple7 = consolidated.listaFinalNumeros || [];
               let t7Status = !cfg.general.triple7.enabled 
@@ -1976,7 +1978,9 @@ setInterval(async () => {
                 numFijos: consolidated.numFijos,
                 fijosSeleccionados: consolidated.fijosSeleccionados,
                 predictivosVisualFx: consolidated.predictivosSeleccionados,
+                cantidadPredictivosConfigurada: parseInt(lot.cantidadPredictivosABloquear, 10) || 0,
                 aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+                cantidadAleatoriosConfigurada: parseInt(lot.cantidadAleatoriosABloquear, 10) || 0,
                 memoriaCupoCero: consolidated.memoriaSeleccionados,
                 numMemoriaCupoCero: consolidated.numMemoria,
                 t7Status,

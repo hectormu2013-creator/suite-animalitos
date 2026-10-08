@@ -344,7 +344,7 @@ function getFixedBlockNumbers(config, loteriaId) {
  * @param {string} loteriaId - ID de la lotería
  * @param {object} premierResult - Resultado de la detección de Premier Pluss
  */
-function buildConsolidatedBlockList(config, loteriaId, premierResult) {
+function buildConsolidatedBlockList(config, loteriaId, premierResult, sorteoHora = '') {
   let lot = (config.loterias || []).find(l => l.id === loteriaId);
   if (!lot) lot = (config.loterias || []).find(l => l.activo) || (config.loterias && config.loterias[0]);
 
@@ -356,15 +356,35 @@ function buildConsolidatedBlockList(config, loteriaId, premierResult) {
   const fijosSeleccionados = getFixedBlockNumbers(config, lot.id);
   const numFijos = fijosSeleccionados.map(f => f.numero);
 
+  // Consultar si este sorteo ya tiene números predictivos o aleatorios asignados hoy (ej: por alarma previa)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let existingRec = null;
+  try {
+    const historyMgr = require('./history_manager');
+    const hist = historyMgr.getHistory({ fecha: todayStr });
+    const sTarget = sorteoHora || (premierResult && premierResult.sorteo) || '';
+    if (sTarget) {
+      existingRec = hist.find(r => 
+        (r.loteria || '').toLowerCase().includes(lot.nombre.toLowerCase().slice(0, 5)) &&
+        (r.sorteo === sTarget || r.horaSorteo === sTarget)
+      );
+    }
+  } catch (e) {}
+
   // 3. Modelo Predictivo Visual-FX (Atrasados dinámicos)
   const cantidadPredictivos = parseInt(lot.cantidadPredictivosABloquear, 10) || 0;
   const activarPredictivos = lot.bloqueoPredictivosAtrasados !== false && cantidadPredictivos > 0;
 
   let predictivosSeleccionados = [];
   if (activarPredictivos) {
-    const yaBloqueados = [...bloqueadosPremier, ...numFijos];
-    const atrasados = getMostDelayedNumbers(lot.id, cantidadPredictivos);
-    predictivosSeleccionados = atrasados.filter(item => !yaBloqueados.includes(item.numero));
+    if (existingRec && Array.isArray(existingRec.predictivosVisualFx) && existingRec.predictivosVisualFx.length > 0) {
+      // Reutilizar exactamente los atrasados ya asignados a este sorteo hoy
+      predictivosSeleccionados = existingRec.predictivosVisualFx.slice(0, cantidadPredictivos);
+    } else {
+      const yaBloqueados = [...bloqueadosPremier, ...numFijos];
+      const atrasados = getMostDelayedNumbers(lot.id, cantidadPredictivos);
+      predictivosSeleccionados = atrasados.filter(item => !yaBloqueados.includes(item.numero));
+    }
   }
 
   // 4. Sistema Autónomo (Números Aleatorios, máximo 3)
@@ -373,12 +393,17 @@ function buildConsolidatedBlockList(config, loteriaId, premierResult) {
 
   let aleatoriosSeleccionados = [];
   if (activarAleatorios) {
-    const yaBloqueados = [
-      ...bloqueadosPremier,
-      ...numFijos,
-      ...predictivosSeleccionados.map(p => p.numero)
-    ];
-    aleatoriosSeleccionados = getRandomSystemBlockNumbers(lot.id, Math.min(cantidadAleatorios, 3), yaBloqueados);
+    if (existingRec && Array.isArray(existingRec.aleatoriosSistema) && existingRec.aleatoriosSistema.length > 0) {
+      // Reutilizar exactamente los aleatorios ya escogidos previamente para este mismo sorteo hoy
+      aleatoriosSeleccionados = existingRec.aleatoriosSistema.slice(0, Math.min(cantidadAleatorios, 3));
+    } else {
+      const yaBloqueados = [
+        ...bloqueadosPremier,
+        ...numFijos,
+        ...predictivosSeleccionados.map(p => p.numero)
+      ];
+      aleatoriosSeleccionados = getRandomSystemBlockNumbers(lot.id, Math.min(cantidadAleatorios, 3), yaBloqueados);
+    }
   }
 
   // 5. Memoria de Cupo Cero Premier (Arrastre Preventivo de Sorteos Anteriores)

@@ -308,21 +308,28 @@ function recordScan(scanData) {
         if (!mergedFijosDetalle.some(x => x.numero === d.numero)) mergedFijosDetalle.push(d);
       }
 
-      const mergedPred = Array.from(new Set([...(rec.numPredictivos || []), ...numPredictivos]));
-      const mergedPredDetalle = [...(rec.predictivosVisualFx || [])];
-      for (const d of detallePredictivos) {
-        if (!mergedPredDetalle.some(x => x.numero === d.numero)) mergedPredDetalle.push(d);
-      }
+      // Predictivos Atrasados: Reutilizar existentes si ya habían para este sorteo, o adoptar los nuevos
+      let finalPredDetalle = (rec.predictivosVisualFx && rec.predictivosVisualFx.length > 0)
+        ? rec.predictivosVisualFx
+        : detallePredictivos;
+      const maxPredConfig = (scanData.cantidadPredictivosConfigurada !== undefined)
+        ? scanData.cantidadPredictivosConfigurada
+        : finalPredDetalle.length;
+      finalPredDetalle = finalPredDetalle.slice(0, Math.max(0, maxPredConfig));
+      const mergedPred = finalPredDetalle.map(p => p.numero);
+      const mergedPredDetalle = finalPredDetalle;
 
-      const mergedAleat = Array.from(new Set([
-        ...(rec.numAleatorios || []), 
-        ...numAleatorios, 
-        ...(rec.aleatoriosSistema || []).map(a => a.numero)
-      ]));
-      const mergedAleatDetalle = [...(rec.aleatoriosSistema || [])];
-      for (const d of detalleAleatorios) {
-        if (!mergedAleatDetalle.some(x => x.numero === d.numero)) mergedAleatDetalle.push(d);
-      }
+      // Cobertura Aleatoria: Reutilizar existentes si ya habían para este sorteo, o adoptar los nuevos
+      // NUNCA acumular números de ejecuciones distintas ni superar la cantidad configurada
+      let finalAleatDetalle = (rec.aleatoriosSistema && rec.aleatoriosSistema.length > 0)
+        ? rec.aleatoriosSistema
+        : detalleAleatorios;
+      const maxAleatConfig = (scanData.cantidadAleatoriosConfigurada !== undefined)
+        ? scanData.cantidadAleatoriosConfigurada
+        : finalAleatDetalle.length;
+      finalAleatDetalle = finalAleatDetalle.slice(0, Math.min(Math.max(0, maxAleatConfig), 3));
+      const mergedAleat = finalAleatDetalle.map(a => a.numero);
+      const mergedAleatDetalle = finalAleatDetalle;
 
       const allMergedNumbers = Array.from(new Set([...mergedPremier, ...mergedFijos, ...mergedPred, ...mergedAleat]));
       
