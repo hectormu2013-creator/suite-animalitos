@@ -2240,6 +2240,32 @@ function initTriple7Module() {
     btnRefresh.addEventListener('click', () => loadTriple7Draws(true));
   }
 
+  const btnUnblockAll = document.getElementById('btn-unblock-all-t7');
+  if (btnUnblockAll) {
+    btnUnblockAll.addEventListener('click', async () => {
+      if (!confirm('¿Confirma que desea REINCORPORAR (limpiar) TODOS los sorteos con bloqueos en Triple 7?')) return;
+      btnUnblockAll.disabled = true;
+      btnUnblockAll.classList.add('loading');
+      try {
+        showToast('Limpiando todos los sorteos en Triple 7...');
+        const res = await fetch('/api/triple7/unblock-all', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+          showToast(`✅ ${data.totalReincorporados} sorteos limpiados a 0 bloqueos`);
+          appendLog(`[TRIPLE 7 LIMPIEZA] ${data.totalReincorporados} sorteos limpiados`, 'log-success');
+          await loadTriple7Draws(true);
+        } else {
+          showToast(`Error: ${data.message}`);
+        }
+      } catch (err) {
+        showToast(`Error comunicando con servidor: ${err.message}`);
+      } finally {
+        btnUnblockAll.disabled = false;
+        btnUnblockAll.classList.remove('loading');
+      }
+    });
+  }
+
   const btnDispararT7 = document.getElementById('btn-disparar-bloqueo-t7');
   if (btnDispararT7) {
     btnDispararT7.addEventListener('click', async () => {

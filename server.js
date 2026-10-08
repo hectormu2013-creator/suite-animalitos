@@ -1353,6 +1353,21 @@ app.post('/api/triple7/reincorporar', async (req, res) => {
   }
 });
 
+// API: Reincorporar (Limpiar) TODOS los sorteos bloqueados en Triple 7
+app.post('/api/triple7/unblock-all', async (req, res) => {
+  const cfg = getConfig();
+  log(`[TRIPLE 7 LIMPIEZA TOTAL] Iniciando reincorporación de todos los sorteos...`, 'log-warn');
+  try {
+    const t7 = require('./triple7_robot');
+    const result = await t7.limpiarTodosLosBloqueos(cfg);
+    log(`✅ [TRIPLE 7 LIMPIEZA TOTAL] Completado. ${result.totalReincorporados} sorteos reincorporados a 0 bloqueos.`, 'log-success');
+    res.json(result);
+  } catch (err) {
+    log(`❌ [TRIPLE 7 LIMPIEZA ERROR] ${err.message}`, 'log-danger');
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
 // API: Estado de Control y Seguridad en Tiempo Real (Sincronizado Nube <-> Local)
 app.get('/api/control-status', async (req, res) => {
   if (IS_CLOUD || process.platform !== 'win32') {

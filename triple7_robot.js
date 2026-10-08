@@ -303,7 +303,44 @@ async function _obtenerEstadoBloqueosHttp(config) {
 }
 
 /**
- * Bloquea una lista de números en Triple 7 vía peticiones HTTP GET directas a lista_sor_ag.php
+ * Resuelve la opción de select en Triple 7 que corresponde a un número dado
+ */
+function findOptionForNumber(targetDraw, numStr, animalDict) {
+  const numRaw = numStr.toString().trim();
+  const numInt = parseInt(numRaw, 10);
+  const pad2 = numRaw.padStart(2, '0');
+  const animalOficial = animalDict[numRaw] || animalDict[pad2] || animalDict[numInt.toString()] || '';
+  const cleanOficial = normalizarTexto(animalOficial);
+
+  let matchedOpt = null;
+  const isGranjaMillonaria = normalizarTexto(targetDraw.loteria).includes('granja millonaria');
+
+  if (isGranjaMillonaria) {
+    matchedOpt = targetDraw.options.find(o => o.value === numInt.toString() || o.nombre === numInt.toString());
+  } else {
+    const expectedVal = numRaw === '00' ? '1' : numRaw === '0' ? '2' : (numInt + 2).toString();
+    matchedOpt = targetDraw.options.find(o => o.value === expectedVal);
+  }
+
+  if (!matchedOpt && cleanOficial) {
+    matchedOpt = targetDraw.options.find(o => {
+      const cText = normalizarTexto(o.text);
+      return cText === cleanOficial || cText.startsWith(cleanOficial) || cleanOficial.startsWith(cText);
+    });
+  }
+
+  if (!matchedOpt) {
+    matchedOpt = targetDraw.options.find(o => o.nombre === numRaw || o.nombre === numInt.toString() || o.text === numRaw);
+  }
+
+  return matchedOpt;
+}
+
+/**
+ * Bloquea una lista de números en Triple 7 vía peticiones HTTP GET directas a lista_sor_ag.php.
+ * PURGA AUTOMÁTICA DE RESIDUOS: Si el sorteo ya contenía números bloqueados de ayer o de sorteos
+ * anteriores que no pertenecen a la lista actual, reincorpora primero el sorteo para asegurar que
+ * en Triple 7 queden ÚNICAMENTE los números exactos calculados para hoy, sin acumular ni unir números pasados.
  */
 async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosParaBloquear) {
   if (!numerosParaBloquear || numerosParaBloquear.length === 0) {
@@ -322,7 +359,8 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     listRes = await httpRequest(targetUrl, { headers: { 'Cookie': cookie } });
   }
 
-  const draws = parseDrawsFromHtml(listRes.body);
+  const blockedMap = await fetchTriple7BlockedMap(config, cookie);
+  const draws = parseDrawsFromHtml(listRes.body, blockedMap);
 
   // Localizar la fila correspondiente
   const targetDraw = draws.find(d => {
@@ -347,9 +385,42 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     animalDict = {};
   }
 
-  const bloqueadosExitosos = [];
+  // 1. Mapear cada número deseado a su opción correspondiente en Triple 7
+  const listaObjetivos = [];
+  const idsDeseados = new Set();
   const fallidos = [];
 
+  for (const numStr of numerosParaBloquear) {
+    const opt = findOptionForNumber(targetDraw, numStr, animalDict);
+    if (opt && opt.url) {
+      listaObjetivos.push({ numStr: numStr.toString().trim(), opt });
+      idsDeseados.add(opt.value);
+    } else {
+      fallidos.push(numStr.toString().trim());
+    }
+  }
+
+  // 2. Consultar qué animales están actualmente bloqueados en Triple 7 para este sorteo
+  let idsActualmenteBloqueados = (targetDraw.idsol && blockedMap.get(targetDraw.idsol)) || [];
+
+  // 3. CONTROL DE RESIDUOS / PURGA ESTRICTA:
+  // Si en Triple 7 hay CUALQUIER animal bloqueado que NO pertenezca a la lista deseada de hoy
+  // (por ejemplo bloqueos de ayer o números antiguos acumulados), reincorporamos primero el sorteo.
+  const hayAnimalesSobrantes = idsActualmenteBloqueados.some(id => !idsDeseados.has(id));
+
+  if (hayAnimalesSobrantes) {
+    console.log(`[TRIPLE 7 PURGA] El sorteo ${targetDraw.loteria} (${targetDraw.sorteo}) tiene ${idsActualmenteBloqueados.length} animales bloqueados anteriores. Reincorporando para eliminar residuos antes de aplicar los ${listaObjetivos.length} actuales...`);
+    try {
+      await _reincorporarAnimalitosHttp(config, loteriaNombre, sorteoHora);
+      await new Promise(r => setTimeout(r, 400));
+      idsActualmenteBloqueados = [];
+    } catch (eReinc) {
+      console.warn(`[TRIPLE 7 PURGA AVISO] Falló reincorporación previa: ${eReinc.message}`);
+    }
+  }
+
+  // 4. Inyectar los bloqueos deseados
+  const bloqueadosExitosos = [];
   const ajaxHeaders = {
     'Cookie': cookie,
     'X-Requested-With': 'XMLHttpRequest',
@@ -357,41 +428,15 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     'Accept': 'application/json, text/javascript, */*; q=0.01'
   };
 
-  for (const numStr of numerosParaBloquear) {
-    const numRaw = numStr.toString().trim();
-    const numInt = parseInt(numRaw, 10);
-    const pad2 = numRaw.padStart(2, '0');
-    const animalOficial = animalDict[numRaw] || animalDict[pad2] || animalDict[numInt.toString()] || '';
-    const cleanOficial = normalizarTexto(animalOficial);
-
-    let matchedOpt = null;
-    const isGranjaMillonaria = normalizarTexto(targetDraw.loteria).includes('granja millonaria');
-
-    if (isGranjaMillonaria) {
-      matchedOpt = targetDraw.options.find(o => o.value === numInt.toString() || o.nombre === numInt.toString());
-    } else {
-      const expectedVal = numRaw === '00' ? '1' : numRaw === '0' ? '2' : (numInt + 2).toString();
-      matchedOpt = targetDraw.options.find(o => o.value === expectedVal);
-    }
-
-    if (!matchedOpt && cleanOficial) {
-      matchedOpt = targetDraw.options.find(o => {
-        const cText = normalizarTexto(o.text);
-        return cText === cleanOficial || cText.startsWith(cleanOficial) || cleanOficial.startsWith(cText);
-      });
-    }
-
-    if (!matchedOpt) {
-      matchedOpt = targetDraw.options.find(o => o.nombre === numRaw || o.nombre === numInt.toString() || o.text === numRaw);
-    }
-
-    if (!matchedOpt || !matchedOpt.url) {
-      fallidos.push(numRaw);
+  for (const { numStr, opt } of listaObjetivos) {
+    if (idsActualmenteBloqueados.includes(opt.value)) {
+      // Ya estaba bloqueado y es legítimo de la lista actual
+      bloqueadosExitosos.push({ numero: numStr, animal: opt.text, yaEstabaBloqueado: true });
       continue;
     }
 
     // Ejecutar petición GET AJAX idéntica al navegador para registrar el bloqueo
-    const blockUrl = `https://ny7.undo.it/Venta_Animalitos/${matchedOpt.url}`;
+    const blockUrl = `https://ny7.undo.it/Venta_Animalitos/${opt.url}`;
     try {
       const blockRes = await httpRequest(blockUrl, { headers: ajaxHeaders });
       // Validar confirmación de backend: Triple 7 responde con aquistring que incluye el idsol
@@ -401,12 +446,13 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
       );
 
       if (isConfirmed) {
-        bloqueadosExitosos.push({ numero: numRaw, animal: matchedOpt.text });
+        bloqueadosExitosos.push({ numero: numStr, animal: opt.text });
+        idsActualmenteBloqueados.push(opt.value);
       } else {
-        fallidos.push(numRaw);
+        fallidos.push(numStr);
       }
     } catch (eBlock) {
-      fallidos.push(numRaw);
+      fallidos.push(numStr);
     }
   }
 
@@ -565,9 +611,41 @@ async function _reincorporarAnimalitosPlaywright(config, loteriaNombre, sorteoHo
   return { ok: false, message: 'Fallback Playwright no requerido' };
 }
 
+/**
+ * Reincorpora (limpia) todos los sorteos que contengan animales bloqueados en Triple 7.
+ * Se utiliza al inicio del día o para reinicio manual desde el panel.
+ */
+async function limpiarTodosLosBloqueos(config) {
+  return enqueueT7Operation(async () => {
+    try {
+      const estado = await _obtenerEstadoBloqueosHttp(config);
+      const bloqueados = (estado.draws || []).filter(d => d.bloqueado);
+      console.log(`[TRIPLE 7 LIMPIEZA TOTAL] Encontrados ${bloqueados.length} sorteos con bloqueos activos. Reincorporando todos...`);
+      const resultados = [];
+      for (const draw of bloqueados) {
+        try {
+          const res = await _reincorporarAnimalitosHttp(config, draw.loteria, draw.sorteo);
+          resultados.push({ loteria: draw.loteria, sorteo: draw.sorteo, ok: res.ok, message: res.message });
+        } catch (e) {
+          resultados.push({ loteria: draw.loteria, sorteo: draw.sorteo, ok: false, error: e.message });
+        }
+      }
+      return {
+        ok: true,
+        totalEncontrados: bloqueados.length,
+        totalReincorporados: resultados.filter(r => r.ok).length,
+        detalles: resultados
+      };
+    } catch (err) {
+      return { ok: false, message: `Error en limpieza total de Triple 7: ${err.message}` };
+    }
+  });
+}
+
 module.exports = {
   bloquearNumeros,
   reincorporarAnimalitos,
+  limpiarTodosLosBloqueos,
   obtenerEstadoBloqueos,
   normalizarHoraSorteo,
   normalizarTexto
