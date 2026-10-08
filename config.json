@@ -24,16 +24,16 @@
       },
       {
         "id": "maquina_2",
-        "notas": "Túnel en vivo: 11:00:09 AM",
+        "notas": "Túnel en vivo: 12:57:07 AM",
         "activa": true,
-        "ipOUrl": "https://amenities-equality-policies-feb.trycloudflare.com",
+        "ipOUrl": "https://lakes-prayers-languages-steps.trycloudflare.com",
         "nombre": "Estación de Trabajo / Dev (Hector)",
         "keepOpen": true,
         "prioridad": 2,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-07T13:50:39.481Z",
+        "ultimaConexion": "2026-10-08T01:07:56.125Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -129,7 +129,6 @@
       "minutosAntesPremier": 30,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
-        "09:00",
         "10:00",
         "11:00",
         "12:00",
@@ -145,8 +144,8 @@
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
       "bloqueoPredictivosAtrasados": true,
-      "cantidadAleatoriosABloquear": 2,
-      "cantidadPredictivosABloquear": 2
+      "cantidadAleatoriosABloquear": 1,
+      "cantidadPredictivosABloquear": 1
     },
     {
       "id": "lotto_activo",
@@ -207,7 +206,6 @@
       "minutosAntesPremier": 28,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
-        "09:00",
         "10:00",
         "11:00",
         "12:00",
@@ -285,7 +283,6 @@
       "minutosAntesPremier": 27,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
-        "09:00",
         "10:00",
         "11:00",
         "12:00",
@@ -365,7 +362,6 @@
       "minutosAntesPremier": 30,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
-        "09:30",
         "10:30",
         "11:30",
         "12:30",
@@ -381,8 +377,8 @@
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
       "bloqueoPredictivosAtrasados": true,
-      "cantidadAleatoriosABloquear": 2,
-      "cantidadPredictivosABloquear": 2
+      "cantidadAleatoriosABloquear": 1,
+      "cantidadPredictivosABloquear": 1
     }
   ],
   "historial": []

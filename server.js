@@ -91,26 +91,47 @@ async function getConfigFresh() {
   return getConfig();
 }
 
-// Cargar persistencia maestra de Supabase al arrancar (única consulta; no hay polling periódico)
+// Cargar persistencia maestra de Supabase al arrancar (Configuración, Historial y Memoria)
 (async function initCloudConfigOnStartup() {
   try {
     const cloudStore = require('./cloud_store');
     const cloudRes = await cloudStore.getMasterConfig();
-    if (!cloudRes || !cloudRes.config) return;
-
-    if (IS_CLOUD || !getConfig()) {
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
-      log(`☁️ [CONFIG MAESTRA NUBE] Configuración restaurada con éxito desde Supabase (Web Master).`, 'log-success');
-      return;
+    if (cloudRes && cloudRes.config) {
+      if (IS_CLOUD || !getConfig()) {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(cloudRes.config, null, 2), 'utf8');
+        log(`☁️ [CONFIG MAESTRA NUBE] Configuración restaurada con éxito desde Supabase (Web Master).`, 'log-success');
+      } else {
+        // Nodo local: ponerse al día solo si hubo cambios en la Web mientras este equipo estaba apagado
+        const localMtime = fs.statSync(CONFIG_PATH).mtime;
+        if (cloudRes.updatedAt && new Date(cloudRes.updatedAt) > localMtime) {
+          adoptCloudConfigLocally(cloudRes.config);
+          log(`🌐 [ARRANQUE] Ajustes pendientes de la Web aplicados en este equipo.`, 'log-success');
+        }
+      }
     }
 
-    // Nodo local: ponerse al día solo si hubo cambios en la Web mientras este equipo estaba apagado
-    const localMtime = fs.statSync(CONFIG_PATH).mtime;
-    if (cloudRes.updatedAt && new Date(cloudRes.updatedAt) > localMtime) {
-      adoptCloudConfigLocally(cloudRes.config);
-      log(`🌐 [ARRANQUE] Ajustes pendientes de la Web aplicados en este equipo.`, 'log-success');
+    // Hidratar historial y memoria en Render o si están vacíos
+    if (IS_CLOUD || !fs.existsSync(path.join(__dirname, 'history_db.json'))) {
+      const histRes = await cloudStore.getMasterHistory();
+      if (histRes && Array.isArray(histRes.records) && histRes.records.length > 0) {
+        const historyMgr = require('./history_manager');
+        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(histRes.records, null, 2), 'utf8');
+        historyMgr.rewriteCSV(histRes.records);
+        log(`☁️ [HISTORIAL MAESTRO NUBE] ${histRes.records.length} registros restaurados desde Supabase.`, 'log-success');
+      }
     }
-  } catch (e) {}
+
+    if (IS_CLOUD || !fs.existsSync(path.join(__dirname, 'memoria_cupo_cero.json'))) {
+      const memRes = await cloudStore.getMasterMemory();
+      if (memRes && memRes.memory) {
+        const cupoMem = require('./cupo_cero_memory');
+        cupoMem.saveMemory(memRes.memory);
+        log(`☁️ [MEMORIA MAESTRA NUBE] Memoria de persistencia restaurada desde Supabase.`, 'log-success');
+      }
+    }
+  } catch (e) {
+    console.warn(`[STARTUP CLOUD SYNC] Error: ${e.message}`);
+  }
 })();
 
 // Render -> Nodos: empujar la configuración guardada a cada equipo vía su túnel
@@ -616,7 +637,7 @@ app.post('/api/machines/report-tunnel', async (req, res) => {
 let lastFxSyncTime = 0;
 
 // API: Estado y Logs
-app.get('/api/status', (req, res) => {
+app.get('/api/status', async (req, res) => {
   const historyMgr = require('./history_manager');
   const cfg = getConfig() || {};
   const isVerifier = machinesMgr.isLocalMachineVerifier(cfg);
@@ -632,7 +653,19 @@ app.get('/api/status', (req, res) => {
     }).catch(() => {});
   }
 
-  const persistentHistory = historyMgr.getHistory();
+  let persistentHistory = historyMgr.getHistory();
+  if (persistentHistory.length === 0 && (IS_CLOUD || process.env.RENDER)) {
+    try {
+      const cloudStore = require('./cloud_store');
+      const cloudHist = await cloudStore.getMasterHistory();
+      if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
+        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cloudHist.records, null, 2), 'utf8');
+        historyMgr.rewriteCSV(cloudHist.records);
+        persistentHistory = cloudHist.records;
+      }
+    } catch (e) {}
+  }
+
   const logsToSend = [...logsQueue];
   logsQueue = []; // Vaciar buffer para polling
   res.json({
@@ -1320,15 +1353,35 @@ app.post('/api/triple7/reincorporar', async (req, res) => {
   }
 });
 
-// API: Estado de Control y Seguridad
-app.get('/api/control-status', (req, res) => {
+// API: Estado de Control y Seguridad en Tiempo Real (Sincronizado Nube <-> Local)
+app.get('/api/control-status', async (req, res) => {
+  if (IS_CLOUD || process.platform !== 'win32') {
+    try {
+      const cloudStore = require('./cloud_store');
+      const cloudStatus = await cloudStore.getAutomationStatus();
+      if (cloudStatus && cloudStatus.status) {
+        return res.json({ ok: true, ...cloudStatus.status, isCloud: true });
+      }
+    } catch (e) {}
+    return res.json({ ok: true, status: 'IDLE', requestedAction: 'NONE', isRunning: false, colaPendientes: 0, isCloud: true });
+  }
   const robot = require('./premier_robot');
   const status = robot.getEstadoControl();
   res.json({ ok: true, ...status });
 });
 
 // API: Pausar Automatización
-app.post('/api/pause', (req, res) => {
+app.post('/api/pause', async (req, res) => {
+  if (IS_CLOUD || process.platform !== 'win32') {
+    try {
+      const cloudStore = require('./cloud_store');
+      await cloudStore.dispatchCommand('PAUSE', req.body || {});
+      log('⏸️ [CLOUD BRIDGE] Orden de PAUSA despachada a la taquilla local vía Supabase.', 'log-warn');
+      return res.json({ ok: true, message: 'Orden de pausa enviada a la taquilla física' });
+    } catch (e) {
+      return res.status(500).json({ ok: false, message: e.message });
+    }
+  }
   const robot = require('./premier_robot');
   robot.pausarSondeo();
   log('⏸️ [CONTROL] Automatización pausada por el usuario.', 'log-warn');
@@ -1336,7 +1389,17 @@ app.post('/api/pause', (req, res) => {
 });
 
 // API: Continuar / Reanudar Automatización
-app.post('/api/resume', (req, res) => {
+app.post('/api/resume', async (req, res) => {
+  if (IS_CLOUD || process.platform !== 'win32') {
+    try {
+      const cloudStore = require('./cloud_store');
+      await cloudStore.dispatchCommand('RESUME', req.body || {});
+      log('▶️ [CLOUD BRIDGE] Orden de REANUDAR despachada a la taquilla local vía Supabase.', 'log-info');
+      return res.json({ ok: true, message: 'Orden de reanudación enviada a la taquilla física' });
+    } catch (e) {
+      return res.status(500).json({ ok: false, message: e.message });
+    }
+  }
   const robot = require('./premier_robot');
   robot.reanudarSondeo();
   log('▶️ [CONTROL] Reanudando automatización...', 'log-info');
@@ -1344,7 +1407,17 @@ app.post('/api/resume', (req, res) => {
 });
 
 // API: Detener por Completo (Emergency Stop / Kill Switch)
-app.post('/api/stop', (req, res) => {
+app.post('/api/stop', async (req, res) => {
+  if (IS_CLOUD || process.platform !== 'win32') {
+    try {
+      const cloudStore = require('./cloud_store');
+      await cloudStore.dispatchCommand('STOP', req.body || {});
+      log('🛑 [CLOUD BRIDGE] Orden de DETENCIÓN TOTAL despachada a la taquilla local vía Supabase.', 'log-danger');
+      return res.json({ ok: true, message: 'Orden de detención enviada a la taquilla física' });
+    } catch (e) {
+      return res.status(500).json({ ok: false, message: e.message });
+    }
+  }
   const robot = require('./premier_robot');
   robot.detenerSondeo();
   log('🛑 [CONTROL] ¡Detención total ejecutada! Proceso cancelado.', 'log-danger');
@@ -1353,6 +1426,16 @@ app.post('/api/stop', (req, res) => {
 
 // API: Reiniciar Proceso
 app.post('/api/restart', async (req, res) => {
+  if (IS_CLOUD || process.platform !== 'win32') {
+    try {
+      const cloudStore = require('./cloud_store');
+      await cloudStore.dispatchCommand('RESTART', req.body || {});
+      log('🔄 [CLOUD BRIDGE] Orden de REINICIO despachada a la taquilla local vía Supabase.', 'log-warn');
+      return res.json({ ok: true, message: 'Orden de reinicio enviada a la taquilla física' });
+    } catch (e) {
+      return res.status(500).json({ ok: false, message: e.message });
+    }
+  }
   const robot = require('./premier_robot');
   log('🔄 [CONTROL] Reiniciando proceso de sondeo...', 'log-warn');
   robot.detenerSondeo();
@@ -1995,6 +2078,16 @@ function startCloudCommandWorker() {
   if (process.platform !== 'win32') return; // Solo la máquina física con Windows ejecuta
 
   const cloudStore = require('./cloud_store');
+  const robot = require('./premier_robot');
+
+  // Broadcast periódico del estado de automatización local a Supabase (cada 2.5s)
+  setInterval(() => {
+    try {
+      const ctrl = robot.getEstadoControl();
+      cloudStore.saveAutomationStatus(ctrl).catch(() => {});
+    } catch (e) {}
+  }, 2500);
+
   setInterval(async () => {
     if (isProcessingCloudCommand) return;
     try {
@@ -2007,27 +2100,57 @@ function startCloudCommandWorker() {
         }
 
         isProcessingCloudCommand = true;
-        log(`📥 [CLOUD BRIDGE] Orden recibida desde la Web: ${cmd.command} para ${cmd.payload?.loteriaNombre || cmd.payload?.loteriaId || 'AUTO'}`, 'log-warn');
+        log(`📥 [CLOUD BRIDGE] Orden recibida desde la Web: ${cmd.command}`, 'log-warn');
         await cloudStore.updateCommand(cmd.id, 'PROCESSING');
 
-        let sendResult = null;
-        const fakeReq = { body: cmd.payload || {} };
-        const fakeRes = {
-          json: (data) => { sendResult = data; },
-          status: (code) => ({ json: (data) => { sendResult = { ...data, statusCode: code }; } })
-        };
+        if (cmd.command === 'PAUSE') {
+          robot.pausarSondeo();
+          await cloudStore.updateCommand(cmd.id, 'COMPLETED', { ok: true, message: 'Automatización pausada' });
+          log(`⏸️ [CLOUD BRIDGE] Comando PAUSA ejecutado con éxito`, 'log-warn');
+        } else if (cmd.command === 'RESUME') {
+          robot.reanudarSondeo();
+          await cloudStore.updateCommand(cmd.id, 'COMPLETED', { ok: true, message: 'Automatización reanudada' });
+          log(`▶️ [CLOUD BRIDGE] Comando REANUDAR ejecutado con éxito`, 'log-info');
+        } else if (cmd.command === 'STOP') {
+          robot.detenerSondeo();
+          await cloudStore.updateCommand(cmd.id, 'COMPLETED', { ok: true, message: 'Automatización detenida' });
+          log(`🛑 [CLOUD BRIDGE] Comando DETENCIÓN ejecutado con éxito`, 'log-danger');
+        } else if (cmd.command === 'RESTART') {
+          robot.detenerSondeo();
+          setTimeout(async () => {
+            const cfg = getConfig();
+            const targetId = cmd.payload && cmd.payload.loteriaId;
+            let loteria = (cfg && cfg.loterias && cfg.loterias.find(l => l.id === targetId)) || (cfg && cfg.loterias && cfg.loterias.find(l => l.activo)) || (cfg && cfg.loterias && cfg.loterias[0]);
+            try {
+              const predictive = require('./predictive_service');
+              const horaSorteo = predictive.calcularProximoSorteo(loteria.horarios) || '';
+              robot.ejecutarSondeoPremier(cfg, loteria.id, horaSorteo);
+            } catch (e) {}
+          }, 1000);
+          await cloudStore.updateCommand(cmd.id, 'COMPLETED', { ok: true, message: 'Proceso reiniciado' });
+          log(`🔄 [CLOUD BRIDGE] Comando REINICIO ejecutado con éxito`, 'log-warn');
+        } else if (cmd.command === 'TRIGGER_SONDEO') {
+          let sendResult = null;
+          const fakeReq = { body: cmd.payload || {} };
+          const fakeRes = {
+            json: (data) => { sendResult = data; },
+            status: (code) => ({ json: (data) => { sendResult = { ...data, statusCode: code }; } })
+          };
 
-        await handleExecuteSondeoNowInternal(fakeReq, fakeRes);
-        const ok = sendResult && sendResult.ok !== false && !sendResult.error;
-        await cloudStore.updateCommand(cmd.id, ok ? 'COMPLETED' : 'FAILED', sendResult);
-        log(`📤 [CLOUD BRIDGE] Orden ${cmd.id} reportada a la nube como: ${ok ? 'COMPLETADA CON ÉXITO' : 'FALLIDA'}`, ok ? 'log-success' : 'log-danger');
+          await handleExecuteSondeoNowInternal(fakeReq, fakeRes);
+          const ok = sendResult && sendResult.ok !== false && !sendResult.error;
+          await cloudStore.updateCommand(cmd.id, ok ? 'COMPLETED' : 'FAILED', sendResult);
+          log(`📤 [CLOUD BRIDGE] Orden ${cmd.id} reportada a la nube como: ${ok ? 'COMPLETADA CON ÉXITO' : 'FALLIDA'}`, ok ? 'log-success' : 'log-danger');
+        } else {
+          await cloudStore.updateCommand(cmd.id, 'COMPLETED', { ok: true, message: 'Comando finalizado' });
+        }
       }
     } catch (err) {
       console.warn(`[CLOUD BRIDGE ERROR] ${err.message}`);
     } finally {
       isProcessingCloudCommand = false;
     }
-  }, 2500);
+  }, 1800);
 }
 
 app.listen(PORT, () => {

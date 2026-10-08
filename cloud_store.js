@@ -128,7 +128,7 @@ async function saveMasterHistory(records) {
       updated_at: nowIso
     };
 
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store`;
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
     const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: HEADERS,
@@ -140,6 +140,116 @@ async function saveMasterHistory(records) {
     console.warn(`[CLOUD_STORE] Error guardando historial en Supabase: ${e.message}`);
     return false;
   }
+}
+
+/**
+ * Obtener la memoria maestra de cupo cero desde Supabase (suite_memory)
+ */
+async function getMasterMemory() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.suite_memory&select=data,updated_at`;
+    const res = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].data) {
+        return {
+          memory: rows[0].data,
+          updatedAt: rows[0].updated_at
+        };
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+/**
+ * Guardar la memoria maestra de cupo cero en Supabase (suite_memory)
+ */
+async function saveMasterMemory(memoryObj) {
+  if (!memoryObj) return false;
+  try {
+    const nowIso = new Date().toISOString();
+    const payload = {
+      key: 'suite_memory',
+      data: memoryObj,
+      updated_at: nowIso
+    };
+
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
+    const res = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    return res.ok || res.status === 201;
+  } catch (e) {
+    console.warn(`[CLOUD_STORE] Error guardando memoria en Supabase: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Guardar el estado en tiempo real de la automatización en Supabase (suite_automation_status)
+ */
+async function saveAutomationStatus(statusObj) {
+  if (!statusObj) return false;
+  try {
+    const nowIso = new Date().toISOString();
+    const payload = {
+      key: 'suite_automation_status',
+      data: {
+        ...statusObj,
+        syncedAt: nowIso
+      },
+      updated_at: nowIso
+    };
+
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
+    const res = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    return res.ok || res.status === 201;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Obtener el estado en tiempo real de la automatización desde Supabase
+ */
+async function getAutomationStatus() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.suite_automation_status&select=data,updated_at`;
+    const res = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].data) {
+        return {
+          status: rows[0].data,
+          updatedAt: rows[0].updated_at
+        };
+      }
+    }
+  } catch (e) {}
+  return null;
 }
 
 /**
@@ -157,8 +267,8 @@ async function dispatchCommand(commandName, payload = {}) {
   };
 
   try {
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store`;
-    await fetchWithTimeout(url, {
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: HEADERS,
       body: JSON.stringify({
@@ -167,6 +277,9 @@ async function dispatchCommand(commandName, payload = {}) {
         updated_at: new Date().toISOString()
       })
     });
+    if (res.ok || res.status === 201) {
+      return commandObj;
+    }
     return commandObj;
   } catch (e) {
     console.warn(`[CLOUD_STORE] Error despachando comando en Supabase: ${e.message}`);
@@ -211,8 +324,8 @@ async function updateCommand(commandId, status, result = null) {
       updatedAt: nowIso
     };
 
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store`;
-    await fetchWithTimeout(url, {
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: HEADERS,
       body: JSON.stringify({
@@ -221,7 +334,7 @@ async function updateCommand(commandId, status, result = null) {
         updated_at: nowIso
       })
     });
-    return true;
+    return res.ok || res.status === 201;
   } catch (e) {
     console.warn(`[CLOUD_STORE] Error actualizando comando en Supabase: ${e.message}`);
     return false;
@@ -234,10 +347,10 @@ async function updateCommand(commandId, status, result = null) {
 async function waitForCommandCompletion(commandId, timeoutMs = 38000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    await new Promise(r => setTimeout(r, 1200));
+    await new Promise(r => setTimeout(r, 1000));
     const cmd = await getLatestCommand();
     if (cmd && cmd.id === commandId) {
-      if (cmd.status === 'COMPLETED' || cmd.status === 'FAILED') {
+      if (cmd.status === 'COMPLETED' || cmd.status === 'FAILED' || cmd.status === 'EXPIRED') {
         return cmd;
       }
     }
@@ -250,6 +363,10 @@ module.exports = {
   saveMasterConfig,
   getMasterHistory,
   saveMasterHistory,
+  getMasterMemory,
+  saveMasterMemory,
+  saveAutomationStatus,
+  getAutomationStatus,
   dispatchCommand,
   getLatestCommand,
   updateCommand,

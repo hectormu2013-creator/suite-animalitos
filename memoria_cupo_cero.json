@@ -338,17 +338,20 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:00",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:00",
         "10:00",
         "11:00"
       ],
       "sorteosProcesados": [
-        "09:00"
+        "09:00",
+        "10:00",
+        "11:00"
       ],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-07T11:23:45.106Z"
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T11:23:45.106Z",
+      "fechaExpiracion": "2026-10-07T15:01:02.152Z"
     },
     {
       "id": "la_granjita_24_2026-10-07_1791372225106",
@@ -359,17 +362,20 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:00",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:00",
         "10:00",
         "11:00"
       ],
       "sorteosProcesados": [
-        "09:00"
+        "09:00",
+        "10:00",
+        "11:00"
       ],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-07T11:23:45.106Z"
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T11:23:45.106Z",
+      "fechaExpiracion": "2026-10-07T15:01:02.152Z"
     },
     {
       "id": "la_granjita_28_2026-10-07_1791372225106",
@@ -380,17 +386,23 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:00",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:00",
         "10:00",
         "11:00"
       ],
       "sorteosProcesados": [
-        "09:00"
+        "09:00",
+        "10:00"
       ],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-07T11:23:45.106Z"
+      "estado": "LIBERADO_POR_GANADOR",
+      "timestamp": "2026-10-07T11:23:45.106Z",
+      "sorteoGanador": "10:00",
+      "sorteosFuturosPendientes": [
+        "11:00"
+      ],
+      "fechaLiberacion": "2026-10-07T14:05:14.992Z"
     },
     {
       "id": "la_granjita_31_2026-10-07_1791372225106",
@@ -401,17 +413,20 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:00",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:00",
         "10:00",
         "11:00"
       ],
       "sorteosProcesados": [
-        "09:00"
+        "09:00",
+        "10:00",
+        "11:00"
       ],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-07T11:23:45.106Z"
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T11:23:45.106Z",
+      "fechaExpiracion": "2026-10-07T15:01:02.152Z"
     },
     {
       "id": "la_granjita_33_2026-10-07_1791372225106",
@@ -422,17 +437,20 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:00",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:00",
         "10:00",
         "11:00"
       ],
       "sorteosProcesados": [
-        "09:00"
+        "09:00",
+        "10:00",
+        "11:00"
       ],
-      "estado": "ACTIVO",
-      "timestamp": "2026-10-07T11:23:45.106Z"
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T11:23:45.106Z",
+      "fechaExpiracion": "2026-10-07T15:01:02.152Z"
     },
     {
       "id": "guacharo_millonario_09_2026-10-07_1791373881685",
@@ -443,19 +461,22 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
       "sorteosProcesados": [
-        "09:30"
+        "09:30",
+        "10:30",
+        "11:30"
       ],
-      "estado": "ACTIVO",
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
-      "timestampActualizacion": "2026-10-07T12:01:16.167Z"
+      "timestampActualizacion": "2026-10-07T12:01:16.167Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
     },
     {
       "id": "guacharo_millonario_15_2026-10-07_1791373881686",
@@ -466,19 +487,22 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
       "sorteosProcesados": [
-        "09:30"
+        "09:30",
+        "10:30",
+        "11:30"
       ],
-      "estado": "ACTIVO",
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
-      "timestampActualizacion": "2026-10-07T12:01:16.167Z"
+      "timestampActualizacion": "2026-10-07T12:01:16.167Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
     },
     {
       "id": "guacharo_millonario_21_2026-10-07_1791373881686",
@@ -489,19 +513,22 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
       "sorteosProcesados": [
-        "09:30"
+        "09:30",
+        "10:30",
+        "11:30"
       ],
-      "estado": "ACTIVO",
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
-      "timestampActualizacion": "2026-10-07T12:01:16.167Z"
+      "timestampActualizacion": "2026-10-07T12:01:16.167Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
     },
     {
       "id": "guacharo_millonario_57_2026-10-07_1791373881686",
@@ -512,19 +539,22 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
         "11:30"
       ],
       "sorteosProcesados": [
-        "09:30"
+        "09:30",
+        "10:30",
+        "11:30"
       ],
-      "estado": "ACTIVO",
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T11:51:21.686Z",
       "ultimoSorteoDetectado": "08:30",
-      "timestampActualizacion": "2026-10-07T12:01:16.167Z"
+      "timestampActualizacion": "2026-10-07T12:01:16.167Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
     },
     {
       "id": "guacharo_millonario_75_2026-10-07_1791374476167",
@@ -534,8 +564,8 @@
       "nombre": "Guacharo",
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
-      "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
@@ -543,12 +573,14 @@
         "12:30"
       ],
       "sorteosProcesados": [
-        "09:30"
+        "09:30",
+        "10:30"
       ],
-      "estado": "ACTIVO",
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T12:01:16.168Z",
-      "ultimoSorteoDetectado": "09:30",
-      "timestampActualizacion": "2026-10-07T12:51:28.126Z"
+      "ultimoSorteoDetectado": "10:30",
+      "timestampActualizacion": "2026-10-07T14:07:49.818Z",
+      "fechaExpiracion": "2026-10-07T14:31:01.569Z"
     },
     {
       "id": "guacharo_millonario_85_2026-10-07_1791374476168",
@@ -558,8 +590,8 @@
       "nombre": "Hanster",
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
-      "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
@@ -567,12 +599,15 @@
         "12:30"
       ],
       "sorteosProcesados": [
-        "09:30"
+        "09:30",
+        "10:30",
+        "11:30"
       ],
-      "estado": "ACTIVO",
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T12:01:16.168Z",
-      "ultimoSorteoDetectado": "09:30",
-      "timestampActualizacion": "2026-10-07T13:01:26.109Z"
+      "ultimoSorteoDetectado": "11:30",
+      "timestampActualizacion": "2026-10-07T15:01:25.228Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
     },
     {
       "id": "guacharo_millonario_94_2026-10-07_1791374476168",
@@ -583,7 +618,7 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "08:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 2,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "09:30",
         "10:30",
@@ -591,12 +626,15 @@
         "12:30"
       ],
       "sorteosProcesados": [
-        "09:30"
+        "09:30",
+        "10:30",
+        "11:30"
       ],
-      "estado": "ACTIVO",
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T12:01:16.168Z",
       "ultimoSorteoDetectado": "09:30",
-      "timestampActualizacion": "2026-10-07T13:01:26.109Z"
+      "timestampActualizacion": "2026-10-07T13:01:26.109Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
     },
     {
       "id": "guacharo_millonario_73_2026-10-07_1791377488125",
@@ -607,17 +645,22 @@
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "09:30",
       "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "10:30",
         "11:30",
         "12:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "10:30",
+        "11:30",
+        "12:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T12:51:28.125Z",
       "ultimoSorteoDetectado": "09:30",
-      "timestampActualizacion": "2026-10-07T13:01:26.109Z"
+      "timestampActualizacion": "2026-10-07T13:01:26.109Z",
+      "fechaExpiracion": "2026-10-07T16:31:04.065Z"
     },
     {
       "id": "guacharo_millonario_95_2026-10-07_1791377488126",
@@ -627,18 +670,22 @@
       "nombre": "Escarabajo",
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "09:30",
-      "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "10:30",
         "11:30",
         "12:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "10:30",
+        "11:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T12:51:28.126Z",
-      "ultimoSorteoDetectado": "09:30",
-      "timestampActualizacion": "2026-10-07T13:01:26.109Z"
+      "ultimoSorteoDetectado": "11:30",
+      "timestampActualizacion": "2026-10-07T15:01:25.228Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
     },
     {
       "id": "guacharo_millonario_99_2026-10-07_1791377488126",
@@ -648,18 +695,444 @@
       "nombre": "Guacharito",
       "fechaOrigen": "2026-10-07",
       "sorteoOrigen": "09:30",
-      "sorteosConfigurados": 3,
-      "sorteosRestantes": 3,
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "10:30",
         "11:30",
         "12:30"
       ],
-      "sorteosProcesados": [],
-      "estado": "ACTIVO",
+      "sorteosProcesados": [
+        "10:30"
+      ],
+      "estado": "EXPIRADO",
       "timestamp": "2026-10-07T12:51:28.126Z",
-      "ultimoSorteoDetectado": "09:30",
-      "timestampActualizacion": "2026-10-07T13:01:26.109Z"
+      "ultimoSorteoDetectado": "10:30",
+      "timestampActualizacion": "2026-10-07T14:07:49.819Z",
+      "fechaExpiracion": "2026-10-07T14:31:01.569Z"
+    },
+    {
+      "id": "guacharo_millonario_00_2026-10-07_1791381687251",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "00",
+      "nombre": "Ballena",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "09:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:01:27.251Z",
+      "fechaExpiracion": "2026-10-07T14:06:33.165Z"
+    },
+    {
+      "id": "guacharo_millonario_12_2026-10-07_1791381687251",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "12",
+      "nombre": "Caballo",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "09:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:01:27.251Z",
+      "fechaExpiracion": "2026-10-07T14:06:33.165Z"
+    },
+    {
+      "id": "guacharo_millonario_19_2026-10-07_1791381687251",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "19",
+      "nombre": "Chivo",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "09:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:01:27.251Z",
+      "fechaExpiracion": "2026-10-07T14:06:33.165Z"
+    },
+    {
+      "id": "guacharo_millonario_31_2026-10-07_1791381687251",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "31",
+      "nombre": "Lapa",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "09:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:01:27.251Z",
+      "fechaExpiracion": "2026-10-07T14:06:33.165Z"
+    },
+    {
+      "id": "guacharo_millonario_34_2026-10-07_1791381687252",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "34",
+      "nombre": "Venado",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "09:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:01:27.252Z",
+      "fechaExpiracion": "2026-10-07T14:06:33.165Z"
+    },
+    {
+      "id": "guacharo_millonario_00_2026-10-07_1791382069816",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "00",
+      "nombre": "Ballena",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "11:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:07:49.816Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
+    },
+    {
+      "id": "guacharo_millonario_12_2026-10-07_1791382069816",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "12",
+      "nombre": "Caballo",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "11:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:07:49.816Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
+    },
+    {
+      "id": "guacharo_millonario_19_2026-10-07_1791382069816",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "19",
+      "nombre": "Chivo",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "11:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:07:49.816Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
+    },
+    {
+      "id": "guacharo_millonario_31_2026-10-07_1791382069818",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "31",
+      "nombre": "Lapa",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "11:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:07:49.818Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
+    },
+    {
+      "id": "guacharo_millonario_34_2026-10-07_1791382069818",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "34",
+      "nombre": "Venado",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "10:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "11:30"
+      ],
+      "sorteosProcesados": [
+        "11:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T14:07:49.818Z",
+      "fechaExpiracion": "2026-10-07T15:31:02.792Z"
+    },
+    {
+      "id": "guacharo_millonario_29_2026-10-07_1791385285228",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "29",
+      "nombre": "Elefant",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "11:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "12:30"
+      ],
+      "sorteosProcesados": [
+        "12:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T15:01:25.228Z",
+      "fechaExpiracion": "2026-10-07T16:31:04.065Z"
+    },
+    {
+      "id": "guacharo_millonario_67_2026-10-07_1791385285228",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "67",
+      "nombre": "Avestruz",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "11:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "12:30"
+      ],
+      "sorteosProcesados": [
+        "12:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T15:01:25.228Z",
+      "fechaExpiracion": "2026-10-07T16:31:04.065Z"
+    },
+    {
+      "id": "guacharo_millonario_99_2026-10-07_1791385285228",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "99",
+      "nombre": "Guacharito",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "11:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "12:30"
+      ],
+      "sorteosProcesados": [
+        "12:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T15:01:25.228Z",
+      "fechaExpiracion": "2026-10-07T16:31:04.065Z"
+    },
+    {
+      "id": "guacharo_millonario_75_2026-10-07_1791388885556",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "75",
+      "nombre": "Guacharo",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "12:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "13:30"
+      ],
+      "sorteosProcesados": [
+        "13:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T16:01:25.556Z",
+      "fechaExpiracion": "2026-10-07T17:31:04.930Z"
+    },
+    {
+      "id": "guacharo_millonario_85_2026-10-07_1791388885556",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "85",
+      "nombre": "Hanster",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "12:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "13:30"
+      ],
+      "sorteosProcesados": [
+        "13:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T16:01:25.556Z",
+      "fechaExpiracion": "2026-10-07T17:31:04.930Z"
+    },
+    {
+      "id": "guacharo_millonario_94_2026-10-07_1791388885556",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "94",
+      "nombre": "Paujil",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "12:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "13:30"
+      ],
+      "sorteosProcesados": [
+        "13:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T16:01:25.556Z",
+      "fechaExpiracion": "2026-10-07T17:31:04.930Z"
+    },
+    {
+      "id": "la_granjita_01_2026-10-07_1791390831291",
+      "loteriaId": "la_granjita",
+      "loteriaNombre": "LA GRANJITA",
+      "numero": "01",
+      "nombre": "Carnero",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "13:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "14:00"
+      ],
+      "sorteosProcesados": [
+        "14:00"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T16:33:51.291Z",
+      "fechaExpiracion": "2026-10-07T18:01:05.295Z"
+    },
+    {
+      "id": "guacharo_millonario_99_2026-10-07_1791392485912",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "99",
+      "nombre": "Guacharito",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "13:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "14:30",
+        "15:30"
+      ],
+      "sorteosProcesados": [
+        "14:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T17:01:25.912Z",
+      "ultimoSorteoDetectado": "14:30",
+      "timestampActualizacion": "2026-10-07T18:01:23.751Z",
+      "fechaExpiracion": "2026-10-07T18:31:05.702Z"
+    },
+    {
+      "id": "guacharo_millonario_99_2026-10-07_1791399687583",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "99",
+      "nombre": "Guacharito",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "15:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "16:30"
+      ],
+      "sorteosProcesados": [
+        "16:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T19:01:27.583Z",
+      "fechaExpiracion": "2026-10-07T20:31:07.548Z"
+    },
+    {
+      "id": "lotto_activo_00_2026-10-07_1791408782278",
+      "loteriaId": "lotto_activo",
+      "loteriaNombre": "LOTTO ACTIVO",
+      "numero": "00",
+      "nombre": "Ballena",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "18:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "19:00"
+      ],
+      "sorteosProcesados": [
+        "19:00"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T21:33:02.278Z",
+      "fechaExpiracion": "2026-10-07T23:01:09.958Z"
+    },
+    {
+      "id": "guacharo_millonario_66_2026-10-07_1791410490194",
+      "loteriaId": "guacharo_millonario",
+      "loteriaNombre": "GUACHARO MILLONARIO",
+      "numero": "66",
+      "nombre": "Lobo",
+      "fechaOrigen": "2026-10-07",
+      "sorteoOrigen": "18:30",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 0,
+      "sorteosPrebloqueados": [
+        "19:30"
+      ],
+      "sorteosProcesados": [
+        "19:30"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-07T22:01:30.194Z",
+      "fechaExpiracion": "2026-10-07T23:31:10.313Z"
     }
   ]
 }

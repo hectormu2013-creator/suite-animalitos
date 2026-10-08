@@ -7,6 +7,13 @@ let activeChildProcess = null;
 const sondeoQueue = [];
 let isProcessingQueue = false;
 
+function syncControlToCloud(data) {
+  try {
+    const cloudStore = require('./cloud_store');
+    cloudStore.saveAutomationStatus(data).catch(() => {});
+  } catch (e) {}
+}
+
 function setControlAction(action) {
   try {
     let data = {};
@@ -16,6 +23,7 @@ function setControlAction(action) {
     data.requestedAction = action;
     data.updatedAt = new Date().toISOString();
     fs.writeFileSync(CONTROL_PATH, JSON.stringify(data, null, 2), 'utf8');
+    syncControlToCloud(data);
     return true;
   } catch (err) {
     console.error(`[CONTROL ERROR] Error actualizando control file: ${err.message}`);
@@ -79,6 +87,7 @@ function detenerSondeo() {
     data.details = 'Detenido por el usuario';
     data.isRunning = false;
     fs.writeFileSync(CONTROL_PATH, JSON.stringify(data, null, 2), 'utf8');
+    syncControlToCloud(data);
   } catch (e) {}
 
   return true;
@@ -105,7 +114,7 @@ function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFina
 
     // Inicializar estado de control
     try {
-      fs.writeFileSync(CONTROL_PATH, JSON.stringify({
+      const initStatus = {
         status: 'RUNNING',
         requestedAction: 'NONE',
         details: `${tipoDesc}: ${loteria.nombre} (${horaSorteo || 'Próximo'})`,
@@ -115,7 +124,9 @@ function ejecutarSondeoInternal(config, loteriaId, horaSorteo = '', cerrarAlFina
         progress: 'Iniciando',
         pid: null,
         updatedAt: new Date().toISOString()
-      }, null, 2), 'utf8');
+      };
+      fs.writeFileSync(CONTROL_PATH, JSON.stringify(initStatus, null, 2), 'utf8');
+      syncControlToCloud(initStatus);
     } catch (e) {}
 
     const horaParam = horaSorteo ? ` -HoraSorteo "${horaSorteo}"` : '';
