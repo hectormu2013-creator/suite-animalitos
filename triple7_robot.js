@@ -400,26 +400,7 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     }
   }
 
-  // 2. Consultar qué animales están actualmente bloqueados en Triple 7 para este sorteo
-  let idsActualmenteBloqueados = (targetDraw.idsol && blockedMap.get(targetDraw.idsol)) || [];
-
-  // 3. CONTROL DE RESIDUOS / PURGA ESTRICTA:
-  // Si en Triple 7 hay CUALQUIER animal bloqueado que NO pertenezca a la lista deseada de hoy
-  // (por ejemplo bloqueos de ayer o números antiguos acumulados), reincorporamos primero el sorteo.
-  const hayAnimalesSobrantes = idsActualmenteBloqueados.some(id => !idsDeseados.has(id));
-
-  if (hayAnimalesSobrantes) {
-    console.log(`[TRIPLE 7 PURGA] El sorteo ${targetDraw.loteria} (${targetDraw.sorteo}) tiene ${idsActualmenteBloqueados.length} animales bloqueados anteriores. Reincorporando para eliminar residuos antes de aplicar los ${listaObjetivos.length} actuales...`);
-    try {
-      await _reincorporarAnimalitosHttp(config, loteriaNombre, sorteoHora);
-      await new Promise(r => setTimeout(r, 400));
-      idsActualmenteBloqueados = [];
-    } catch (eReinc) {
-      console.warn(`[TRIPLE 7 PURGA AVISO] Falló reincorporación previa: ${eReinc.message}`);
-    }
-  }
-
-  // 4. Inyectar los bloqueos deseados
+  // 2. Inyectar los bloqueos deseados
   const bloqueadosExitosos = [];
   const ajaxHeaders = {
     'Cookie': cookie,
@@ -427,6 +408,8 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     'Referer': 'https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php',
     'Accept': 'application/json, text/javascript, */*; q=0.01'
   };
+
+  const idsActualmenteBloqueados = (targetDraw.idsol && blockedMap.get(targetDraw.idsol)) || [];
 
   for (const { numStr, opt } of listaObjetivos) {
     if (idsActualmenteBloqueados.includes(opt.value)) {

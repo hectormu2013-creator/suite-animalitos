@@ -1930,6 +1930,36 @@ setInterval(async () => {
       }
 
       // =========================================================================
+      // 4.5. DESINCORPORACIÓN AUTOMÁTICA EN TRIPLE 7 (EXACTAMENTE 5 MINUTOS ANTES)
+      // Regla Operativa Maestra: Triple 7 cierra ventas 10 min antes de la hora.
+      // A los 5 min antes (ej. 3:55 PM para sorteo de 4:00 PM), ya nadie puede jugar.
+      // En ese instante se desincorporan (reincorporan) todos los animales del sorteo,
+      // dejándolo limpio para mañana y evitando que bloquee ventas futuras.
+      // =========================================================================
+      if (cfg.general.triple7 && cfg.general.triple7.enabled !== false) {
+        const targetCleanMinutes = drawMinutes - 5;
+        const diffClean = currentTotalMinutes - targetCleanMinutes;
+        const keyClean5m = `${todayStr}_${lot.id}_${hStr}_clean5m`;
+
+        if (diffClean >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyClean5m)) {
+          tareasEjecutadas.add(keyClean5m);
+          log(`🔓 [DESINCORPORACIÓN POST-CIERRE (5m antes)] Sorteo ${lot.nombre} (${hStr}). Ventas de Triple 7 cerradas (hace 5 min). Liberando sorteo para dejarlo 100% limpio para mañana...`, 'log-info');
+          try {
+            delete require.cache[require.resolve('./triple7_robot')];
+            const t7 = require('./triple7_robot');
+            const unblockRes = await t7.reincorporarAnimalitos(cfg, lot.nombre, hStr);
+            if (unblockRes.ok) {
+              log(`✅ [TRIPLE 7 DESINCORPORADO] ${lot.nombre} (${hStr}) desbloqueado exitosamente. Pantalla de Triple 7 en blanco para mañana.`, 'log-success');
+            } else {
+              log(`⚠️ [TRIPLE 7 DESINCORPORACIÓN AVISO] ${unblockRes.message}`, 'log-warn');
+            }
+          } catch (eClean) {
+            log(`Error en desincorporación a -5 min: ${eClean.message}`, 'log-danger');
+          }
+        }
+      }
+
+      // =========================================================================
       // 5. DESCUENTO DE SORTEO EN MEMORIA DE PERSISTENCIA CUPO 0
       // =========================================================================
       const diffMinutes = currentTotalMinutes - drawMinutes;
