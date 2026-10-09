@@ -1134,38 +1134,70 @@ async function handleExecuteSondeoNow(req, res) {
   const horasSondeoLoteria = (Array.isArray(loteria.sorteosSondeoActivos) && loteria.sorteosSondeoActivos.length > 0) ? loteria.sorteosSondeoActivos : (loteria.horarios || []);
   let horaSorteo = (req.body && req.body.horaSorteo) || predictive.calcularProximoSorteo(horasSondeoLoteria) || '10:00';
 
-  // Si estamos en la nube (Render / Linux), despachar la orden a la taquilla física en Windows vía Supabase
+  // Si estamos en la nube (Render / Linux), despachar la orden en cascada a la taquilla física en Windows vía Supabase
   if (process.platform !== 'win32') {
-    log(`☁️ [CLOUD BRIDGE] Orden de sondeo recibida en la nube para ${loteria.nombre}. Despachando a la taquilla local vía Supabase...`, 'log-warn');
+    log(`☁️ [CLOUD BRIDGE] Orden de sondeo recibida en la nube para ${loteria.nombre}. Iniciando despacho en cascada multi-máquina...`, 'log-warn');
     try {
       const cloudStore = require('./cloud_store');
-      const cmd = await cloudStore.dispatchCommand('TRIGGER_SONDEO', {
-        loteriaId: loteria.id,
-        loteriaNombre: loteria.nombre,
-        horaSorteo,
-        modoHibrido
-      });
+      const machinesMgr = require('./machines_manager');
 
-      if (!cmd) {
-        return res.status(500).json({ ok: false, message: 'Falla al conectar con la cola en la nube Supabase.' });
+      const activeMachines = machinesMgr.getMachinesList(cfg)
+        .filter(m => m.activa !== false)
+        .sort((a, b) => (a.prioridad || 99) - (b.prioridad || 99));
+
+      if (activeMachines.length === 0) {
+        return res.status(500).json({ ok: false, message: 'No hay máquinas de pesca activas configuradas en la red.' });
       }
 
-      // Esperar hasta 36s si la taquilla física responde sincrónicamente
-      const completed = await cloudStore.waitForCommandCompletion(cmd.id, 36000);
-      if (completed && completed.status === 'COMPLETED' && completed.result) {
-        log(`✅ [CLOUD BRIDGE] Sondeo completado por la taquilla física para ${loteria.nombre}.`, 'log-success');
-        return res.json(completed.result);
-      } else if (completed && completed.status === 'FAILED') {
-        return res.status(500).json({ ok: false, message: completed.result?.message || 'Fallo en ejecución en taquilla local.' });
-      } else {
-        // La taquilla sigue ejecutando
-        return res.json({
-          ok: true,
-          queued: true,
-          commandId: cmd.id,
-          message: `Orden despachada a la taquilla física (${loteria.nombre}). Los resultados se reflejarán en vivo al terminar.`
-        });
+      for (let mIdx = 0; mIdx < activeMachines.length; mIdx++) {
+        const targetMachine = activeMachines[mIdx];
+        const ordenTexto = `Opción ${targetMachine.prioridad || (mIdx + 1)}: ${targetMachine.nombre}`;
+        log(`🎯 [DISPATCH CASCADA] Intentando enviar sondeo a ${ordenTexto}...`, 'log-info');
+
+        let attempts = 0;
+        let machineCompleted = false;
+        let lastResult = null;
+
+        while (attempts < 3 && !machineCompleted) {
+          attempts++;
+          log(`   -> Intento ${attempts}/3 hacia ${targetMachine.nombre}...`, 'log-info');
+
+          const cmd = await cloudStore.dispatchCommand('TRIGGER_SONDEO', {
+            loteriaId: loteria.id,
+            loteriaNombre: loteria.nombre,
+            horaSorteo,
+            modoHibrido
+          }, targetMachine.id);
+
+          if (!cmd) {
+            await new Promise(r => setTimeout(r, 1500));
+            continue;
+          }
+
+          // Esperar respuesta sincrónica de esta máquina (hasta 30 segundos por intento)
+          const completed = await cloudStore.waitForCommandCompletion(cmd.id, 30000);
+          if (completed && completed.status === 'COMPLETED' && completed.result) {
+            log(`✅ [DISPATCH ÉXITO] Sondeo completado por ${targetMachine.nombre} en intento ${attempts}.`, 'log-success');
+            machineCompleted = true;
+            lastResult = completed.result;
+            break;
+          } else if (completed && completed.status === 'FAILED') {
+            log(`⚠️ [DISPATCH FALLÓ] ${targetMachine.nombre} reportó falla en intento ${attempts}: ${completed.result?.message || 'Error en taquilla'}.`, 'log-warn');
+            lastResult = completed.result;
+          } else {
+            log(`⚠️ [DISPATCH TIMEOUT] ${targetMachine.nombre} no respondió en intento ${attempts}.`, 'log-warn');
+          }
+        }
+
+        if (machineCompleted && lastResult) {
+          return res.json(lastResult);
+        }
+
+        log(`⚠️ [FAILOVER ACTIVADO] ${targetMachine.nombre} no respondió tras 3 intentos. Buscando siguiente opción en la lista...`, 'log-warn');
       }
+
+      log(`⚠️ [CASCADA AGOTADA] Ninguna máquina de la red respondió tras 3 intentos cada una.`, 'log-danger');
+      return res.status(500).json({ ok: false, message: 'Ninguna máquina de la red respondió tras 3 intentos por opción en cascada.' });
     } catch (bridgeErr) {
       log(`Falla en puente de comandos: ${bridgeErr.message}`, 'log-danger');
       return res.status(500).json({ ok: false, message: bridgeErr.message });
@@ -2270,9 +2302,19 @@ function startCloudCommandWorker() {
           return;
         }
 
+        const cfg = getConfig();
+        const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_2';
+
+        // FILTRO ESTRICTO MULTI-MÁQUINAS:
+        // Si el comando especifica una máquina destinataria (targetMachineId),
+        // este equipo SÓLO lo atiende si coincide con su maquinaLocalId (o si es 'ALL').
+        if (cmd.targetMachineId && cmd.targetMachineId !== localId && cmd.targetMachineId !== 'ALL') {
+          return;
+        }
+
         isProcessingCloudCommand = true;
-        log(`📥 [CLOUD BRIDGE] Orden recibida desde la Web: ${cmd.command}`, 'log-warn');
-        await cloudStore.updateCommand(cmd.id, 'PROCESSING');
+        log(`📥 [CLOUD BRIDGE] Orden recibida desde la Web para este nodo (${localId}): ${cmd.command}`, 'log-warn');
+        await cloudStore.updateCommand(cmd.id, 'PROCESSING', { pickedBy: localId });
 
         if (cmd.command === 'PAUSE') {
           robot.pausarSondeo();

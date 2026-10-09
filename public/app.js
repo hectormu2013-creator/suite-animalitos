@@ -503,16 +503,20 @@ function renderMachinesManagement(config) {
 
   const maquinas = config.general.maquinas || [];
   const localId = config.general.maquinaLocalId || 'maquina_2';
-  const verifierId = config.general.maquinaEncargadaVerificacionesId || 'maquina_1';
+  const verifierId = config.general.maquinaEncargadaVerificacionesId || 'maquina_2';
+  const sondeoId = config.general.maquinaEncargadaSondeoId || (maquinas.find(m => m.prioridad === 1) || maquinas[0] || {}).id || 'maquina_3';
 
-  // 1. Selector de máquina local
-  const localSelect = document.getElementById('cfg-maquina-local-select');
-  if (localSelect) {
-    localSelect.innerHTML = maquinas.map(m => `
-      <option value="${m.id}" ${m.id === localId ? 'selected' : ''}>
-        ${m.nombre} (${m.usuarioPremier || 'Sin usuario'}) ${m.id === localId ? '★ [ESTE EQUIPO]' : ''}
+  // 1. Selector de máquina principal de sondeo (Opción 1)
+  const sondeoSelect = document.getElementById('cfg-maquina-sondeo-select');
+  if (sondeoSelect) {
+    sondeoSelect.innerHTML = maquinas.map(m => `
+      <option value="${m.id}" ${m.id === sondeoId ? 'selected' : ''}>
+        🎯 ${m.nombre} (Opción ${m.prioridad || 1})
       </option>
     `).join('');
+    sondeoSelect.onchange = (e) => {
+      setPrincipalProbeMachineUI(e.target.value);
+    };
   }
 
   // 2. Selector de máquina verificadora (Regla: sólo 1)
@@ -525,19 +529,36 @@ function renderMachinesManagement(config) {
     `).join('');
   }
 
-  // 3. Contenedor de tarjetas de cada máquina
+  // 3. Selector de máquina local
+  const localSelect = document.getElementById('cfg-maquina-local-select');
+  if (localSelect) {
+    localSelect.innerHTML = maquinas.map(m => `
+      <option value="${m.id}" ${m.id === localId ? 'selected' : ''}>
+        ${m.nombre} (${m.usuarioPremier || 'Sin usuario'}) ${m.id === localId ? '★ [ESTE EQUIPO]' : ''}
+      </option>
+    `).join('');
+  }
+
+  // 4. Contenedor de tarjetas de cada máquina
   const container = document.getElementById('machines-list-container');
   if (!container) return;
 
   container.innerHTML = '';
 
   maquinas.forEach((m, idx) => {
+    const isPrincipal = (m.id === sondeoId) || (m.prioridad === 1);
     const isVerifier = (m.id === verifierId) || !!m.esEncargadaVerificaciones;
     const isLocal = (m.id === localId);
 
     const card = document.createElement('div');
-    card.className = `machine-node-card ${isVerifier ? 'is-verifier' : ''} ${isLocal ? 'is-local' : ''}`;
+    card.className = `machine-node-card ${isPrincipal ? 'is-principal' : ''} ${isVerifier ? 'is-verifier' : ''} ${isLocal ? 'is-local' : ''}`;
     card.setAttribute('data-machine-id', m.id);
+    if (isPrincipal) {
+      card.style.border = '2px solid #10b981';
+      card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.25)';
+    } else {
+      card.style.border = '1px solid rgba(148, 163, 184, 0.2)';
+    }
 
     const platformOptions = PLATAFORMAS_SISTEMA.map(p => `
       <option value="${p.id}" ${m.tipoPlataforma === p.id ? 'selected' : ''}>
@@ -546,52 +567,59 @@ function renderMachinesManagement(config) {
     `).join('');
 
     card.innerHTML = `
-      <div class="machine-node-header">
+      <div class="machine-node-header" style="${isPrincipal ? 'background: linear-gradient(135deg, rgba(5,150,105,0.3), rgba(16,185,129,0.15)); border-bottom: 2px solid #10b981;' : 'background: rgba(15,23,42,0.6);'}">
         <div class="machine-node-title">
-          <span class="machine-priority-badge">Prioridad ${m.prioridad || idx + 1}</span>
-          <span style="font-weight: 700; color: #fff;">${m.nombre || `Máquina ${idx + 1}`}</span>
+          <span class="machine-priority-badge" style="${isPrincipal ? 'background:#059669; color:#fff; font-weight:800; font-size:12px; padding:4px 10px; border:1px solid #34d399;' : 'background:rgba(71,85,105,0.4); color:#94a3b8; font-size:11px; padding:3px 8px; border:1px solid rgba(148,163,184,0.3);'}">
+            ${isPrincipal ? '🎯 OPCIÓN 1 (PRINCIPAL - SONDEO)' : `🔁 Opción ${m.prioridad || idx + 1} (Respaldo tras 3 intentos)`}
+          </span>
+          <span style="font-weight: 700; color: #fff; font-size:14px;">${m.nombre || `Máquina ${idx + 1}`}</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          ${isPrincipal ? '<span class="tag tag-green" style="font-weight:800; font-size:11px; letter-spacing:0.5px;">🎯 SONDEO PRIMARIO</span>' : '<span style="color:#94a3b8; font-size:11px;">En espera de cascada</span>'}
           ${isVerifier ? '<span class="machine-badge-verifier">👑 Verificadora Oficial (Visual-FX)</span>' : '<span class="machine-badge-pesca">🎣 Sólo Pesca (Cupo 0)</span>'}
           ${isLocal ? '<span class="machine-badge-local">💻 Este Equipo Físico</span>' : ''}
         </div>
       </div>
 
-      <div class="machine-inputs-grid">
+      <div class="machine-inputs-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px; padding:12px;">
         <div class="form-group" style="margin:0;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Nombre / Etiqueta:</label>
-          <input type="text" class="form-input machine-input-nombre" value="${m.nombre || ''}" placeholder="Ej: Máquina 1 (Principal)">
+          <label style="font-size:11.5px; font-weight:700; color:var(--text-muted);">Nombre / Etiqueta:</label>
+          <input type="text" class="form-input machine-input-nombre" value="${m.nombre || ''}" placeholder="Ej: Máquina 1 (Opción 2)">
         </div>
 
         <div class="form-group" style="margin:0;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Plataforma de Pesca:</label>
+          <label style="font-size:11.5px; font-weight:700; color:#38bdf8;">Prioridad en Cascada:</label>
+          <select class="form-input machine-select-prioridad" data-id="${m.id}" style="font-weight:700; color:${isPrincipal ? '#34d399' : '#e2e8f0'}; border-color:${isPrincipal ? '#10b981' : 'var(--border-color)'};">
+            <option value="1" ${m.prioridad === 1 ? 'selected' : ''}>🎯 Opción 1 (Principal de Sondeo)</option>
+            <option value="2" ${m.prioridad === 2 ? 'selected' : ''}>🔁 Opción 2 (Respaldo 1)</option>
+            <option value="3" ${m.prioridad === 3 ? 'selected' : ''}>🔁 Opción 3 (Respaldo 2)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label style="font-size:11.5px; font-weight:700; color:var(--text-muted);">Plataforma de Pesca:</label>
           <select class="form-input machine-select-plataforma">
             ${platformOptions}
           </select>
         </div>
 
         <div class="form-group" style="margin:0;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Usuario de Taquilla:</label>
+          <label style="font-size:11.5px; font-weight:700; color:var(--text-muted);">Usuario de Taquilla:</label>
           <input type="text" class="form-input machine-input-user" value="${m.usuarioPremier || ''}" placeholder="Ej: TCOP101">
         </div>
 
         <div class="form-group" style="margin:0;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Contraseña de Taquilla:</label>
+          <label style="font-size:11.5px; font-weight:700; color:var(--text-muted);">Contraseña de Taquilla:</label>
           <input type="password" class="form-input machine-input-pass" value="${m.clavePremier || ''}" placeholder="••••••">
         </div>
 
         <div class="form-group" style="margin:0;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Prioridad de Elección:</label>
-          <input type="number" min="1" max="99" class="form-input machine-input-prioridad" value="${m.prioridad || idx + 1}">
-        </div>
-
-        <div class="form-group" style="margin:0;">
-          <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Ruta Ejecutable:</label>
+          <label style="font-size:11.5px; font-weight:700; color:var(--text-muted);">Ruta Ejecutable:</label>
           <input type="text" class="form-input machine-input-path" value="${m.executablePath || 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe'}" placeholder="C:\\...">
         </div>
 
-        <div class="form-group" style="margin:0; grid-column: span 2;">
-          <label style="font-size:12px; font-weight:700; color:#38bdf8; display:flex; align-items:center; justify-content:space-between;">
+        <div class="form-group" style="margin:0; grid-column: 1 / -1;">
+          <label style="font-size:11.5px; font-weight:700; color:#38bdf8; display:flex; align-items:center; justify-content:space-between;">
             <span>🌐 Enlace de Acceso Remoto (Túnel Cloudflare / IP):</span>
             ${m.ipOUrl && m.ipOUrl.startsWith('http') ? `<a href="${m.ipOUrl}" target="_blank" style="color:#4ade80; text-decoration:none; font-size:11px; background:rgba(74,222,128,0.15); padding:2px 8px; border-radius:4px; border:1px solid rgba(74,222,128,0.4); font-weight:700;">🔗 Abrir Consola Remota ↗</a>` : '<span style="color:#94a3b8; font-size:11px;">(Esperando conexión de nodo...)</span>'}
           </label>
@@ -599,36 +627,52 @@ function renderMachinesManagement(config) {
         </div>
       </div>
 
-      <div class="machine-actions-bar">
+      <!-- Tarjeta Informativa de Actualización de Software -->
+      <div style="margin: 0 12px 12px 12px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:6px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <span style="font-size:12px; font-weight:700; color:#34d399; display:flex; align-items:center; gap:6px;">
+            <span>📦 Paquete Oficial de Actualización</span>
+            <span class="badge" style="background:rgba(52,211,153,0.2); color:#34d399; font-size:10px; padding:2px 6px;">Tecla 'I' Probada</span>
+          </span>
+          <a href="https://github.com/hectormu2013-creator/suite-animalitos/archive/refs/heads/main.zip" target="_blank" class="btn btn-secondary btn-sm" style="border-color:#10b981; color:#34d399; text-decoration:none; padding:4px 10px; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+            <span>📥 Descargar Paquete (.zip)</span>
+          </a>
+        </div>
+        <div style="font-size:11px; color:#cbd5e1; line-height:1.4;">
+          ⚡ <b>Actualización directa desde escritorio:</b> Si estás en esta computadora física, simplemente ejecuta el acceso directo <b>"ACTUALIZAR_SUITE"</b> en su Escritorio (o <code>ACTUALIZAR_DESDE_GITHUB.bat</code>). Se sincronizará automáticamente con esta última versión en 3 segundos.
+        </div>
+      </div>
+
+      <div class="machine-actions-bar" style="padding:10px 12px; background:rgba(15,23,42,0.5); border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
           <label class="checkbox-label" style="font-size: 13px; font-weight: 600;">
             <input type="checkbox" class="machine-toggle-activa" ${m.activa !== false ? 'checked' : ''}>
-            <span>Habilitada para pesca activa</span>
+            <span>Habilitada en la red</span>
           </label>
         </div>
 
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          ${!isPrincipal ? `
+            <button class="btn btn-sm btn-assign-principal" data-id="${m.id}" style="background:linear-gradient(135deg, #059669, #10b981); color:#fff; font-weight:700; border:none; padding:6px 14px; border-radius:6px; cursor:pointer;" title="Asignar como Opción 1 Principal para sondeos">
+              <span>🎯 Asignar como Opción 1</span>
+            </button>
+          ` : `
+            <span style="color:#34d399; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.15); padding:5px 12px; border-radius:6px; border:1px solid rgba(52,211,153,0.4);">
+              ✅ Opción 1 Seleccionada
+            </span>
+          `}
+
           ${!isVerifier ? `
-            <button class="btn btn-secondary btn-sm btn-assign-verifier" data-id="${m.id}" style="border-color:#f59e0b; color:#fbbf24;">
-              <span>👑 Asignar como Verificadora</span>
+            <button class="btn btn-secondary btn-sm btn-assign-verifier" data-id="${m.id}" style="border-color:#f59e0b; color:#fbbf24; font-size:11px;">
+              <span>👑 Verificadora</span>
             </button>
           ` : ''}
 
           ${!isLocal ? `
-            <button class="btn btn-secondary btn-sm btn-assign-local" data-id="${m.id}" style="border-color:#38bdf8; color:#38bdf8;">
-              <span>💻 Operar en Este Equipo</span>
+            <button class="btn btn-secondary btn-sm btn-assign-local" data-id="${m.id}" style="border-color:#38bdf8; color:#38bdf8; font-size:11px;">
+              <span>💻 Este Equipo</span>
             </button>
           ` : ''}
-
-          ${maquinas.length > 1 ? `
-            <button class="btn btn-secondary btn-sm btn-delete-machine" data-id="${m.id}" style="border-color:#f43f5e; color:#f43f5e;">
-              <span>🗑️ Eliminar</span>
-            </button>
-          ` : ''}
-
-          <a href="https://github.com/hectormu2013-creator/suite-animalitos/archive/refs/heads/${m.id === 'maquina_1' ? 'maquina_1' : 'main'}.zip" target="_blank" class="btn btn-secondary btn-sm" style="border-color:#10b981; color:#34d399; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Descargar paquete ZIP exclusivo para ${m.nombre || m.id}">
-            <span>📥 Descargar Paquete (${m.id === 'maquina_1' ? 'Máquina 1' : (m.id === 'maquina_3' ? 'Máquina 3' : 'Laptop')})</span>
-          </a>
         </div>
       </div>
     `;
@@ -636,7 +680,23 @@ function renderMachinesManagement(config) {
     container.appendChild(card);
   });
 
+  // Vincular eventos de selección de prioridad por dropdown
+  container.querySelectorAll('.machine-select-prioridad').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+      const id = sel.getAttribute('data-id');
+      const val = parseInt(e.target.value, 10) || 1;
+      setMachinePriorityUI(id, val);
+    });
+  });
+
   // Vincular eventos de botones internos de tarjetas
+  container.querySelectorAll('.btn-assign-principal').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      setPrincipalProbeMachineUI(id);
+    });
+  });
+
   container.querySelectorAll('.btn-assign-verifier').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
@@ -650,13 +710,56 @@ function renderMachinesManagement(config) {
       setLocalMachineUI(id);
     });
   });
+}
 
-  container.querySelectorAll('.btn-delete-machine').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-id');
-      deleteMachineUI(id);
+// Reasignación exclusiva de prioridades de sondeo
+async function setMachinePriorityUI(targetId, newPriority) {
+  if (!currentConfig || !currentConfig.general || !Array.isArray(currentConfig.general.maquinas)) return;
+  newPriority = parseInt(newPriority, 10) || 1;
+
+  const target = currentConfig.general.maquinas.find(m => m.id === targetId);
+  if (!target) return;
+
+  const oldPriority = target.prioridad || 1;
+  if (oldPriority === newPriority) return;
+
+  // Intercambiar prioridad con la máquina que la ocupaba
+  const displaced = currentConfig.general.maquinas.find(m => m.id !== targetId && m.prioridad === newPriority);
+  target.prioridad = newPriority;
+  if (displaced) {
+    displaced.prioridad = oldPriority;
+  }
+
+  // Si la máquina se asignó como prioridad 1, actualizar maquinaEncargadaSondeoId
+  if (newPriority === 1) {
+    currentConfig.general.maquinaEncargadaSondeoId = targetId;
+  } else if (currentConfig.general.maquinaEncargadaSondeoId === targetId) {
+    const newPrincipal = currentConfig.general.maquinas.find(m => m.prioridad === 1);
+    if (newPrincipal) currentConfig.general.maquinaEncargadaSondeoId = newPrincipal.id;
+  }
+
+  // Reordenar array por prioridad ascendente (1, 2, 3...)
+  currentConfig.general.maquinas.sort((a, b) => (a.prioridad || 99) - (b.prioridad || 99));
+
+  renderMachinesManagement(currentConfig);
+  showToast(`🎯 Prioridad actualizada: ${target.nombre} es ahora Opción ${newPriority}`);
+  appendLog(`[RED DE MÁQUINAS] ${target.nombre} configurada como Opción ${newPriority} en cascada (3 intentos antes de failover).`, 'log-info');
+
+  // Guardar configuración inmediatamente en el servidor
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentConfig)
     });
-  });
+    if (res.ok) {
+      appendLog('✅ Prioridades de máquinas guardadas y sincronizadas en la nube.', 'log-success');
+    }
+  } catch (e) {}
+}
+
+async function setPrincipalProbeMachineUI(targetId) {
+  await setMachinePriorityUI(targetId, 1);
 }
 
 function setVerifierMachineUI(targetId) {

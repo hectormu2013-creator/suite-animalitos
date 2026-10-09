@@ -10,10 +10,10 @@
     "maquinas": [
       {
         "id": "maquina_3",
-        "notas": "Taquilla de pesca 24/7 (Máquina 3)",
+        "notas": "Taquilla de pesca principal 24/7 (Opción 1)",
         "activa": true,
         "ipOUrl": "",
-        "nombre": "Máquina 3 (Taquilla Nueva)",
+        "nombre": "Máquina 3 (Opción 1 - Principal)",
         "keepOpen": true,
         "prioridad": 1,
         "clavePremier": "123",
@@ -23,33 +23,33 @@
         "esEncargadaVerificaciones": false
       },
       {
-        "id": "maquina_2",
-        "notas": "Laptop de Hector (Verificadora / Dev)",
+        "id": "maquina_1",
+        "notas": "Taquilla de pesca secundaria (Opción 2)",
         "activa": true,
-        "ipOUrl": "https://irc-pregnancy-cite-brochures.trycloudflare.com",
-        "nombre": "Estación de Trabajo / Dev (Hector)",
+        "ipOUrl": "",
+        "nombre": "Máquina 1 (Opción 2 - Secundaria)",
         "keepOpen": true,
         "prioridad": 2,
+        "clavePremier": "123",
+        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "usuarioPremier": "TCOP101",
+        "esEncargadaVerificaciones": false
+      },
+      {
+        "id": "maquina_2",
+        "notas": "Laptop de Hector (Opción 3 - Respaldo / Verificadora)",
+        "activa": true,
+        "ipOUrl": "https://irc-pregnancy-cite-brochures.trycloudflare.com",
+        "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
+        "keepOpen": true,
+        "prioridad": 3,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
         "ultimaConexion": "2026-10-09T17:21:40.110Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
-      },
-      {
-        "id": "maquina_1",
-        "notas": "Taquilla anterior (Desactivada temporalmente)",
-        "activa": false,
-        "ipOUrl": "",
-        "nombre": "Máquina 1 (Anterior)",
-        "keepOpen": true,
-        "prioridad": 3,
-        "clavePremier": "123",
-        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
-        "tipoPlataforma": "PREMIER_PLUS_20",
-        "usuarioPremier": "TCOP101",
-        "esEncargadaVerificaciones": false
       }
     ],
     "telegram": {
@@ -79,7 +79,8 @@
     },
     "horaActivacionDiaria": "07:00",
     "activacionDiariaActiva": true,
-    "maquinaEncargadaVerificacionesId": "maquina_2"
+    "maquinaEncargadaVerificacionesId": "maquina_2",
+    "maquinaEncargadaSondeoId": "maquina_3"
   },
   "loterias": [
     {

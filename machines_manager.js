@@ -285,36 +285,53 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, ho
         logFn(`⚠️ [FALLO EN TAQUILLA] ${maquina.nombre} no pudo acceder a la taquilla: ${err.message}. Activando de inmediato la siguiente máquina de respaldo...`, 'log-warn');
       }
     } else {
-      // 2. Ejecutar en nodo remoto
+      // 2. Ejecutar en nodo remoto (hasta 3 intentos de comunicación)
       const targetUrl = maquina.ipOUrl;
       if (!targetUrl) {
         logFn(`⚠️ [NODO SIN URL] ${maquina.nombre} no tiene IP/URL configurada. Saltando a la siguiente máquina...`, 'log-warn');
         continue;
       }
 
-      const isOnline = await pingNode(targetUrl);
-      if (!isOnline) {
-        logFn(`⚠️ [NODO REMOTO OFFLINE] ${maquina.nombre} (${targetUrl}) no responde o está apagada. Saltando a la siguiente opción en cascada...`, 'log-warn');
-        continue;
+      let remoteOk = false;
+      let remoteData = null;
+      let lastErrDesc = 'Sin respuesta';
+
+      for (let retry = 1; retry <= 3; retry++) {
+        logFn(`📡 [INTENTO ${retry}/3 HACIA ${maquina.nombre}] Comprobando conexión en ${targetUrl}...`, 'log-info');
+        const isOnline = await pingNode(targetUrl);
+        if (!isOnline) {
+          lastErrDesc = 'Nodo apagado o sin conexión a internet';
+          if (retry < 3) await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+
+        try {
+          const remoteRes = await requestRemoteScan(targetUrl, loteriaId, horaSorteo);
+          if (remoteRes && remoteRes.ok) {
+            remoteData = remoteRes;
+            remoteOk = true;
+            break;
+          } else {
+            lastErrDesc = (remoteRes && remoteRes.message) || 'Error en respuesta remota';
+          }
+        } catch (remErr) {
+          lastErrDesc = remErr.message;
+        }
+
+        if (retry < 3) await new Promise(r => setTimeout(r, 2000));
       }
 
-      logFn(`📡 [DELEGANDO PESCA REMOTA] Nodo ${maquina.nombre} está EN LÍNEA. Disparando sondeo remoto en ${targetUrl}...`, 'log-info');
-      try {
-        const remoteRes = await requestRemoteScan(targetUrl, loteriaId, horaSorteo);
-        if (remoteRes && remoteRes.ok) {
-          logFn(`✅ [PESCA REMOTA EXITOSA] ${maquina.nombre} completó el sondeo remotamente.`, 'log-success');
-          return {
-            ...(remoteRes.result || remoteRes),
-            maquinaUsadaId: maquina.id,
-            maquinaUsadaNombre: maquina.nombre,
-            intentoCascada: intento,
-            failoverActivado: intento > 1
-          };
-        } else {
-          logFn(`⚠️ [NODO REMOTO FALLÓ] ${maquina.nombre} respondió con error: ${remoteRes ? remoteRes.message : 'Falla'}. Pasando a la siguiente máquina...`, 'log-warn');
-        }
-      } catch (remErr) {
-        logFn(`⚠️ [ERROR NODO REMOTO] ${maquina.nombre}: ${remErr.message}. Pasando a la siguiente máquina...`, 'log-warn');
+      if (remoteOk && remoteData) {
+        logFn(`✅ [PESCA REMOTA EXITOSA] ${maquina.nombre} completó el sondeo remotamente.`, 'log-success');
+        return {
+          ...(remoteData.result || remoteData),
+          maquinaUsadaId: maquina.id,
+          maquinaUsadaNombre: maquina.nombre,
+          intentoCascada: intento,
+          failoverActivado: intento > 1
+        };
+      } else {
+        logFn(`⚠️ [FAILOVER TRAS 3 INTENTOS] ${maquina.nombre} no respondió (${lastErrDesc}). Pasando a la siguiente opción en cascada...`, 'log-warn');
       }
     }
   }
