@@ -278,6 +278,15 @@ public class PremierFullProbe {
         mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
     }
 
+    public static void ClickPrintButton(int x, int y) {
+        // En Maquina 1: mover cursor, esperar 150ms para que WPF registre 'IsMouseOver'
+        SetCursorPos(x, y);
+        System.Threading.Thread.Sleep(150);
+        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+        System.Threading.Thread.Sleep(90);
+        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+    }
+
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
 
@@ -390,24 +399,45 @@ function ObtenerPosicionBotonImpresora($bmpPantalla) {
     }
     $crop.Dispose()
     
-    if ($bluePoints.Count -gt 0) {
-        $minX = ($bluePoints | Measure-Object -Property X -Minimum).Minimum
-        # El primer botón azul de izquierda a derecha es la Impresora
-        $btn1 = $bluePoints | Where-Object { $_.X -ge $minX -and $_.X -le ($minX + 48) }
-        if ($btn1.Count -ge 30) {
-            $avgX = [int](($btn1 | Measure-Object -Property X -Average).Average)
-            $avgY = [int](($btn1 | Measure-Object -Property Y -Average).Average)
-            return [PSCustomObject]@{
-                X = $cropX + $avgX
-                Y = $cropY + $avgY
-                Detectado = $true
+    if ($bluePoints.Count -ge 20) {
+        # Agrupar por columnas X para descartar ruido o texto azul aislado
+        $xGroups = $bluePoints | Group-Object -Property X | Where-Object { $_.Count -ge 14 }
+        if ($xGroups.Count -ge 15) {
+            $sortedXs = $xGroups | ForEach-Object { [int]$_.Name } | Sort-Object
+            
+            # Encontrar el cluster continuo mas grande de columnas
+            $clusters = @()
+            $currCluster = @($sortedXs[0])
+            for ($i = 1; $i -lt $sortedXs.Count; $i++) {
+                if ($sortedXs[$i] -eq ($currCluster[-1] + 1)) {
+                    $currCluster += $sortedXs[$i]
+                } else {
+                    $clusters += ,$currCluster
+                    $currCluster = @($sortedXs[$i])
+                }
+            }
+            $clusters += ,$currCluster
+
+            $bestCluster = $clusters | Sort-Object -Property Count -Descending | Select-Object -First 1
+            if ($bestCluster -and $bestCluster.Count -ge 15) {
+                $minClusterX = $bestCluster[0]
+                $maxClusterX = $bestCluster[-1]
+                $btnPoints = $bluePoints | Where-Object { $_.X -ge $minClusterX -and $_.X -le $maxClusterX }
+                
+                $avgX = [int](($btnPoints | Measure-Object -Property X -Average).Average)
+                $avgY = [int](($btnPoints | Measure-Object -Property Y -Average).Average)
+                return [PSCustomObject]@{
+                    X = $cropX + $avgX
+                    Y = $cropY + $avgY
+                    Detectado = $true
+                }
             }
         }
     }
-    # Fallback seguro
+    # Fallback seguro para 1080p
     return [PSCustomObject]@{
         X = 1280
-        Y = 65
+        Y = 72
         Detectado = $false
     }
 }
@@ -942,6 +972,8 @@ if (-not $ModoHibrido) {
 # 3. Precargar Monto de sondeo en F6
 Write-Output "[4/7] Precargando Monto de sondeo ($MontoSondeo Bs)..."
 Check-SafetyAndControl "Precargando Monto F6"
+[PremierFullProbe]::ForceForeground($hwnd) | Out-Null
+Start-Sleep -Milliseconds 150
 [System.Windows.Forms.SendKeys]::SendWait("{F6}")
 Start-Sleep -Milliseconds 150
 [System.Windows.Forms.SendKeys]::SendWait("$MontoSondeo")
@@ -1007,11 +1039,11 @@ $posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
 $bmpForPrintBtn.Dispose()
 
 Write-Output " -> [BOTON IMPRESORA] Ubicacion: X=$($posImpresora.X), Y=$($posImpresora.Y) (Dinamico: $($posImpresora.Detectado))."
-Write-Output " -> Ejecutando UN SOLO CLIC limpio para validar y evaluar cupos..."
-[PremierFullProbe]::Click($posImpresora.X, $posImpresora.Y)
+Write-Output " -> Ejecutando CLIC con estabilizacion hover para validar cupos..."
+[PremierFullProbe]::ClickPrintButton($posImpresora.X, $posImpresora.Y)
 
-# Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (CERO segundo clic)
-Start-Sleep -Milliseconds 2600
+# Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (2800ms)
+Start-Sleep -Milliseconds 2800
 
 # Descartar cualquier cuadro de error o confirmacion
 [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
