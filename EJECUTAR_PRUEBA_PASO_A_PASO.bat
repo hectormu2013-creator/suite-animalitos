@@ -35,7 +35,7 @@ echo   [P1] Enfocar Taquilla y Descartar Error
 echo   [P2] Solo Seleccionar Loteria y Sorteo
 echo   [P3] Probar Inyeccion Rapida de 3 Animales de Prueba (00, 0, 1)
 echo   [P4] Limpieza de Pantalla con Tecla N (0 jugadas)
-echo   [P5] Probar Clic en Boton [Imprimir] (Validacion Cupos en Pantalla)
+echo   [P5] Probar Tecla 'I' [Imprimir] (Validacion Cupos en Pantalla)
 echo.
 echo   [9] Salir
 echo.

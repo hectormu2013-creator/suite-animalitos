@@ -1021,26 +1021,15 @@ foreach ($anim in $animales) {
 Write-Output "`n[OK] Los $($animales.Count) animales fueron ingresados al ticket."
 Start-Sleep -Milliseconds 500
 
-# 5. DISPARO DE VALIDACION: Clic UNICO en [Imprimir] (Deteccion Dinamica)
-Write-Output "[6/7] Disparando validacion de cupos con boton [Imprimir] (Un solo clic de consulta)..."
+# 5. DISPARO DE VALIDACION: Tecla Rapida 'I' [Imprimir]
+Write-Output "[6/7] Disparando validacion de cupos con tecla rapida 'I' [Imprimir]..."
 Check-SafetyAndControl "Boton Imprimir"
-Set-ControlState "RUNNING" "Disparando validacion con boton Imprimir"
+Set-ControlState "RUNNING" "Disparando validacion con tecla I"
 [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
-Start-Sleep -Milliseconds 200
+Start-Sleep -Milliseconds 250
 
-# Deteccion visual dinamica del boton azul de la Impresora en la franja superior
-$boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
-$gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
-$gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
-$gPBtn.Dispose()
-
-$posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
-$bmpForPrintBtn.Dispose()
-
-Write-Output " -> [BOTON IMPRESORA] Ubicacion: X=$($posImpresora.X), Y=$($posImpresora.Y) (Dinamico: $($posImpresora.Detectado))."
-Write-Output " -> Ejecutando CLIC con estabilizacion hover para validar cupos..."
-[PremierFullProbe]::ClickPrintButton($posImpresora.X, $posImpresora.Y)
+Write-Output " -> Enviando pulsacion de tecla 'I' nativa de Premier Pluss para evaluar cupos..."
+[System.Windows.Forms.SendKeys]::SendWait("i")
 
 # Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (2800ms)
 Start-Sleep -Milliseconds 2800

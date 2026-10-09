@@ -605,22 +605,14 @@ switch ($Paso) {
         Write-Host "`n[PAUSA] Presione Enter para pasar a la Etapa 4 (Disparar Boton [Imprimir])..." -ForegroundColor Yellow
         [Console]::ReadLine() | Out-Null
 
-        Write-Output "`n[ETAPA 4/5] Disparando boton [Imprimir] con estabilizacion hover..."
+        Write-Output "`n[ETAPA 4/5] Disparando validacion con tecla de acceso rapido 'I' [Imprimir]..."
         [StepTester]::SetForegroundWindow($hwnd) | Out-Null
-        Start-Sleep -Milliseconds 200
-        $bmpForPrintBtn = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-        $gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
-        $gPBtn.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-        $gPBtn.Dispose()
-        $posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
-        $bmpForPrintBtn.Dispose()
-
-        Write-Output " -> [BOTON IMPRESORA] Ubicacion: X=$($posImpresora.X), Y=$($posImpresora.Y)."
-        Write-Output " -> Ejecutando CLIC con estabilizacion hover..."
-        [StepTester]::ClickPrintButton($posImpresora.X, $posImpresora.Y)
+        Start-Sleep -Milliseconds 250
+        Write-Output " -> Enviando tecla rapida 'I' a Premier Pluss..."
+        [System.Windows.Forms.SendKeys]::SendWait("i")
         Start-Sleep -Milliseconds 2500
         [StepTester]::DismissAllExceptions() | Out-Null
-        Write-Output " -> [OK] Clic de validacion enviado. Observa si la tabla muestra cupos o colores."
+        Write-Output " -> [OK] Validacion enviada con tecla 'I'. Observa si la tabla muestra cupos o colores."
         Write-Host "`n[PAUSA] Presione Enter para pasar a la Etapa 5 (Limpieza con tecla N)..." -ForegroundColor Yellow
         [Console]::ReadLine() | Out-Null
 
@@ -760,27 +752,17 @@ switch ($Paso) {
     }
 
     5 {
-        Write-Output "`n[PASO 5] Probando Clic en Boton [Imprimir] (Deteccion visual dinamica)..."
+        Write-Output "`n[PASO 5] Probando Disparo con Tecla de Acceso Rapido 'I' [Imprimir]..."
         [StepTester]::ShowWindow($hwnd, 9) | Out-Null
         [StepTester]::ShowWindow($hwnd, 3) | Out-Null
         [StepTester]::SetForegroundWindow($hwnd) | Out-Null
-        Start-Sleep -Milliseconds 400
+        Start-Sleep -Milliseconds 300
 
-        $boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-        $bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
-        $gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
-        $gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
-        $gPBtn.Dispose()
-
-        $posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
-        $bmpForPrintBtn.Dispose()
-
-        Write-Output " -> [BOTON IMPRESORA] Ubicacion dinamica: X=$($posImpresora.X), Y=$($posImpresora.Y) (Detectado: $($posImpresora.Detectado))."
-        Write-Output " -> Ejecutando CLIC con estabilizacion hover para validar cupos..."
-        [StepTester]::ClickPrintButton($posImpresora.X, $posImpresora.Y)
+        Write-Output " -> Enviando pulsacion de tecla 'I' a Premier Pluss..."
+        [System.Windows.Forms.SendKeys]::SendWait("i")
         Start-Sleep -Milliseconds 2500
         [StepTester]::DismissAllExceptions() | Out-Null
 
-        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Hizo clic en el icono azul de la Impresora y se mostraron los cupos sin mandar a imprimir?"
+        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Se ejecuto la validacion con la tecla 'I' y se mostraron los cupos sin mandar a imprimir?"
     }
 }
