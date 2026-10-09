@@ -40,14 +40,14 @@
         "id": "maquina_2",
         "notas": "Laptop de Hector (Opción 3 - Respaldo / Verificadora)",
         "activa": true,
-        "ipOUrl": "https://irc-pregnancy-cite-brochures.trycloudflare.com",
+        "ipOUrl": "https://disks-rochester-image-fifth.trycloudflare.com",
         "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
         "keepOpen": true,
         "prioridad": 3,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-09T17:21:40.110Z",
+        "ultimaConexion": "2026-10-09T20:33:06.973Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -144,6 +144,7 @@
       "minutosAntesPremier": 50,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -223,6 +224,7 @@
       "minutosAntesPremier": 28,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -263,7 +265,7 @@
       ],
       "montoSondeo": 5000,
       "bloqueoFijos": true,
-      "minutosAntes": 27,
+      "minutosAntes": 37,
       "numerosFijos": [],
       "totalAnimales": 38,
       "memoriaCupoCero": {
@@ -273,7 +275,7 @@
       "sondeosMultiples": [
         {
           "id": 1,
-          "activo": false,
+          "activo": true,
           "minutosAntes": 37
         },
         {
@@ -299,9 +301,10 @@
       ],
       "bloquearSoloRojos": true,
       "minutosAntesFijos": 50,
-      "minutosAntesPremier": 27,
+      "minutosAntesPremier": 37,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -324,7 +327,7 @@
     },
     {
       "id": "guacharo_millonario",
-      "activo": true,
+      "activo": false,
       "nombre": "GUACHARO MILLONARIO",
       "horarios": [
         "08:30",

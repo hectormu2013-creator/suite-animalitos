@@ -354,14 +354,17 @@ public class PremierFullProbe {
             mouse_event(MOUSEEVENTF_WHEEL, 0, 0, delta, UIntPtr.Zero);
             System.Threading.Thread.Sleep(20);
         }
+        // Retirar el cursor a la esquina superior para evitar resaltar filas con hover
+        SetCursorPos(50, 50);
+        System.Threading.Thread.Sleep(40);
     }
 
     public static void ScrollToBottom(int x, int y) {
-        ScrollWheel(x, y, 80, -120);
+        ScrollWheel(x, y, 35, -120);
     }
 
     public static void ScrollToTop(int x, int y) {
-        ScrollWheel(x, y, 50, 120);
+        ScrollWheel(x, y, 35, 120);
     }
 }
 "@
@@ -1098,16 +1101,16 @@ function ExtraerFilasDePantalla($bmpScreen) {
         if ($yC -ge 145 -and $yC -lt ($bmpScreen.Height - 30)) {
             $redCount = 0
             $orangeCount = 0
-            for ($sx = 960; $sx -le 1220; $sx += 3) {
+            for ($sx = 920; $sx -le 1340; $sx += 4) {
                 # Muestreo a 5 alturas para maxima precision del fondo sin importar la alineacion del texto
-                foreach ($dy in @(-3, -1, 0, 1, 3)) {
+                foreach ($dy in @(-4, -2, 0, 2, 4)) {
                     $sampY = $yC + $dy
                     if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height) {
                         $px = $bmpScreen.GetPixel($sx, $sampY)
-                        # Rojo puro de cupo cero en Premier Pluss (R alto > 180, G y B bajos < 85)
-                        if ($px.R -gt 180 -and $px.G -lt 85 -and $px.B -lt 85) {
+                        # Rojo puro de cupo cero en Premier Pluss (R alto > 175, G y B bajos < 95)
+                        if ($px.R -gt 175 -and $px.G -lt 95 -and $px.B -lt 95) {
                             $redCount++
-                        } elseif ($px.R -gt 200 -and $px.G -gt 130 -and $px.G -lt 220 -and $px.B -lt 80) {
+                        } elseif ($px.R -gt 195 -and $px.G -gt 120 -and $px.G -lt 225 -and $px.B -lt 85) {
                             $orangeCount++
                         }
                     }
@@ -1117,9 +1120,9 @@ function ExtraerFilasDePantalla($bmpScreen) {
             # Deteccion infalible de Cupo Cero: rojo visual o monto explicitamente 0
             $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
             $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
-            if ($redCount -ge 8 -or ($esMontoCero -and ($orangeCount -gt 3 -or $redCount -ge 4))) {
+            if ($redCount -ge 5 -or ($esMontoCero -and ($orangeCount -gt 2 -or $redCount -ge 2)) -or $esMontoCero) {
                 $rObj.Color = "ROJO"
-            } elseif ($orangeCount -gt 10) {
+            } elseif ($orangeCount -gt 8) {
                 $rObj.Color = "NARANJA"
             }
 
@@ -1156,7 +1159,7 @@ $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 $todasLasFilas = @{}
 
 # Calcular numero de pasos de barrido segun la loteria
-$totalPasos = 2
+$totalPasos = 3
 if ($animales.Count -gt 77) {
     # Guacharito Millonario (101 animales): 9 vistas completas con estabilizacion de fondo
     $totalPasos = 9
@@ -1175,10 +1178,10 @@ for ($paso = 1; $paso -le $totalPasos; $paso++) {
     } elseif ($paso -eq $totalPasos) {
         Write-Output " -> [PANEO $paso/$totalPasos] Desplazando tabla al fondo absoluto (Vista Final estabilizada)..."
         [PremierFullProbe]::ScrollToBottom(1050, 400)
-        Start-Sleep -Milliseconds 900
+        Start-Sleep -Milliseconds 600
     } else {
         Write-Output " -> [PANEO $paso/$totalPasos] Avanzando tramo intermedio con renderizado seguro..."
-        [PremierFullProbe]::ScrollWheel(1050, 400, 6, -120)
+        [PremierFullProbe]::ScrollWheel(1050, 400, 12, -120)
         Start-Sleep -Milliseconds 550
     }
 
@@ -1195,6 +1198,7 @@ for ($paso = 1; $paso -le $totalPasos; $paso++) {
     $rowsView = ExtraerFilasDePantalla $bmpFull
     $nuevos = 0
     foreach ($r in $rowsView) {
+        if (-not $r.Num) { continue }
         if (-not $todasLasFilas.ContainsKey($r.Num)) {
             $todasLasFilas[$r.Num] = $r
             $nuevos++
@@ -1277,24 +1281,17 @@ if ($listaRojos.Count -gt 0) {
 
 Set-ControlState "IDLE" "Sondeo completado con exito"
 
-# Guardar registro en historial persistente CSV y JSON
+# Disparar Bloqueo Real en Triple 7 automaticamente si modulo esta disponible
 try {
-    $histCsvPath = Join-Path (Split-Path $PSScriptRoot -Parent) "reportes_agotados.csv"
-    if (-not (Test-Path $histCsvPath)) {
-        $hdr = "ID;Fecha;Hora Chequeo;Loteria;Sorteo;Monto Sondeo (Bs);Total Agotados (Rojos);Numeros Rojos;Nombres Rojos;Total Alerta (Naranjas);Detalle Naranjas;Estado Triple 7;Bloqueado T7`r`n"
-        [System.IO.File]::WriteAllText($histCsvPath, $hdr, [System.Text.Encoding]::UTF8)
+    $blockerScript = Join-Path $PSScriptRoot "ejecutar_bloqueo_directo.js"
+    if (Test-Path $blockerScript) {
+        $listaRojosArg = ($listaRojos -join ",")
+        Write-Output "`n[TRIPLE 7] Conectando y aplicando bloqueo real en Triple 7..."
+        node "$blockerScript" "$Loteria" "$HoraSorteo" "$listaRojosArg"
     }
-    
-    $recId = "$((Get-Date).ToString('yyyy-MM-dd'))_$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
-    $fFecha = (Get-Date).ToString('yyyy-MM-dd')
-    $fHora = (Get-Date).ToString('HH:mm:ss')
-    
-    $nombRojos = ($listaRojos | ForEach-Object { "$_ ($($animalDict[$_]))" }) -join ", "
-    $detNar = ($listaNaranjas | ForEach-Object { "$($_.numero) ($($_.nombre): $($_.cupo) Bs)" }) -join " | "
-    
-    $csvRow = "$recId;$fFecha;$fHora;`"$Loteria`";`"Proximo Sorteo`";$MontoSondeo;$($listaRojos.Count);`"$($listaRojos -join ', ')`";`"$nombRojos`";$($listaNaranjas.Count);`"$detNar`";`"Pendiente`";NO`r`n"
-    [System.IO.File]::AppendAllText($histCsvPath, $csvRow, [System.Text.Encoding]::UTF8)
-} catch {}
+} catch {
+    Write-Output " -> [AVISO TRIPLE 7] Falla al disparar modulo de bloqueo: $($_.Exception.Message)"
+}
 
 Write-Output "=========================================================="
 Write-Output "JSON_OUTPUT_START"
