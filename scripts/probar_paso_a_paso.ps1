@@ -175,8 +175,9 @@ function ObtenerPosicionBotonImpresora($bmpPantalla) {
             }
         }
     }
+    # Fallback proporcional al ancho de pantalla (en 1536 es ~1282, en 1366 es ~1140, en 1280 es ~1068)
     return [PSCustomObject]@{
-        X = 1280
+        X = [int]($bmpPantalla.Width * 0.835)
         Y = 65
         Detectado = $false
     }
@@ -643,10 +644,21 @@ switch ($Paso) {
         $bmpForPrintBtn.Dispose()
 
         Write-Output " -> [BOTON IMPRESORA] Ubicacion dinamica: X=$($posImpresora.X), Y=$($posImpresora.Y) (Detectado: $($posImpresora.Detectado))."
-        Write-Output " -> Ejecutando UN SOLO CLIC limpio para validar cupos (CERO segundo clic para evitar impresion fisica)..."
-        [StepTester]::Click($posImpresora.X, $posImpresora.Y)
+        if ($posImpresora.Detectado) {
+            Write-Output " -> Boton detectado con exito. Ejecutando UN SOLO CLIC limpio para validar cupos..."
+            [StepTester]::Click($posImpresora.X, $posImpresora.Y)
+        } else {
+            Write-Output " -> Boton no detectado por color. Disparando atajo oficial nativo de Premier Pluss (Tecla 'I')..."
+            try {
+                [System.Windows.Forms.SendKeys]::SendWait("i")
+                Write-Output " -> [OK] Atajo oficial 'I' enviado exitosamente a Premier Pluss."
+            } catch {
+                Write-Output " -> [AVISO] Fallback a coordenadas proporcionales: X=$($posImpresora.X), Y=$($posImpresora.Y)"
+                [StepTester]::Click($posImpresora.X, $posImpresora.Y)
+            }
+        }
         Start-Sleep -Milliseconds 2000
 
-        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Hizo UN solo clic en el icono azul de la Impresora y se mostraron los cupos sin mandar a imprimir?"
+        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Se disparo la validacion de Imprimir y se mostraron los cupos/agotados?"
     }
 }
