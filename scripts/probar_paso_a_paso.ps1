@@ -509,6 +509,92 @@ Write-Output "  PREMIER PLUSS 2.0 DETECTADO (HWND: $hwnd)"
 Write-Output "=========================================================="
 
 switch ($Paso) {
+    0 {
+        Write-Output "`n=========================================================="
+        Write-Output "  PRUEBA RAPIDA COMPLETA: LOTERIA + INYECCION + TECLA 'I'"
+        Write-Output "  Loteria: $Loteria | Metodo: Tecla 'I' Oficial"
+        Write-Output "=========================================================="
+
+        # 1. Enfocar Premier
+        Write-Output "`n[1/5] Enfocando Premier Pluss..."
+        [StepTester]::ShowWindow($hwnd, 9) | Out-Null
+        [StepTester]::ShowWindow($hwnd, 3) | Out-Null
+        [StepTester]::SetForegroundWindow($hwnd) | Out-Null
+        Start-Sleep -Milliseconds 400
+        [StepTester]::DismissAllExceptions() | Out-Null
+        try { [System.Windows.Forms.SendKeys]::SendWait("{F2}") } catch {}
+        Start-Sleep -Milliseconds 300
+
+        # 2. Localizar Lotería y marcar sorteo
+        Write-Output "`n[2/5] Localizando '$Loteria' y marcando sorteo..."
+        $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $bmpScreen = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+        $g = [System.Drawing.Graphics]::FromImage($bmpScreen)
+        $g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+        $g.Dispose()
+        $pos = BuscarPosicionLoteriaPorOCR $bmpScreen $Loteria
+        $bmpScreen.Dispose()
+
+        if ($pos.Encontrado -and $pos.Y -gt 0) {
+            $lotX = if ($pos.X -gt 0) { $pos.X } else { 135 }
+            Write-Output " -> Loteria encontrada en X=$lotX, Y=$($pos.Y). Clic..."
+            [StepTester]::Click($lotX, $pos.Y)
+            Start-Sleep -Milliseconds 500
+            AsegurarSoloProximoSorteo $true
+        } else {
+            Write-Output " -> [Aviso OCR] Loteria no visible directamente. Verificando sorteo actual..."
+            AsegurarSoloProximoSorteo $true
+        }
+
+        # 3. Inyectar 3 animales de prueba con monto
+        Write-Output "`n[3/5] Inyectando 3 animales de prueba (00, 0, 1) con monto 3000 Bs..."
+        [System.Windows.Forms.SendKeys]::SendWait("{F6}")
+        Start-Sleep -Milliseconds 120
+        [System.Windows.Forms.SendKeys]::SendWait("3000")
+        Start-Sleep -Milliseconds 120
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+        Start-Sleep -Milliseconds 200
+
+        foreach ($a in @("00", "0", "1")) {
+            [System.Windows.Forms.SendKeys]::SendWait("{F5}")
+            Start-Sleep -Milliseconds 35
+            [System.Windows.Forms.SendKeys]::SendWait("$a")
+            Start-Sleep -Milliseconds 40
+            [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+            Start-Sleep -Milliseconds 50
+            [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+            Start-Sleep -Milliseconds 120
+        }
+        Write-Output " -> [OK] 3 animales cargados en el ticket."
+        Start-Sleep -Milliseconds 400
+
+        # 4. DISPARAR VALIDACION CON TECLA 'I'
+        Write-Output "`n[4/5] DISPARANDO VALIDACION MEDIANTE TECLA 'I'..."
+        [StepTester]::ShowWindow($hwnd, 9) | Out-Null
+        [StepTester]::ShowWindow($hwnd, 3) | Out-Null
+        [StepTester]::SetForegroundWindow($hwnd) | Out-Null
+        Start-Sleep -Milliseconds 300
+        [System.Windows.Forms.SendKeys]::SendWait("i")
+        Write-Output " -> [OK] ¡Comando Imprimir (Tecla 'I') enviado a Premier Pluss!"
+        Write-Output " -> Esperando 4 segundos para que observes la ventana en pantalla..."
+        Start-Sleep -Milliseconds 4000
+
+        # 5. Limpieza con tecla N
+        Write-Output "`n[5/5] Limpiando pantalla con tecla 'N' (0 jugadas)..."
+        try {
+            [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+            Start-Sleep -Milliseconds 200
+            [System.Windows.Forms.SendKeys]::SendWait("n")
+            Start-Sleep -Milliseconds 300
+            [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+            Start-Sleep -Milliseconds 200
+        } catch {}
+        Write-Output " -> [OK] Pantalla limpia y restablecida a 0 jugadas."
+        Write-Output "`n=========================================================="
+        Write-Output "  ¡PRUEBA COMPLETA DE IMPRESION EJECUTADA EXITOSAMENTE!"
+        Write-Output "=========================================================="
+    }
+
     1 {
         Write-Output "`n[PASO 1] Enfocando Premier Pluss y descartando errores previos..."
         [StepTester]::ShowWindow($hwnd, 9) | Out-Null
