@@ -1006,19 +1006,13 @@ $gPBtn.Dispose()
 $posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
 $bmpForPrintBtn.Dispose()
 
-Write-Output " -> [BOTON IMPRESORA] Ubicacion: X=$($posImpresora.X), Y=$($posImpresora.Y) (Dinamico: $($posImpresora.Detectado))."
-if ($posImpresora.Detectado) {
-    Write-Output " -> Boton detectado visualmente. Ejecutando UN SOLO CLIC limpio para validar cupos..."
+Write-Output " -> [ACCION IMPRIMIR] Disparando validacion mediante atajo oficial nativo de Premier Pluss (Tecla 'I')..."
+try {
+    [System.Windows.Forms.SendKeys]::SendWait("i")
+    Write-Output " -> [OK] Atajo oficial 'I' enviado exitosamente a Premier Pluss."
+} catch {
+    Write-Output " -> [AVISO] Fallback a coordenadas proporcionales: X=$($posImpresora.X), Y=$($posImpresora.Y)"
     [PremierFullProbe]::Click($posImpresora.X, $posImpresora.Y)
-} else {
-    Write-Output " -> Boton no detectado por color. Disparando atajo oficial nativo de Premier Pluss (Tecla 'I')..."
-    try {
-        [System.Windows.Forms.SendKeys]::SendWait("i")
-        Write-Output " -> [OK] Atajo oficial 'I' enviado exitosamente a Premier Pluss."
-    } catch {
-        Write-Output " -> [AVISO] Fallback a coordenadas proporcionales: X=$($posImpresora.X), Y=$($posImpresora.Y)"
-        [PremierFullProbe]::Click($posImpresora.X, $posImpresora.Y)
-    }
 }
 
 # Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (CERO segundo clic)
