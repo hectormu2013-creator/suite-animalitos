@@ -636,6 +636,17 @@ app.get('/api/installer/download-bat', (req, res) => {
   }
 });
 
+app.get('/api/installer/download-bat-m1', (req, res) => {
+  const batPath = path.join(__dirname, 'ACTUALIZAR_MAQUINA_1.bat');
+  if (fs.existsSync(batPath)) {
+    res.setHeader('Content-Type', 'application/x-bat');
+    res.setHeader('Content-Disposition', 'attachment; filename="ACTUALIZAR_MAQUINA_1.bat"');
+    fs.createReadStream(batPath).pipe(res);
+  } else {
+    res.status(404).send('Archivo no encontrado');
+  }
+});
+
 // API: Actualización Remota 1-Click desde GitHub
 app.post('/api/system/update', (req, res) => {
   log('🔄 [ACTUALIZACIÓN SOLICITADA] Descargando última versión oficial desde GitHub...', 'log-warn');
