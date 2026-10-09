@@ -278,15 +278,6 @@ public class PremierFullProbe {
         mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
     }
 
-    public static void ClickPrintButton(int x, int y) {
-        // En Maquina 1: mover cursor, esperar 150ms para que WPF registre 'IsMouseOver'
-        SetCursorPos(x, y);
-        System.Threading.Thread.Sleep(150);
-        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-        System.Threading.Thread.Sleep(90);
-        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
-    }
-
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
 
@@ -399,45 +390,24 @@ function ObtenerPosicionBotonImpresora($bmpPantalla) {
     }
     $crop.Dispose()
     
-    if ($bluePoints.Count -ge 20) {
-        # Agrupar por columnas X para descartar ruido o texto azul aislado
-        $xGroups = $bluePoints | Group-Object -Property X | Where-Object { $_.Count -ge 14 }
-        if ($xGroups.Count -ge 15) {
-            $sortedXs = $xGroups | ForEach-Object { [int]$_.Name } | Sort-Object
-            
-            # Encontrar el cluster continuo mas grande de columnas
-            $clusters = @()
-            $currCluster = @($sortedXs[0])
-            for ($i = 1; $i -lt $sortedXs.Count; $i++) {
-                if ($sortedXs[$i] -eq ($currCluster[-1] + 1)) {
-                    $currCluster += $sortedXs[$i]
-                } else {
-                    $clusters += ,$currCluster
-                    $currCluster = @($sortedXs[$i])
-                }
-            }
-            $clusters += ,$currCluster
-
-            $bestCluster = $clusters | Sort-Object -Property Count -Descending | Select-Object -First 1
-            if ($bestCluster -and $bestCluster.Count -ge 15) {
-                $minClusterX = $bestCluster[0]
-                $maxClusterX = $bestCluster[-1]
-                $btnPoints = $bluePoints | Where-Object { $_.X -ge $minClusterX -and $_.X -le $maxClusterX }
-                
-                $avgX = [int](($btnPoints | Measure-Object -Property X -Average).Average)
-                $avgY = [int](($btnPoints | Measure-Object -Property Y -Average).Average)
-                return [PSCustomObject]@{
-                    X = $cropX + $avgX
-                    Y = $cropY + $avgY
-                    Detectado = $true
-                }
+    if ($bluePoints.Count -gt 0) {
+        $minX = ($bluePoints | Measure-Object -Property X -Minimum).Minimum
+        # El primer botón azul de izquierda a derecha es la Impresora
+        $btn1 = $bluePoints | Where-Object { $_.X -ge $minX -and $_.X -le ($minX + 48) }
+        if ($btn1.Count -ge 30) {
+            $avgX = [int](($btn1 | Measure-Object -Property X -Average).Average)
+            $avgY = [int](($btn1 | Measure-Object -Property Y -Average).Average)
+            return [PSCustomObject]@{
+                X = $cropX + $avgX
+                Y = $cropY + $avgY
+                Detectado = $true
             }
         }
     }
-    # Fallback seguro para 1080p
+    # Fallback proporcional al ancho de pantalla (en 1536 es ~1282, en 1366 es ~1140, en 1280 es ~1068)
     return [PSCustomObject]@{
-        X = 1280
-        Y = 72
+        X = [int]($bmpPantalla.Width * 0.835)
+        Y = 65
         Detectado = $false
     }
 }
@@ -972,8 +942,6 @@ if (-not $ModoHibrido) {
 # 3. Precargar Monto de sondeo en F6
 Write-Output "[4/7] Precargando Monto de sondeo ($MontoSondeo Bs)..."
 Check-SafetyAndControl "Precargando Monto F6"
-[PremierFullProbe]::ForceForeground($hwnd) | Out-Null
-Start-Sleep -Milliseconds 150
 [System.Windows.Forms.SendKeys]::SendWait("{F6}")
 Start-Sleep -Milliseconds 150
 [System.Windows.Forms.SendKeys]::SendWait("$MontoSondeo")
@@ -1021,18 +989,34 @@ foreach ($anim in $animales) {
 Write-Output "`n[OK] Los $($animales.Count) animales fueron ingresados al ticket."
 Start-Sleep -Milliseconds 500
 
-# 5. DISPARO DE VALIDACION: Tecla Rapida 'I' [Imprimir]
-Write-Output "[6/7] Disparando validacion de cupos con tecla rapida 'I' [Imprimir]..."
+# 5. DISPARO DE VALIDACION: Clic UNICO en [Imprimir] (Deteccion Dinamica)
+Write-Output "[6/7] Disparando validacion de cupos con boton [Imprimir] (Un solo clic de consulta)..."
 Check-SafetyAndControl "Boton Imprimir"
-Set-ControlState "RUNNING" "Disparando validacion con tecla I"
+Set-ControlState "RUNNING" "Disparando validacion con boton Imprimir"
 [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
-Start-Sleep -Milliseconds 250
+Start-Sleep -Milliseconds 200
 
-Write-Output " -> Enviando pulsacion de tecla 'I' nativa de Premier Pluss para evaluar cupos..."
-[System.Windows.Forms.SendKeys]::SendWait("i")
+# Deteccion visual dinamica del boton azul de la Impresora en la franja superior
+$boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
+$gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
+$gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
+$gPBtn.Dispose()
 
-# Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (2800ms)
-Start-Sleep -Milliseconds 2800
+$posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
+$bmpForPrintBtn.Dispose()
+
+Write-Output " -> [ACCION IMPRIMIR] Disparando validacion mediante atajo oficial nativo de Premier Pluss (Tecla 'I')..."
+try {
+    [System.Windows.Forms.SendKeys]::SendWait("i")
+    Write-Output " -> [OK] Atajo oficial 'I' enviado exitosamente a Premier Pluss."
+} catch {
+    Write-Output " -> [AVISO] Fallback a coordenadas proporcionales: X=$($posImpresora.X), Y=$($posImpresora.Y)"
+    [PremierFullProbe]::Click($posImpresora.X, $posImpresora.Y)
+}
+
+# Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (CERO segundo clic)
+Start-Sleep -Milliseconds 2600
 
 # Descartar cualquier cuadro de error o confirmacion
 [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null

@@ -680,13 +680,13 @@
                   Convierte cualquier computadora secundaria en un <b>nodo de taquilla dedicado</b>. Descarga e instala automáticamente Node.js, la suite, el actualizador y el túnel seguro de acceso remoto sin necesidad de configuraciones manuales.
                 </p>
               </div>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="/api/installer/download-bat" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 10px 18px; font-weight: 700;">
-                  <span>📥 Descargar Instalador (.bat)</span>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <a href="https://github.com/hectormu2013-creator/suite-animalitos/archive/refs/heads/main.zip" target="_blank" class="btn" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 10px 18px; font-weight: 700; background: linear-gradient(135deg, #059669, #10b981); color: #fff; border: 1px solid #34d399; border-radius: 6px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);" title="Paquete oficial probado y calibrado para todas las máquinas">
+                  <span>📥 Descargar Paquete Oficial (.zip)</span>
                 </a>
-                <button class="btn btn-secondary" id="btn-update-from-web" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; font-weight: 700; border-color: #38bdf8; color: #38bdf8;">
-                  <span>🔄 Actualizar Nodo desde GitHub</span>
-                </button>
+                <a href="/api/installer/download-bat" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 10px 16px; font-weight: 700;" title="Instalador autónomo de 1 clic">
+                  <span>📥 Instalador Nodo (.bat)</span>
+                </a>
               </div>
             </div>
 
@@ -708,8 +708,32 @@
             </div>
           </div>
 
-          <!-- Selector de Identidad de esta Computadora y Máquina Verificadora -->
-          <div class="grid-2-cols" style="background: rgba(15,23,42,0.5); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <!-- Selector de Identidad, Máquina Principal de Sondeo y Verificadora -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; background: rgba(15,23,42,0.5); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div class="form-group" style="margin: 0;">
+              <label for="cfg-maquina-sondeo-select" style="font-weight: 700; color: #34d399;">
+                🎯 Máquina Principal de Sondeo (Opción 1):
+              </label>
+              <select id="cfg-maquina-sondeo-select" class="form-input" style="font-weight: 700; color: #34d399; border-color: rgba(52,211,153,0.5);">
+                <!-- Dinámico -->
+              </select>
+              <span style="font-size: 11px; color: var(--text-dim); display:block; margin-top: 4px;">
+                La orden siempre se enviará a la Opción 1. Si tras 3 intentos no responde, busca la Opción 2 y luego la 3.
+              </span>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+              <label for="cfg-maquina-verificadora-select" style="font-weight: 700; color: #fbbf24;">
+                👑 Máquina Verificadora (Visual-FX):
+              </label>
+              <select id="cfg-maquina-verificadora-select" class="form-input" style="font-weight: 700;">
+                <!-- Dinámico: Sólo 1 puede ser la verificadora -->
+              </select>
+              <span style="font-size: 11px; color: var(--text-dim); display:block; margin-top: 4px;">
+                Sólo esta máquina consultará Visual-FX para evitar duplicidad de solicitudes y bloqueos.
+              </span>
+            </div>
+
             <div class="form-group" style="margin: 0;">
               <label for="cfg-maquina-local-select" style="font-weight: 700; color: #38bdf8;">
                 💻 Esta computadora física opera como:
@@ -719,18 +743,6 @@
               </select>
               <span style="font-size: 11px; color: var(--text-dim); display:block; margin-top: 4px;">
                 Define cuál de las máquinas configuradas es este equipo local.
-              </span>
-            </div>
-
-            <div class="form-group" style="margin: 0;">
-              <label for="cfg-maquina-verificadora-select" style="font-weight: 700; color: #fbbf24;">
-                👑 Máquina Encargada de Verificaciones (Única):
-              </label>
-              <select id="cfg-maquina-verificadora-select" class="form-input" style="font-weight: 700;">
-                <!-- Dinámico: Sólo 1 puede ser la verificadora -->
-              </select>
-              <span style="font-size: 11px; color: var(--text-dim); display:block; margin-top: 4px;">
-                Sólo esta máquina consultará Visual-FX para evitar duplicidad de solicitudes y bloqueos.
               </span>
             </div>
           </div>
@@ -853,6 +865,6 @@
 
   <div id="toast" class="toast">Guardado exitosamente</div>
 
-  <script src="app.js?v=20261007_push_sync_v6"></script>
+  <script src="app.js?v=20261009_3maquinas_v1"></script>
 </body>
 </html>

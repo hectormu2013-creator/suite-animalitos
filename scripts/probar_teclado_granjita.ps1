@@ -226,9 +226,16 @@ foreach ($anim in $animalesGranjita) {
 Write-Output "`n[OK] Los 38 animales fueron ingresados al ticket."
 Start-Sleep -Milliseconds 500
 
-# 5. DISPARO DE VALIDACION: Clic en [Imprimir] (X=1280, Y=65)
-Write-Output "`n[EVALUACION] Disparando validacion con boton [Imprimir]..."
-[PremierGranjitaProbe]::Click(1280, 65)
+# 5. DISPARO DE VALIDACION: Atajo nativo Tecla 'I' (Imprimir)
+Write-Output "`n[EVALUACION] Disparando validacion mediante atajo oficial Tecla 'I'..."
+try {
+    [System.Windows.Forms.SendKeys]::SendWait("i")
+    Write-Output " -> [OK] Atajo oficial 'I' enviado con exito."
+} catch {
+    $boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    $clickX = [int]($boundsScreen.Width * 0.835)
+    [PremierGranjitaProbe]::Click($clickX, 65)
+}
 Start-Sleep -Milliseconds 2500
 
 # Función OCR de extracción de filas de la tabla

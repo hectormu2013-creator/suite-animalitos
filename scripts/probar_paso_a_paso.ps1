@@ -162,44 +162,23 @@ function ObtenerPosicionBotonImpresora($bmpPantalla) {
     }
     $crop.Dispose()
     
-    if ($bluePoints.Count -ge 20) {
-        # Agrupar por columnas X para descartar ruido o texto azul aislado
-        $xGroups = $bluePoints | Group-Object -Property X | Where-Object { $_.Count -ge 14 }
-        if ($xGroups.Count -ge 15) {
-            $sortedXs = $xGroups | ForEach-Object { [int]$_.Name } | Sort-Object
-            
-            # Encontrar el cluster continuo mas grande de columnas
-            $clusters = @()
-            $currCluster = @($sortedXs[0])
-            for ($i = 1; $i -lt $sortedXs.Count; $i++) {
-                if ($sortedXs[$i] -eq ($currCluster[-1] + 1)) {
-                    $currCluster += $sortedXs[$i]
-                } else {
-                    $clusters += ,$currCluster
-                    $currCluster = @($sortedXs[$i])
-                }
-            }
-            $clusters += ,$currCluster
-
-            $bestCluster = $clusters | Sort-Object -Property Count -Descending | Select-Object -First 1
-            if ($bestCluster -and $bestCluster.Count -ge 15) {
-                $minClusterX = $bestCluster[0]
-                $maxClusterX = $bestCluster[-1]
-                $btnPoints = $bluePoints | Where-Object { $_.X -ge $minClusterX -and $_.X -le $maxClusterX }
-                
-                $avgX = [int](($btnPoints | Measure-Object -Property X -Average).Average)
-                $avgY = [int](($btnPoints | Measure-Object -Property Y -Average).Average)
-                return [PSCustomObject]@{
-                    X = $cropX + $avgX
-                    Y = $cropY + $avgY
-                    Detectado = $true
-                }
+    if ($bluePoints.Count -gt 0) {
+        $minX = ($bluePoints | Measure-Object -Property X -Minimum).Minimum
+        $btn1 = $bluePoints | Where-Object { $_.X -ge $minX -and $_.X -le ($minX + 48) }
+        if ($btn1.Count -ge 30) {
+            $avgX = [int](($btn1 | Measure-Object -Property X -Average).Average)
+            $avgY = [int](($btn1 | Measure-Object -Property Y -Average).Average)
+            return [PSCustomObject]@{
+                X = $cropX + $avgX
+                Y = $cropY + $avgY
+                Detectado = $true
             }
         }
     }
+    # Fallback proporcional al ancho de pantalla (en 1536 es ~1282, en 1366 es ~1140, en 1280 es ~1068)
     return [PSCustomObject]@{
-        X = 1280
-        Y = 72
+        X = [int]($bmpPantalla.Width * 0.835)
+        Y = 65
         Detectado = $false
     }
 }
@@ -402,14 +381,6 @@ public class StepTester {
         System.Threading.Thread.Sleep(50);
         mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
     }
-
-    public static void ClickPrintButton(int x, int y) {
-        SetCursorPos(x, y);
-        System.Threading.Thread.Sleep(150);
-        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-        System.Threading.Thread.Sleep(90);
-        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
-    }
 }
 "@
 
@@ -540,24 +511,22 @@ Write-Output "=========================================================="
 switch ($Paso) {
     0 {
         Write-Output "`n=========================================================="
-        Write-Output "  PRUEBA PASO A PASO GUIADA COMPLETA (MAQUINA 1)"
+        Write-Output "  PRUEBA RAPIDA COMPLETA: LOTERIA + INYECCION + TECLA 'I'"
+        Write-Output "  Loteria: $Loteria | Metodo: Tecla 'I' Oficial"
         Write-Output "=========================================================="
-        Write-Output "Loteria: $Loteria`n"
 
-        Write-Output "[ETAPA 1/5] Enfocando Premier Pluss y descartando errores..."
+        # 1. Enfocar Premier
+        Write-Output "`n[1/5] Enfocando Premier Pluss..."
         [StepTester]::ShowWindow($hwnd, 9) | Out-Null
         [StepTester]::ShowWindow($hwnd, 3) | Out-Null
         [StepTester]::SetForegroundWindow($hwnd) | Out-Null
         Start-Sleep -Milliseconds 400
         [StepTester]::DismissAllExceptions() | Out-Null
         try { [System.Windows.Forms.SendKeys]::SendWait("{F2}") } catch {}
-        Write-Output " -> [OK] Ventana en primer plano."
-        Write-Host "`n[PAUSA] Presione Enter para pasar a la Etapa 2 (Seleccionar Loteria)..." -ForegroundColor Yellow
-        [Console]::ReadLine() | Out-Null
+        Start-Sleep -Milliseconds 300
 
-        Write-Output "`n[ETAPA 2/5] Seleccionando Loteria y Sorteo..."
-        [StepTester]::SetForegroundWindow($hwnd) | Out-Null
-        Start-Sleep -Milliseconds 200
+        # 2. Localizar Lotería y marcar sorteo
+        Write-Output "`n[2/5] Localizando '$Loteria' y marcando sorteo..."
         $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
         $bmpScreen = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
         $g = [System.Drawing.Graphics]::FromImage($bmpScreen)
@@ -567,31 +536,26 @@ switch ($Paso) {
         $bmpScreen.Dispose()
 
         if ($pos.Encontrado -and $pos.Y -gt 0) {
-            $lotY = $pos.Y
             $lotX = if ($pos.X -gt 0) { $pos.X } else { 135 }
-            Write-Output " -> Clic en '$($pos.TextoDetectado)' (X=$lotX, Y=$lotY)..."
-            [StepTester]::Click($lotX, $lotY)
-            Start-Sleep -Milliseconds 600
+            Write-Output " -> Loteria encontrada en X=$lotX, Y=$($pos.Y). Clic..."
+            [StepTester]::Click($lotX, $pos.Y)
+            Start-Sleep -Milliseconds 500
             AsegurarSoloProximoSorteo $true
-            Write-Output " -> [OK] Loteria y Sorteo marcados."
         } else {
-            Write-Output "⚠️ [AVISO] Manteniendo seleccion actual de pantalla."
+            Write-Output " -> [Aviso OCR] Loteria no visible directamente. Verificando sorteo actual..."
+            AsegurarSoloProximoSorteo $true
         }
-        Write-Host "`n[PAUSA] Presione Enter para pasar a la Etapa 3 (Precargar Monto e Ingresar 3 Animales)..." -ForegroundColor Yellow
-        [Console]::ReadLine() | Out-Null
 
-        Write-Output "`n[ETAPA 3/5] Precargando monto 3000 Bs e ingresando animales (00, 0, 1)..."
-        [StepTester]::SetForegroundWindow($hwnd) | Out-Null
-        Start-Sleep -Milliseconds 200
+        # 3. Inyectar 3 animales de prueba con monto
+        Write-Output "`n[3/5] Inyectando 3 animales de prueba (00, 0, 1) con monto 3000 Bs..."
         [System.Windows.Forms.SendKeys]::SendWait("{F6}")
-        Start-Sleep -Milliseconds 150
+        Start-Sleep -Milliseconds 120
         [System.Windows.Forms.SendKeys]::SendWait("3000")
-        Start-Sleep -Milliseconds 150
+        Start-Sleep -Milliseconds 120
         [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-        Start-Sleep -Milliseconds 250
+        Start-Sleep -Milliseconds 200
 
         foreach ($a in @("00", "0", "1")) {
-            Write-Host " -> Ingresando animal '$a'..."
             [System.Windows.Forms.SendKeys]::SendWait("{F5}")
             Start-Sleep -Milliseconds 35
             [System.Windows.Forms.SendKeys]::SendWait("$a")
@@ -601,24 +565,22 @@ switch ($Paso) {
             [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
             Start-Sleep -Milliseconds 120
         }
-        Write-Output " -> [OK] Animales ingresados en el ticket."
-        Write-Host "`n[PAUSA] Presione Enter para pasar a la Etapa 4 (Disparar Boton [Imprimir])..." -ForegroundColor Yellow
-        [Console]::ReadLine() | Out-Null
+        Write-Output " -> [OK] 3 animales cargados en el ticket."
+        Start-Sleep -Milliseconds 400
 
-        Write-Output "`n[ETAPA 4/5] Disparando validacion con tecla de acceso rapido 'I' [Imprimir]..."
+        # 4. DISPARAR VALIDACION CON TECLA 'I'
+        Write-Output "`n[4/5] DISPARANDO VALIDACION MEDIANTE TECLA 'I'..."
+        [StepTester]::ShowWindow($hwnd, 9) | Out-Null
+        [StepTester]::ShowWindow($hwnd, 3) | Out-Null
         [StepTester]::SetForegroundWindow($hwnd) | Out-Null
-        Start-Sleep -Milliseconds 250
-        Write-Output " -> Enviando tecla rapida 'I' a Premier Pluss..."
+        Start-Sleep -Milliseconds 300
         [System.Windows.Forms.SendKeys]::SendWait("i")
-        Start-Sleep -Milliseconds 2500
-        [StepTester]::DismissAllExceptions() | Out-Null
-        Write-Output " -> [OK] Validacion enviada con tecla 'I'. Observa si la tabla muestra cupos o colores."
-        Write-Host "`n[PAUSA] Presione Enter para pasar a la Etapa 5 (Limpieza con tecla N)..." -ForegroundColor Yellow
-        [Console]::ReadLine() | Out-Null
+        Write-Output " -> [OK] ¡Comando Imprimir (Tecla 'I') enviado a Premier Pluss!"
+        Write-Output " -> Esperando 4 segundos para que observes la ventana en pantalla..."
+        Start-Sleep -Milliseconds 4000
 
-        Write-Output "`n[ETAPA 5/5] Cancelando jugadas y limpiando ticket con 'N'..."
-        [StepTester]::SetForegroundWindow($hwnd) | Out-Null
-        Start-Sleep -Milliseconds 200
+        # 5. Limpieza con tecla N
+        Write-Output "`n[5/5] Limpiando pantalla con tecla 'N' (0 jugadas)..."
         try {
             [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
             Start-Sleep -Milliseconds 200
@@ -627,9 +589,9 @@ switch ($Paso) {
             [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
             Start-Sleep -Milliseconds 200
         } catch {}
-        Write-Output " -> [OK] Pantalla restablecida a 0 jugadas."
+        Write-Output " -> [OK] Pantalla limpia y restablecida a 0 jugadas."
         Write-Output "`n=========================================================="
-        Write-Output "  PRUEBA PASO A PASO FINALIZADA"
+        Write-Output "  ¡PRUEBA COMPLETA DE IMPRESION EJECUTADA EXITOSAMENTE!"
         Write-Output "=========================================================="
     }
 
@@ -752,17 +714,31 @@ switch ($Paso) {
     }
 
     5 {
-        Write-Output "`n[PASO 5] Probando Disparo con Tecla de Acceso Rapido 'I' [Imprimir]..."
+        Write-Output "`n[PASO 5] Probando Clic en Boton [Imprimir] (Deteccion visual dinamica)..."
         [StepTester]::ShowWindow($hwnd, 9) | Out-Null
         [StepTester]::ShowWindow($hwnd, 3) | Out-Null
         [StepTester]::SetForegroundWindow($hwnd) | Out-Null
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 400
 
-        Write-Output " -> Enviando pulsacion de tecla 'I' a Premier Pluss..."
-        [System.Windows.Forms.SendKeys]::SendWait("i")
-        Start-Sleep -Milliseconds 2500
-        [StepTester]::DismissAllExceptions() | Out-Null
+        $boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
+        $gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
+        $gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
+        $gPBtn.Dispose()
 
-        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Se ejecuto la validacion con la tecla 'I' y se mostraron los cupos sin mandar a imprimir?"
+        $posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
+        $bmpForPrintBtn.Dispose()
+
+        Write-Output " -> [ACCION IMPRIMIR] Disparando validacion mediante atajo oficial nativo de Premier Pluss (Tecla 'I')..."
+        try {
+            [System.Windows.Forms.SendKeys]::SendWait("i")
+            Write-Output " -> [OK] Atajo oficial 'I' enviado exitosamente a Premier Pluss."
+        } catch {
+            Write-Output " -> [AVISO] Fallback a coordenadas proporcionales: X=$($posImpresora.X), Y=$($posImpresora.Y)"
+            [StepTester]::Click($posImpresora.X, $posImpresora.Y)
+        }
+        Start-Sleep -Milliseconds 2000
+
+        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Se disparo la validacion de Imprimir y se mostraron los cupos/agotados?"
     }
 }

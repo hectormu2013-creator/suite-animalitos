@@ -255,12 +255,13 @@ async function getAutomationStatus() {
 /**
  * Enviar un comando remoto desde la Web (Render) a la PC Local (Windows)
  */
-async function dispatchCommand(commandName, payload = {}) {
+async function dispatchCommand(commandName, payload = {}, targetMachineId = null) {
   const id = 'cmd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   const commandObj = {
     id,
     command: commandName,
     payload,
+    targetMachineId: targetMachineId || (payload && payload.targetMachineId) || null,
     status: 'PENDING',
     createdAt: new Date().toISOString(),
     result: null
