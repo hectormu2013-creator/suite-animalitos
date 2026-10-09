@@ -627,7 +627,7 @@ function renderMachinesManagement(config) {
           ` : ''}
 
           <a href="https://github.com/hectormu2013-creator/suite-animalitos/archive/refs/heads/${m.id === 'maquina_1' ? 'maquina_1' : 'main'}.zip" target="_blank" class="btn btn-secondary btn-sm" style="border-color:#10b981; color:#34d399; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Descargar paquete ZIP exclusivo para ${m.nombre || m.id}">
-            <span>📥 Descargar Paquete (${m.id === 'maquina_1' ? 'Máquina 1' : 'Laptop'})</span>
+            <span>📥 Descargar Paquete (${m.id === 'maquina_1' ? 'Máquina 1' : (m.id === 'maquina_3' ? 'Máquina 3' : 'Laptop')})</span>
           </a>
         </div>
       </div>

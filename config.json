@@ -9,11 +9,11 @@
     },
     "maquinas": [
       {
-        "id": "maquina_1",
-        "notas": "Taquilla de pesca 24/7 dedicada (Auto-reporta túnel Cloudflare)",
-        "activa": false,
+        "id": "maquina_3",
+        "notas": "Taquilla de pesca 24/7 (Máquina 3)",
+        "activa": true,
         "ipOUrl": "",
-        "nombre": "Nodo de Pesca Dedicado (Producción)",
+        "nombre": "Máquina 3 (Taquilla Nueva)",
         "keepOpen": true,
         "prioridad": 1,
         "clavePremier": "123",
@@ -36,6 +36,20 @@
         "ultimaConexion": "2026-10-08T21:06:08.893Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
+      },
+      {
+        "id": "maquina_1",
+        "notas": "Taquilla anterior (Desactivada temporalmente)",
+        "activa": false,
+        "ipOUrl": "",
+        "nombre": "Máquina 1 (Anterior)",
+        "keepOpen": true,
+        "prioridad": 3,
+        "clavePremier": "123",
+        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "usuarioPremier": "TCOP101",
+        "esEncargadaVerificaciones": false
       }
     ],
     "telegram": {
