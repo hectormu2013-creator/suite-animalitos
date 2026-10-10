@@ -1400,7 +1400,7 @@ app.post('/api/triple7/bloquear-estrategia-ahora', async (req, res) => {
   }
 
   const targetHour = horaSorteo || predictive.calcularProximoSorteo(loteria.horarios) || '14:00';
-  const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, { rojos: [] });
+  const consolidated = predictive.buildConsolidatedBlockList(cfg, loteria.id, { rojos: [] }, targetHour);
   const numeros = consolidated.listaFinalNumeros || [];
 
   if (numeros.length === 0) {

@@ -633,20 +633,26 @@ switch ($Paso) {
     }
 
     5 {
-        Write-Output "`n[PASO 5] Probando Disparo de Imprimir mediante Tecla Rapida 'I'..."
+        Write-Output "`n[PASO 5] Probando Clic en Boton [Imprimir] (Deteccion visual dinamica)..."
         [StepTester]::ShowWindow($hwnd, 9) | Out-Null
         [StepTester]::ShowWindow($hwnd, 3) | Out-Null
         [StepTester]::SetForegroundWindow($hwnd) | Out-Null
         Start-Sleep -Milliseconds 400
 
-        Write-Output " -> [ACCION IMPRIMIR] Disparando validacion mediante atajo oficial de teclado (Tecla 'I')..."
-        [StepTester]::SendKeyI()
-        try {
-            [System.Windows.Forms.SendKeys]::SendWait("i")
-        } catch {}
-        Write-Output " -> [OK] Tecla rapida 'I' enviada exitosamente a Premier Pluss."
+        $boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
+        $gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
+        $gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
+        $gPBtn.Dispose()
+
+        $posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
+        $bmpForPrintBtn.Dispose()
+
+        Write-Output " -> [BOTON IMPRESORA] Ubicacion dinamica: X=$($posImpresora.X), Y=$($posImpresora.Y) (Detectado: $($posImpresora.Detectado))."
+        Write-Output " -> Ejecutando UN SOLO CLIC limpio para validar cupos (CERO segundo clic para evitar impresion fisica)..."
+        [StepTester]::Click($posImpresora.X, $posImpresora.Y)
         Start-Sleep -Milliseconds 2000
 
-        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Disparo la tecla I y se mostraron los cupos sin mandar a imprimir?"
+        Write-Output "`n[VERIFICACION] Mira la pantalla de Premier Pluss: ¿Hizo UN solo clic en el icono azul de la Impresora y se mostraron los cupos sin mandar a imprimir?"
     }
 }

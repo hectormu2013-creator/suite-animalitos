@@ -297,13 +297,40 @@ function recordScan(scanData) {
     }
 
     const normLot = (scanData.loteria || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const normDraw = (scanData.sorteo || '').trim().toUpperCase();
+    const normTime = (t) => {
+      if (!t) return '';
+      const s = t.trim().toUpperCase();
+      const m24 = s.match(/^(\d{1,2}):(\d{2})$/);
+      if (m24) {
+        let h = parseInt(m24[1], 10);
+        const m = m24[2];
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        if (h > 12) h -= 12;
+        if (h === 0) h = 12;
+        return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
+      }
+      const m12 = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+      if (m12) {
+        const hh = m12[1].padStart(2, '0');
+        return `${hh}:${m12[2]} ${m12[3] || 'AM'}`;
+      }
+      return s;
+    };
 
-    const existingIndex = history.findIndex(r => 
-      r.fecha === fecha && 
-      (r.loteria || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normLot &&
-      ((r.sorteo || '').trim().toUpperCase() === normDraw || (r.horaSorteo || '').trim().toUpperCase() === normDraw)
-    );
+    const normDraw = normTime(scanData.sorteo);
+
+    const existingIndex = history.findIndex(r => {
+      if (r.fecha !== fecha) return false;
+      const rLotNorm = (r.loteria || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const lotMatch = rLotNorm === normLot || 
+        (normLot.includes('millonario') && rLotNorm.includes('millonario')) ||
+        (!normLot.includes('millonario') && !rLotNorm.includes('millonario') && normLot.includes('guacharo') && rLotNorm.includes('guacharo')) ||
+        (normLot.includes('granjita') && rLotNorm.includes('granjita')) ||
+        (normLot.includes('lotto') && rLotNorm.includes('lotto')) ||
+        (normLot.includes('selva') && rLotNorm.includes('selva'));
+      const timeMatch = normTime(r.sorteo) === normDraw || normTime(r.horaSorteo) === normDraw || (r.sorteo && r.sorteo === scanData.sorteo);
+      return lotMatch && timeMatch;
+    });
 
     if (existingIndex !== -1) {
       const rec = history[existingIndex];
@@ -343,7 +370,13 @@ function recordScan(scanData) {
       const mergedAleat = finalAleatDetalle.map(a => a.numero);
       const mergedAleatDetalle = finalAleatDetalle;
 
-      const allMergedNumbers = Array.from(new Set([...mergedPremier, ...mergedFijos, ...mergedPred, ...mergedAleat]));
+      // Memoria Cupo Cero Premier
+      const mergedMemoria = Array.from(new Set([...(rec.numMemoriaCupoCero || []), ...numMemoriaCupoCero]));
+      const mergedMemoriaDetalle = (rec.memoriaCupoCero && rec.memoriaCupoCero.length > 0)
+        ? rec.memoriaCupoCero
+        : detalleMemoria;
+
+      const allMergedNumbers = Array.from(new Set([...mergedPremier, ...mergedFijos, ...mergedPred, ...mergedAleat, ...mergedMemoria]));
       
       const newConsolidados = allMergedNumbers.map(num => {
         const esPremier = mergedPremier.includes(num);
@@ -351,12 +384,13 @@ function recordScan(scanData) {
         const predObj = mergedPredDetalle.find(p => p.numero === num);
         const esPredictivo = !!predObj;
         const esAleatorio = mergedAleat.includes(num);
+        const esMemoria = mergedMemoria.includes(num);
 
         let origen = 'PREMIER';
         let origenTexto = 'Premier Pluss (Cupo 0)';
         let detalle = 'Agotado en taquilla';
 
-        const origenesCount = (esPremier ? 1 : 0) + (esFijo ? 1 : 0) + (esPredictivo ? 1 : 0) + (esAleatorio ? 1 : 0);
+        const origenesCount = (esPremier ? 1 : 0) + (esFijo ? 1 : 0) + (esPredictivo ? 1 : 0) + (esAleatorio ? 1 : 0) + (esMemoria ? 1 : 0);
 
         if (origenesCount > 1) {
           origen = 'AMBOS';
@@ -374,6 +408,10 @@ function recordScan(scanData) {
           origen = 'ALEATORIO';
           origenTexto = 'Sistema Autónomo (Cobertura Aleatoria)';
           detalle = 'Selección de riesgo del sistema (máx 3)';
+        } else if (esMemoria) {
+          origen = 'MEMORIA_CUPO_0';
+          origenTexto = 'Memoria Cupo Cero Premier';
+          detalle = 'Arrastre preventivo de agotado';
         }
 
         return {
@@ -394,6 +432,8 @@ function recordScan(scanData) {
       rec.predictivosVisualFx = mergedPredDetalle;
       rec.numAleatorios = mergedAleat;
       rec.aleatoriosSistema = mergedAleatDetalle;
+      rec.numMemoriaCupoCero = mergedMemoria;
+      rec.memoriaCupoCero = mergedMemoriaDetalle;
       rec.bloqueosConsolidados = newConsolidados;
       rec.totalBloqueados = allMergedNumbers.length;
       rec.timestamp = now.toISOString();

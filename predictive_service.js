@@ -419,10 +419,44 @@ function buildConsolidatedBlockList(config, loteriaId, premierResult, sorteoHora
     const historyMgr = require('./history_manager');
     const hist = historyMgr.getHistory({ fecha: todayStr });
     if (targetDrawTime) {
-      existingRec = hist.find(r => 
-        (r.loteria || '').toLowerCase().includes(lot.nombre.toLowerCase().slice(0, 5)) &&
-        (r.sorteo === targetDrawTime || r.horaSorteo === targetDrawTime)
-      );
+      const normTime = (t) => {
+        if (!t) return '';
+        const s = t.trim().toUpperCase();
+        const m24 = s.match(/^(\d{1,2}):(\d{2})$/);
+        if (m24) {
+          let h = parseInt(m24[1], 10);
+          const m = m24[2];
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          if (h > 12) h -= 12;
+          if (h === 0) h = 12;
+          return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
+        }
+        const m12 = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+        if (m12) {
+          const hh = m12[1].padStart(2, '0');
+          return `${hh}:${m12[2]} ${m12[3] || 'AM'}`;
+        }
+        return s;
+      };
+
+      const normLot = (l) => (l || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const lotNorm = normLot(lot.nombre);
+      const targetTimeNorm = normTime(targetDrawTime);
+
+      existingRec = hist.find(r => {
+        const rLotNorm = normLot(r.loteria);
+        const lotMatch = rLotNorm === lotNorm || 
+          (lotNorm.includes('millonario') && rLotNorm.includes('millonario')) ||
+          (!lotNorm.includes('millonario') && !rLotNorm.includes('millonario') && lotNorm.includes('guacharo') && rLotNorm.includes('guacharo')) ||
+          (lotNorm.includes('granjita') && rLotNorm.includes('granjita')) ||
+          (lotNorm.includes('lotto') && rLotNorm.includes('lotto')) ||
+          (lotNorm.includes('selva') && rLotNorm.includes('selva'));
+        
+        const timeMatch = normTime(r.sorteo) === targetTimeNorm || 
+                          normTime(r.horaSorteo) === targetTimeNorm ||
+                          (r.sorteo && r.sorteo === targetDrawTime);
+        return lotMatch && timeMatch;
+      });
     }
   } catch (e) {}
 

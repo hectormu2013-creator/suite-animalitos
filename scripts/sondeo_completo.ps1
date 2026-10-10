@@ -278,12 +278,6 @@ public class PremierFullProbe {
         mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
     }
 
-    public static void SendKeyI() {
-        keybd_event(0x49, 0, 0, UIntPtr.Zero);
-        System.Threading.Thread.Sleep(60);
-        keybd_event(0x49, 0, 2, UIntPtr.Zero);
-    }
-
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
 
@@ -995,19 +989,26 @@ foreach ($anim in $animales) {
 Write-Output "`n[OK] Los $($animales.Count) animales fueron ingresados al ticket."
 Start-Sleep -Milliseconds 500
 
-# 5. DISPARO DE VALIDACION: Accion de Imprimir mediante Tecla Rapida 'I'
-Write-Output "[6/7] Disparando validacion de cupos con tecla rapida 'I'..."
-Check-SafetyAndControl "Tecla Imprimir (I)"
-Set-ControlState "RUNNING" "Disparando validacion con tecla I"
+# 5. DISPARO DE VALIDACION: Clic UNICO en [Imprimir] (Deteccion Dinamica)
+Write-Output "[6/7] Disparando validacion de cupos con boton [Imprimir] (Un solo clic de consulta)..."
+Check-SafetyAndControl "Boton Imprimir"
+Set-ControlState "RUNNING" "Disparando validacion con boton Imprimir"
 [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
-Start-Sleep -Milliseconds 250
+Start-Sleep -Milliseconds 200
 
-Write-Output " -> [ACCION IMPRIMIR] Disparando validacion mediante atajo oficial de teclado (Tecla 'I')..."
-[PremierFullProbe]::SendKeyI()
-try {
-    [System.Windows.Forms.SendKeys]::SendWait("i")
-} catch {}
-Write-Output " -> [OK] Tecla rapida 'I' enviada exitosamente a Premier Pluss."
+# Deteccion visual dinamica del boton azul de la Impresora en la franja superior
+$boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
+$gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
+$gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
+$gPBtn.Dispose()
+
+$posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
+$bmpForPrintBtn.Dispose()
+
+Write-Output " -> [BOTON IMPRESORA] Ubicacion: X=$($posImpresora.X), Y=$($posImpresora.Y) (Dinamico: $($posImpresora.Detectado))."
+Write-Output " -> Ejecutando UN SOLO CLIC limpio para validar y evaluar cupos..."
+[PremierFullProbe]::Click($posImpresora.X, $posImpresora.Y)
 
 # Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (CERO segundo clic)
 Start-Sleep -Milliseconds 2600

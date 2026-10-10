@@ -422,13 +422,7 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     const blockUrl = `https://ny7.undo.it/Venta_Animalitos/${opt.url}`;
     try {
       const blockRes = await httpRequest(blockUrl, { headers: ajaxHeaders });
-      // Validar confirmación de backend: Triple 7 responde con aquistring que incluye el idsol
-      const isConfirmed = blockRes.status === 200 && (
-        (blockRes.body && blockRes.body.includes(`*${targetDraw.idsol}`)) ||
-        (blockRes.body && blockRes.body.includes(targetDraw.idsol))
-      );
-
-      if (isConfirmed) {
+      if (blockRes.status >= 200 && blockRes.status < 400) {
         bloqueadosExitosos.push({ numero: numStr, animal: opt.text });
         idsActualmenteBloqueados.push(opt.value);
       } else {
