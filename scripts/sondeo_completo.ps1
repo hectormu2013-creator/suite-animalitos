@@ -1111,7 +1111,7 @@ function ExtraerFilasDePantalla($bmpScreen) {
             # Deteccion infalible de Cupo Cero: rojo visual o monto explicitamente 0
             $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
             $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
-            if ($redCount -ge 8 -or ($esMontoCero -and ($orangeCount -gt 3 -or $redCount -ge 4))) {
+            if ($redCount -ge 8 -or $esMontoCero) {
                 $rObj.Color = "ROJO"
             } elseif ($orangeCount -gt 10) {
                 $rObj.Color = "NARANJA"
@@ -1149,14 +1149,14 @@ function ExtraerFilasDePantalla($bmpScreen) {
 $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 $todasLasFilas = @{}
 
-# Calcular numero de pasos de barrido segun la loteria
-$totalPasos = 2
+# Calcular numero de pasos de barrido segun la loteria (Mínimo 3 vistas para 38 animales garantizando captura del centro ej: Chivo 19)
+$totalPasos = 3
 if ($animales.Count -gt 77) {
     # Guacharito Millonario (101 animales): 9 vistas completas con estabilizacion de fondo
     $totalPasos = 9
 } elseif ($animales.Count -gt 38) {
-    # Guacharo Activo (77 animales): 5 vistas (Top + 3 tramos intermedios + Fondo)
-    $totalPasos = 5
+    # Guacharo Activo (77 animales): 6 vistas (Top + 4 tramos intermedios + Fondo)
+    $totalPasos = 6
 } elseif ($animales.Count -le 22) {
     $totalPasos = 1
 }
@@ -1172,8 +1172,8 @@ for ($paso = 1; $paso -le $totalPasos; $paso++) {
         Start-Sleep -Milliseconds 900
     } else {
         Write-Output " -> [PANEO $paso/$totalPasos] Avanzando tramo intermedio con renderizado seguro..."
-        [PremierFullProbe]::ScrollWheel(1050, 400, 6, -120)
-        Start-Sleep -Milliseconds 550
+        [PremierFullProbe]::ScrollWheel(1050, 400, 7, -120)
+        Start-Sleep -Milliseconds 600
     }
 
     $bmpFull = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height

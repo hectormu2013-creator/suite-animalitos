@@ -15,10 +15,22 @@ try {
 } catch (e) {}
 
 /**
+ * Normalizar clave de animal (00 vs 0 vs 01..99)
+ */
+function normalizeAnimalKey(num) {
+  const s = String(num || '').trim();
+  if (s === '00') return '00';
+  if (s === '0') return '0';
+  return s.padStart(2, '0');
+}
+
+/**
  * Obtener nombre del animal por número
  */
 function getAnimalName(num) {
-  const norm = String(num).padStart(2, '0');
+  const norm = normalizeAnimalKey(num);
+  if (norm === '00') return 'Ballena';
+  if (norm === '0') return 'Delfin';
   const rawNum = String(parseInt(num, 10));
   return animalDict[norm] || animalDict[rawNum] || animalDict[num] || `Animal ${norm}`;
 }
@@ -121,7 +133,7 @@ function recordScan(scanData) {
     const id = `${fecha}_${Date.now()}`;
 
     // 1. Números y detalle de Premier Pluss (Cupo Cero / Agotados) - Estricto: solo si viene de sondeo real
-    const rojosPremier = (Array.isArray(scanData.rojosPremier) ? scanData.rojosPremier : []).map(n => String(n).padStart(2, '0'));
+    const rojosPremier = (Array.isArray(scanData.rojosPremier) ? scanData.rojosPremier : []).map(n => normalizeAnimalKey(n));
     const detallePremier = rojosPremier.map(n => ({
       numero: n,
       nombre: getAnimalName(n),
@@ -132,7 +144,7 @@ function recordScan(scanData) {
     // 2. Números Fijos Permanentes (Máx 3, Mín 0)
     const rawFijos = scanData.fijosSeleccionados || scanData.numFijos || [];
     const detalleFijos = rawFijos.slice(0, 3).map(f => {
-      const numStr = String(typeof f === 'object' ? f.numero : f).padStart(2, '0');
+      const numStr = normalizeAnimalKey(typeof f === 'object' ? f.numero : f);
       return {
         numero: numStr,
         nombre: (typeof f === 'object' && f.nombre) || getAnimalName(numStr),
@@ -146,7 +158,7 @@ function recordScan(scanData) {
     // 3. Números y detalle de Visual-FX (Predictivo Atrasados)
     const rawPredictivos = scanData.predictivosVisualFx || scanData.predictivosSeleccionados || [];
     const detallePredictivos = rawPredictivos.map(p => {
-      const numStr = String(p.numero).padStart(2, '0');
+      const numStr = normalizeAnimalKey(p.numero);
       return {
         numero: numStr,
         nombre: p.nombre || getAnimalName(numStr),
@@ -161,7 +173,7 @@ function recordScan(scanData) {
     // 4. Números y detalle del Sistema Autónomo (Cobertura Aleatoria, máx 3)
     const rawAleatorios = scanData.aleatoriosSistema || scanData.aleatoriosSeleccionados || [];
     const detalleAleatorios = rawAleatorios.slice(0, 3).map(a => {
-      const numStr = String(typeof a === 'object' ? a.numero : a).padStart(2, '0');
+      const numStr = normalizeAnimalKey(typeof a === 'object' ? a.numero : a);
       return {
         numero: numStr,
         nombre: (typeof a === 'object' && a.nombre) || getAnimalName(numStr),
@@ -175,7 +187,7 @@ function recordScan(scanData) {
     // 5. Números heredados por Memoria de Cupo Cero Premier (Arrastre Preventivo)
     const rawMemoria = scanData.numMemoriaCupoCero || scanData.memoriaCupoCero || [];
     const detalleMemoria = rawMemoria.map(m => {
-      const numStr = String(typeof m === 'object' ? m.numero : m).padStart(2, '0');
+      const numStr = normalizeAnimalKey(typeof m === 'object' ? m.numero : m);
       const sortRest = typeof m === 'object' && m.sorteosRestantes !== undefined ? m.sorteosRestantes : null;
       return {
         numero: numStr,

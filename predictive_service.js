@@ -1,13 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-// Rutas estándar hacia el proyecto Visual-FX
+// Rutas estándar hacia los datos de Visual-FX (Prioridad: Local empaquetado en el repo)
+const LOCAL_DATA_DIR = path.join(__dirname, 'data');
+const LOCAL_HISTORY_PATH = path.join(LOCAL_DATA_DIR, 'lottery_history.json');
+const LOCAL_RESULTS_PATH = path.join(LOCAL_DATA_DIR, 'lottery_results.json');
+const LOCAL_STATS_PATH = path.join(LOCAL_DATA_DIR, 'lottery_stats.js');
+
 const VISUAL_FX_DIR = path.join('C:', 'Users', 'Hector', 'Fenix_2026_1', 'PROYECTO_VISUAL_FX');
-const VISUAL_FX_HISTORY_PATH = path.join(VISUAL_FX_DIR, 'data', 'lottery_history.json');
-const VISUAL_FX_RESULTS_PATH = path.join(VISUAL_FX_DIR, 'data', 'lottery_results.json');
-const VISUAL_FX_STATS_PATH = path.join(VISUAL_FX_DIR, 'lottery_stats.js');
+const VISUAL_FX_HISTORY_PATH = fs.existsSync(LOCAL_HISTORY_PATH) ? LOCAL_HISTORY_PATH : path.join(VISUAL_FX_DIR, 'data', 'lottery_history.json');
+const VISUAL_FX_RESULTS_PATH = fs.existsSync(LOCAL_RESULTS_PATH) ? LOCAL_RESULTS_PATH : path.join(VISUAL_FX_DIR, 'data', 'lottery_results.json');
+const VISUAL_FX_STATS_PATH = fs.existsSync(LOCAL_STATS_PATH) ? LOCAL_STATS_PATH : path.join(VISUAL_FX_DIR, 'lottery_stats.js');
 const VISUAL_FX_ENGINE_PATH = path.join(VISUAL_FX_DIR, 'lottery_engine.js');
-const LOCAL_FALLBACK_PATH = path.join(__dirname, 'lottery_history_cache.json');
+const LOCAL_FALLBACK_PATH = LOCAL_HISTORY_PATH;
 
 // Diccionario de animales oficial
 let animalDict = {};
@@ -62,18 +67,18 @@ function getAnimalDisplayName(num, fallbackName = '') {
  */
 function loadVisualFxHistory() {
   try {
+    if (fs.existsSync(LOCAL_HISTORY_PATH)) {
+      return JSON.parse(fs.readFileSync(LOCAL_HISTORY_PATH, 'utf8'));
+    }
+  } catch (e) {}
+
+  try {
     if (fs.existsSync(VISUAL_FX_HISTORY_PATH)) {
       return JSON.parse(fs.readFileSync(VISUAL_FX_HISTORY_PATH, 'utf8'));
     }
   } catch (err) {
     console.warn(`[PREDICTIVE] Error al leer Visual-FX en ${VISUAL_FX_HISTORY_PATH}: ${err.message}`);
   }
-
-  try {
-    if (fs.existsSync(LOCAL_FALLBACK_PATH)) {
-      return JSON.parse(fs.readFileSync(LOCAL_FALLBACK_PATH, 'utf8'));
-    }
-  } catch (e) {}
 
   return null;
 }
@@ -82,6 +87,12 @@ function loadVisualFxHistory() {
  * Cargar resultados del día desde Visual-FX
  */
 function loadVisualFxResults() {
+  try {
+    if (fs.existsSync(LOCAL_RESULTS_PATH)) {
+      return JSON.parse(fs.readFileSync(LOCAL_RESULTS_PATH, 'utf8'));
+    }
+  } catch (e) {}
+
   try {
     if (fs.existsSync(VISUAL_FX_RESULTS_PATH)) {
       return JSON.parse(fs.readFileSync(VISUAL_FX_RESULTS_PATH, 'utf8'));
@@ -181,7 +192,13 @@ function getMostDelayedNumbers(loteriaId, limit = 5) {
     const gameHistory = historyData[gameId] || {};
     const dates = Object.keys(gameHistory).sort().reverse();
 
+    // Si no hay historial disponible en disco para este juego, no inventar atrasados ni seleccionar 00 por defecto
+    if (dates.length === 0 && drawsFlat.length === 0) {
+      return [];
+    }
+
     const isAnimal = !gameId.includes('triple');
+    const isGuacharo = gameId.includes('guacharo');
     let max = 36;
     if (gameId === 'guacharito-millonario' || gameId === 'la-ricachona' || gameId === 'animalitos-la-ricachona') {
       max = 70;
@@ -191,7 +208,10 @@ function getMostDelayedNumbers(loteriaId, limit = 5) {
 
     const allNumbers = [];
     if (isAnimal) {
-      allNumbers.push('00');
+      // Guácharo Activo NO tiene Ballena (00), solo Delfín (0) y 01 a 36/75
+      if (!isGuacharo) {
+        allNumbers.push('00');
+      }
       allNumbers.push('0');
       for (let i = 1; i <= max; i++) allNumbers.push(String(i).padStart(2, '0'));
     } else {
@@ -275,8 +295,8 @@ function getRandomSystemBlockNumbers(loteriaId, count = 2, excludeList = []) {
   const isGuacharo = gameId.includes('guacharo');
   const maxN = isMillonario ? 70 : isGuacharo ? 75 : 36;
 
-  // Pool de números válidos para este juego
-  const pool = ['00', '0'];
+  // Pool de números válidos para este juego (Guácharo Activo NO tiene '00', solo '0')
+  const pool = isGuacharo ? ['0'] : ['00', '0'];
   for (let i = 1; i <= maxN; i++) {
     pool.push(String(i).padStart(2, '0'));
   }

@@ -1,0 +1,107 @@
+{
+  "2026-10-10": {
+    "guacharito-millonario": {
+      "gameId": "guacharito-millonario",
+      "id": "guacharito-millonario",
+      "name": "GUACHARITO MILLONARIO",
+      "shortName": "Guacharito",
+      "type": "animalitos",
+      "icon": "🐥",
+      "color": "#5b2b73",
+      "logoUrl": "https://api.1000resultados.com/public/images/animals/guacharitomillonario/logo.png",
+      "lastUpdated": "2026-10-10T17:42:31.484Z",
+      "draws": [
+        {
+          "time": "08:30 AM",
+          "isPending": false,
+          "number": "25",
+          "name": "Gallina",
+          "tripleA": "25",
+          "tripleB": null,
+          "tripleC": null,
+          "signo": null,
+          "image": "https://api.1000resultados.com/public/images/animals/guacharitomillonario/25.png"
+        },
+        {
+          "time": "09:30 AM",
+          "isPending": false,
+          "number": "86",
+          "name": "Buey",
+          "tripleA": "86",
+          "tripleB": null,
+          "tripleC": null,
+          "signo": null,
+          "image": "https://api.1000resultados.com/public/images/animals/guacharitomillonario/86.png"
+        },
+        {
+          "time": "10:30 AM",
+          "isPending": false,
+          "number": "41",
+          "name": "Canguro",
+          "tripleA": "41",
+          "tripleB": null,
+          "tripleC": null,
+          "signo": null,
+          "image": "https://api.1000resultados.com/public/images/animals/guacharitomillonario/41.png"
+        },
+        {
+          "time": "11:30 AM",
+          "isPending": false,
+          "number": "92",
+          "name": "Cisne",
+          "tripleA": "92",
+          "tripleB": null,
+          "tripleC": null,
+          "signo": null,
+          "image": "https://api.1000resultados.com/public/images/animals/guacharitomillonario/92.png"
+        },
+        {
+          "time": "12:30 PM",
+          "isPending": false,
+          "number": "38",
+          "name": "Bufalo",
+          "tripleA": "38",
+          "tripleB": null,
+          "tripleC": null,
+          "signo": null,
+          "image": "https://api.1000resultados.com/public/images/animals/guacharitomillonario/38.png"
+        },
+        {
+          "time": "01:30 PM",
+          "isPending": false,
+          "number": "96",
+          "name": "Caballito de Mar",
+          "tripleA": "96",
+          "tripleB": null,
+          "tripleC": null,
+          "signo": null,
+          "image": "https://api.1000resultados.com/public/images/animals/guacharitomillonario/96.png"
+        },
+        {
+          "time": "02:30 PM",
+          "isPending": true
+        },
+        {
+          "time": "03:30 PM",
+          "isPending": true
+        },
+        {
+          "time": "04:30 PM",
+          "isPending": true
+        },
+        {
+          "time": "05:30 PM",
+          "isPending": true
+        },
+        {
+          "time": "06:30 PM",
+          "isPending": true
+        },
+        {
+          "time": "07:30 PM",
+          "isPending": true
+        }
+      ]
+    }
+  }
+}
