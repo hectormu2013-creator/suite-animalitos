@@ -38,16 +38,16 @@
       },
       {
         "id": "maquina_2",
-        "notas": "Laptop de Hector (Opción 3 - Respaldo / Verificadora)",
+        "notas": "Túnel en vivo: 2:04:43 PM",
         "activa": true,
-        "ipOUrl": "https://partly-snowboard-estates-tradition.trycloudflare.com",
+        "ipOUrl": "https://means-freelance-baptist-clay.trycloudflare.com",
         "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
         "keepOpen": true,
         "prioridad": 3,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-10T13:19:53.873Z",
+        "ultimaConexion": "2026-10-10T14:31:00.756Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -79,8 +79,8 @@
     },
     "horaActivacionDiaria": "07:00",
     "activacionDiariaActiva": true,
-    "maquinaEncargadaVerificacionesId": "maquina_2",
-    "maquinaEncargadaSondeoId": "maquina_3"
+    "maquinaEncargadaSondeoId": "maquina_3",
+    "maquinaEncargadaVerificacionesId": "maquina_2"
   },
   "loterias": [
     {

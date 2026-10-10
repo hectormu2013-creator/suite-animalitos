@@ -1026,15 +1026,17 @@ Start-Sleep -Milliseconds 2600
 
 # Funcion interna de extraccion OCR + Color de la tabla
 function ExtraerFilasDePantalla($bmpScreen) {
+    # Coordenadas calibradas para pantalla completa:
+    # Inicio X=890, Y=130, Ancho=525, Alto=835 (Cubre desde la fila 1 hasta la barra azul inferior en Y=965)
     $tableX = 890
     $tableY = 130
-    $tableW = 510
-    $tableH = [Math]::Min(720, $bmpScreen.Height - $tableY)
+    $tableW = 525
+    $tableH = [Math]::Min(835, ($bmpScreen.Height - $tableY - 110))
 
     $rectTable = New-Object System.Drawing.Rectangle $tableX, $tableY, $tableW, $tableH
     $bmpTable = $bmpScreen.Clone($rectTable, $bmpScreen.PixelFormat)
 
-    # 2x Upscale
+    # 2x Upscale para maxima definicion OCR
     $bmp2x = New-Object System.Drawing.Bitmap ($bmpTable.Width * 2), ($bmpTable.Height * 2)
     $g = [System.Drawing.Graphics]::FromImage($bmp2x)
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
@@ -1059,7 +1061,7 @@ function ExtraerFilasDePantalla($bmpScreen) {
     foreach ($line in $ocrRes.Lines) {
         foreach ($word in $line.Words) {
             $txt = $word.Text.Trim()
-            if ($txt -in @('Num', 'Nombre', 'Monto', 'Jugadas', 'ticket', 'Bs', 'Bolivares')) { continue }
+            if ($txt -in @('Num', 'Nombre', 'Monto', 'Jugadas', 'ticket', 'Bs', 'Bolivares', 'Sorteo', '(F5)', '(F7)')) { continue }
 
             $midY = $word.BoundingRect.Y + ($word.BoundingRect.Height / 2)
             $globalY = [int]($tableY + ($midY / 2))
@@ -1082,10 +1084,14 @@ function ExtraerFilasDePantalla($bmpScreen) {
                 }
             }
 
+            # En coordenadas 2x:
+            # Columna Num: midX_2x < 140
+            # Columna Nombre: 140 <= midX_2x < 550
+            # Columna Monto: midX_2x >= 550
             $midX_2x = $word.BoundingRect.X + ($word.BoundingRect.Width / 2)
-            if ($midX_2x -lt 200) {
+            if ($midX_2x -lt 140) {
                 $groupedRows[$rowKey].Num = $txt
-            } elseif ($midX_2x -lt 650) {
+            } elseif ($midX_2x -lt 550) {
                 $groupedRows[$rowKey].Nombre = $txt
             } else {
                 $groupedRows[$rowKey].Monto = $txt
@@ -1093,7 +1099,11 @@ function ExtraerFilasDePantalla($bmpScreen) {
         }
     }
 
-    # Analizar color y cruzar con diccionario
+    # Analisis cromatico estricto del fondo en la celda de Nombre (X = 980 a 1100)
+    # En Premier Pluss el color rojo/naranja se dibuja de forma uniforme en la columna Nombre:
+    # - ROJO (Cupo 0 / Agotado): R alto > 210, G muy bajo < 50, B muy bajo < 50 (Fondo rojo solido)
+    # - NARANJA (Cupo reducido): R alto > 210, G alto > 120, B bajo < 60
+    # - NORMAL (Sin agotar): Blanco o crema (R~253, G~246, B~233)
     foreach ($k in ($groupedRows.Keys | Sort-Object)) {
         $rObj = $groupedRows[$k]
         $yC = [int]$rObj.Y
@@ -1101,28 +1111,28 @@ function ExtraerFilasDePantalla($bmpScreen) {
         if ($yC -ge 145 -and $yC -lt ($bmpScreen.Height - 30)) {
             $redCount = 0
             $orangeCount = 0
-            for ($sx = 920; $sx -le 1340; $sx += 4) {
-                # Muestreo a 5 alturas para maxima precision del fondo sin importar la alineacion del texto
-                foreach ($dy in @(-4, -2, 0, 2, 4)) {
+
+            for ($sx = 980; $sx -le 1100; $sx += 5) {
+                foreach ($dy in @(-3, 0, 3)) {
                     $sampY = $yC + $dy
                     if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height) {
                         $px = $bmpScreen.GetPixel($sx, $sampY)
-                        # Rojo puro de cupo cero en Premier Pluss (R alto > 175, G y B bajos < 95)
-                        if ($px.R -gt 175 -and $px.G -lt 95 -and $px.B -lt 95) {
+                        if ($px.R -gt 210 -and $px.G -lt 50 -and $px.B -lt 50) {
                             $redCount++
-                        } elseif ($px.R -gt 195 -and $px.G -gt 120 -and $px.G -lt 225 -and $px.B -lt 85) {
+                        } elseif ($px.R -gt 210 -and $px.G -gt 120 -and $px.B -lt 60) {
                             $orangeCount++
                         }
                     }
                 }
             }
 
-            # Deteccion infalible de Cupo Cero: rojo visual o monto explicitamente 0
+            # Deteccion infalible de Cupo Cero (Cero Falsos Positivos):
+            # Un animal es ROJO si tiene fondo rojo solido (>= 15 muestras de 75) o (monto 0 y >= 5 muestras rojas)
             $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
             $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
-            if ($redCount -ge 5 -or ($esMontoCero -and ($orangeCount -gt 2 -or $redCount -ge 2)) -or $esMontoCero) {
+            if ($redCount -ge 15 -or ($esMontoCero -and $redCount -ge 5) -or ($redCount -ge 10 -and $orangeCount -lt 5)) {
                 $rObj.Color = "ROJO"
-            } elseif ($orangeCount -gt 8) {
+            } elseif ($orangeCount -ge 15) {
                 $rObj.Color = "NARANJA"
             }
 
