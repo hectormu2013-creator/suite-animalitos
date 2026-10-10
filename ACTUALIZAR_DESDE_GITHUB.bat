@@ -8,11 +8,12 @@ echo ======================================================================
 echo.
 echo Comprobando y descargando las ultimas mejoras oficiales desde GitHub...
 
-:: Si existe git, usar git pull
+:: Si existe git, forzar sincronizacion exacta con origin/main
 where git >nul 2>&1
 if %errorLevel% equ 0 (
     if exist ".git" (
-        git pull origin main
+        git fetch origin main
+        git reset --hard origin/main
         goto FIN
     )
 )
