@@ -363,6 +363,12 @@ public class PremierFullProbe {
     public static void ScrollToTop(int x, int y) {
         ScrollWheel(x, y, 50, 120);
     }
+
+    public static void SendKeyI() {
+        keybd_event(0x49, 0, 0, UIntPtr.Zero); // 'I' key down
+        System.Threading.Thread.Sleep(50);
+        keybd_event(0x49, 0, 2, UIntPtr.Zero); // 'I' key up
+    }
 }
 "@
 
@@ -527,6 +533,16 @@ if (Test-Path $dictFile) {
     foreach ($prop in $rawDict.PSObject.Properties) {
         $animalDict[$prop.Name] = $prop.Value
     }
+}
+
+function NormalizeNum($n) {
+    $s = "$n".Trim()
+    if ($s -eq "00") { return "00" }
+    if ($s -eq "0") { return "0" }
+    if ($s -match '^\d+$') {
+        return ([int]$s).ToString("00")
+    }
+    return $s
 }
 
 # Archivo de control para comunicacion bidireccional (Pausar, Continuar, Detener)
@@ -989,26 +1005,20 @@ foreach ($anim in $animales) {
 Write-Output "`n[OK] Los $($animales.Count) animales fueron ingresados al ticket."
 Start-Sleep -Milliseconds 500
 
-# 5. DISPARO DE VALIDACION: Clic UNICO en [Imprimir] (Deteccion Dinamica)
-Write-Output "[6/7] Disparando validacion de cupos con boton [Imprimir] (Un solo clic de consulta)..."
-Check-SafetyAndControl "Boton Imprimir"
-Set-ControlState "RUNNING" "Disparando validacion con boton Imprimir"
+# 5. DISPARO DE VALIDACION: Tecla rápida 'i' (Impresion / Consulta de Cupos)
+Write-Output "[6/7] Disparando validacion de cupos con tecla rapida 'i' (Imprimir / Consulta)..."
+Check-SafetyAndControl "Tecla Imprimir i"
+Set-ControlState "RUNNING" "Disparando validacion con tecla i"
 [PremierFullProbe]::ForceForeground($hwnd) | Out-Null
 Start-Sleep -Milliseconds 200
 
-# Deteccion visual dinamica del boton azul de la Impresora en la franja superior
-$boundsScreen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$bmpForPrintBtn = New-Object System.Drawing.Bitmap $boundsScreen.Width, $boundsScreen.Height
-$gPBtn = [System.Drawing.Graphics]::FromImage($bmpForPrintBtn)
-$gPBtn.CopyFromScreen($boundsScreen.Location, [System.Drawing.Point]::Empty, $boundsScreen.Size)
-$gPBtn.Dispose()
-
-$posImpresora = ObtenerPosicionBotonImpresora $bmpForPrintBtn
-$bmpForPrintBtn.Dispose()
-
-Write-Output " -> [BOTON IMPRESORA] Ubicacion: X=$($posImpresora.X), Y=$($posImpresora.Y) (Dinamico: $($posImpresora.Detectado))."
-Write-Output " -> Ejecutando UN SOLO CLIC limpio para validar y evaluar cupos..."
-[PremierFullProbe]::Click($posImpresora.X, $posImpresora.Y)
+# Enviar pulsacion de la tecla rápida 'i' para mandar a imprimir y recibir respuesta del servidor Premier
+Write-Output " -> Enviando pulsacion de la tecla rápida 'i'..."
+try {
+    [PremierFullProbe]::SendKeyI()
+} catch {
+    [System.Windows.Forms.SendKeys]::SendWait("i")
+}
 
 # Esperar respuesta del servidor de Premier Pluss para que pinte las filas rojas/naranjas (CERO segundo clic)
 Start-Sleep -Milliseconds 2600
@@ -1017,38 +1027,57 @@ Start-Sleep -Milliseconds 2600
 [PremierFullProbe]::CheckAndDismissAnyExceptionDialog() | Out-Null
 
 # Funcion interna de extraccion OCR + Color de la tabla
-function ExtraerFilasDePantalla($bmpScreen) {
-    $tableX = 890
-    $tableY = 130
-    $tableW = 510
-    $tableH = [Math]::Min(720, $bmpScreen.Height - $tableY)
+function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
+    # 1. Calculo dinamico de dimensiones segun resolucion real de pantalla (Soporta 1080p, 864p, 768p y 125% DPI)
+    $scaleX = $bmpScreen.Width / 1920.0
+    $scaleY = $bmpScreen.Height / 1080.0
+
+    $tableX = [int](890 * $scaleX)
+    $tableY = [int](130 * $scaleY)
+    $tableW = [int](510 * $scaleX)
+    $tableH = [Math]::Min([int](720 * $scaleY), ($bmpScreen.Height - $tableY))
 
     $rectTable = New-Object System.Drawing.Rectangle $tableX, $tableY, $tableW, $tableH
     $bmpTable = $bmpScreen.Clone($rectTable, $bmpScreen.PixelFormat)
 
-    # 2x Upscale
-    $bmp2x = New-Object System.Drawing.Bitmap ($bmpTable.Width * 2), ($bmpTable.Height * 2)
+    # 2x Upscale para maxima nitidez en OCR
+    $width2x = $bmpTable.Width * 2
+    $height2x = $bmpTable.Height * 2
+    $bmp2x = New-Object System.Drawing.Bitmap $width2x, $height2x
     $g = [System.Drawing.Graphics]::FromImage($bmp2x)
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $g.DrawImage($bmpTable, 0, 0, $bmp2x.Width, $bmp2x.Height)
+    $g.DrawImage($bmpTable, 0, 0, $width2x, $height2x)
     $g.Dispose()
 
     $tempFile = Join-Path $PSScriptRoot "temp_ocr_pass.png"
-    $bmp2x.Save($tempFile, [System.Drawing.Imaging.ImageFormat]::Png)
+    $fullTempPath = [System.IO.Path]::GetFullPath($tempFile)
+    $bmp2x.Save($fullTempPath, [System.Drawing.Imaging.ImageFormat]::Png)
     $bmp2x.Dispose()
     $bmpTable.Dispose()
 
-    $storageFile = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($tempFile)) ([Windows.Storage.StorageFile])
+    $storageFile = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($fullTempPath)) ([Windows.Storage.StorageFile])
     $stream = Await ($storageFile.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
     $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
     $softwareBitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
     $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+    if ($null -eq $engine) {
+        $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage(([Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages | Select-Object -First 1))
+    }
     $ocrRes = Await ($engine.RecognizeAsync($softwareBitmap)) ([Windows.Media.Ocr.OcrResult])
 
     $extractedRows = @()
     $groupedRows = @{}
 
-    foreach ($line in $ocrRes.Lines) {
+    # Limite maximo de animales segun la loteria
+    $maxAnimal = 36
+    if ($loteriaNombre.ToUpper().Contains("MILLONARIO")) {
+        $maxAnimal = 99
+    } elseif ($loteriaNombre.ToUpper().Contains("GUACHARO")) {
+        $maxAnimal = 75
+    }
+
+    $allLines = @($ocrRes.Lines)
+    foreach ($line in $allLines) {
         foreach ($word in $line.Words) {
             $txt = $word.Text.Trim()
             if ($txt -in @('Num', 'Nombre', 'Monto', 'Jugadas', 'ticket', 'Bs', 'Bolivares')) { continue }
@@ -1074,10 +1103,13 @@ function ExtraerFilasDePantalla($bmpScreen) {
                 }
             }
 
+            # Asignacion por ratio horizontal relativo al ancho de la tabla (Universal para cualquier escala)
             $midX_2x = $word.BoundingRect.X + ($word.BoundingRect.Width / 2)
-            if ($midX_2x -lt 200) {
+            $ratioX = $midX_2x / $width2x
+
+            if ($ratioX -lt 0.20) {
                 $groupedRows[$rowKey].Num = $txt
-            } elseif ($midX_2x -lt 650) {
+            } elseif ($ratioX -lt 0.58) {
                 $groupedRows[$rowKey].Nombre = $txt
             } else {
                 $groupedRows[$rowKey].Monto = $txt
@@ -1085,49 +1117,80 @@ function ExtraerFilasDePantalla($bmpScreen) {
         }
     }
 
-    # Analizar color y cruzar con diccionario
+    # Rango horizontal para muestreo del color de celda (Columna Nombre donde Premier pinta el fondo)
+    $colNameStart = [int]($tableX + ($tableW * 0.22))
+    $colNameEnd   = [int]($tableX + ($tableW * 0.54))
+
     foreach ($k in ($groupedRows.Keys | Sort-Object)) {
         $rObj = $groupedRows[$k]
         $yC = [int]$rObj.Y
 
-        if ($yC -ge 145 -and $yC -lt ($bmpScreen.Height - 30)) {
+        if ($yC -ge ($tableY + 15) -and $yC -lt ($tableY + $tableH - 10)) {
             $redCount = 0
             $orangeCount = 0
-            for ($sx = 960; $sx -le 1220; $sx += 3) {
-                # Muestreo a 5 alturas para maxima precision del fondo sin importar la alineacion del texto
+
+            for ($sx = $colNameStart; $sx -le $colNameEnd; $sx += 4) {
                 foreach ($dy in @(-3, -1, 0, 1, 3)) {
                     $sampY = $yC + $dy
-                    if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height) {
+                    if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height -and $sx -lt $bmpScreen.Width) {
                         $px = $bmpScreen.GetPixel($sx, $sampY)
-                        # Rojo puro de cupo cero en Premier Pluss (R alto > 180, G y B bajos < 85)
-                        if ($px.R -gt 180 -and $px.G -lt 85 -and $px.B -lt 85) {
+                        # Rojo puro de cupo cero en Premier Pluss (#FF0000: R alto, G bajo, B bajo)
+                        if ($px.R -gt 200 -and $px.G -lt 60 -and $px.B -lt 60) {
                             $redCount++
-                        } elseif ($px.R -gt 200 -and $px.G -gt 130 -and $px.G -lt 220 -and $px.B -lt 80) {
+                        }
+                        # Naranja puro de cupo reducido (#FFA500: R alto, G medio ~165, B bajo)
+                        elseif ($px.R -gt 200 -and $px.G -ge 120 -and $px.G -le 210 -and $px.B -lt 60) {
                             $orangeCount++
                         }
                     }
                 }
             }
 
-            # Deteccion infalible de Cupo Cero: rojo visual o monto explicitamente 0
+            # Evaluacion infalible de Cupo Cero: rojo visual o monto explicitamente 0
             $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
             $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
-            if ($redCount -ge 8 -or $esMontoCero) {
+            
+            # Si el fondo de la celda es rojo (> 6 muestras) o el monto es 0, es ROJO 100% AGOTADO
+            if ($redCount -ge 6 -or $esMontoCero) {
                 $rObj.Color = "ROJO"
-            } elseif ($orangeCount -gt 10) {
+            } elseif ($orangeCount -ge 8) {
                 $rObj.Color = "NARANJA"
             }
 
-            # Si tenemos Num pero no Nombre, autocompletar con diccionario
-            if ($rObj.Num -and -not $rObj.Nombre -and $animalDict.ContainsKey($rObj.Num)) {
-                $rObj.Nombre = $animalDict[$rObj.Num]
+            # Normalizar numero si ya lo tenemos
+            if ($rObj.Num) {
+                $numLimpio = ($rObj.Num -replace '[^\d]', '').Trim()
+                if ($numLimpio) {
+                    $rObj.Num = NormalizeNum $numLimpio
+                }
             }
 
-            # Si tenemos Nombre pero no Num, resolver numero desde diccionario
+            # Autocompletar Nombre usando Num
+            if ($rObj.Num -and -not $rObj.Nombre) {
+                $kNum = $rObj.Num
+                if ($animalDict.ContainsKey($kNum)) {
+                    $rObj.Nombre = $animalDict[$kNum]
+                } elseif ($animalDict.ContainsKey(([int]$kNum).ToString())) {
+                    $rObj.Nombre = $animalDict[([int]$kNum).ToString()]
+                }
+            }
+
+            # Resolver Num desde Nombre respetando el limite maximo de la loteria
             if (-not $rObj.Num -and $rObj.Nombre) {
+                $nomBuscado = $rObj.Nombre.ToLower()
                 foreach ($pair in $animalDict.GetEnumerator()) {
-                    if ($pair.Value -like "*$($rObj.Nombre)*" -or $rObj.Nombre -like "*$($pair.Value)*") {
-                        $rObj.Num = $pair.Key
+                    $candNum = $pair.Key
+                    $intVal = 0
+                    $esInt = [int]::TryParse($candNum, [ref]$intVal)
+                    # No permitir numeros superiores al maximo de la loteria (ej: evitar Leon 60 en loterias de 36)
+                    if ($candNum -ne "00" -and $esInt -and $intVal -gt $maxAnimal) {
+                        continue
+                    }
+
+                    $nomDict = $pair.Value.ToLower()
+                    if ($nomDict -like "*$nomBuscado*" -or $nomBuscado -like "*$nomDict*") {
+                        $rObj.Num = NormalizeNum $candNum
+                        if (-not $rObj.Nombre) { $rObj.Nombre = $pair.Value }
                         break
                     }
                 }
@@ -1139,7 +1202,7 @@ function ExtraerFilasDePantalla($bmpScreen) {
         }
     }
 
-    if (Test-Path $tempFile) { Remove-Item $tempFile -Force }
+    if (Test-Path $fullTempPath) { Remove-Item $fullTempPath -Force -ErrorAction SilentlyContinue }
     return $extractedRows
 }
 
@@ -1162,6 +1225,11 @@ if ($animales.Count -gt 77) {
     $totalPasos = 1
 }
 
+$scaleX = $bounds.Width / 1920.0
+$scaleY = $bounds.Height / 1080.0
+$scrollTableX = [int]((890 + 255) * $scaleX)
+$scrollTableY = [int]((130 + 360) * $scaleY)
+
 Write-Output "[7/7] Iniciando barrido continuo multi-pantalla ($totalPasos vistas para $($animales.Count) animales)..."
 
 for ($paso = 1; $paso -le $totalPasos; $paso++) {
@@ -1169,11 +1237,11 @@ for ($paso = 1; $paso -le $totalPasos; $paso++) {
         Write-Output " -> [PANEO 1/$totalPasos] Analizando Vista Superior inicial..."
     } elseif ($paso -eq $totalPasos) {
         Write-Output " -> [PANEO $paso/$totalPasos] Desplazando tabla al fondo absoluto (Vista Final estabilizada)..."
-        [PremierFullProbe]::ScrollToBottom(1050, 400)
+        [PremierFullProbe]::ScrollToBottom($scrollTableX, $scrollTableY)
         Start-Sleep -Milliseconds 900
     } else {
         Write-Output " -> [PANEO $paso/$totalPasos] Avanzando tramo intermedio con renderizado seguro..."
-        [PremierFullProbe]::ScrollWheel(1050, 400, 7, -120)
+        [PremierFullProbe]::ScrollWheel($scrollTableX, $scrollTableY, 7, -120)
         Start-Sleep -Milliseconds 600
     }
 
@@ -1187,7 +1255,7 @@ for ($paso = 1; $paso -le $totalPasos; $paso++) {
         $bmpFull.Save($outFile, [System.Drawing.Imaging.ImageFormat]::Png)
     }
 
-    $rowsView = ExtraerFilasDePantalla $bmpFull
+    $rowsView = ExtraerFilasDePantalla $bmpFull $Loteria
     $nuevos = 0
     foreach ($r in $rowsView) {
         if (-not $todasLasFilas.ContainsKey($r.Num)) {
@@ -1210,7 +1278,7 @@ for ($paso = 1; $paso -le $totalPasos; $paso++) {
 
 # Retornar la tabla al tope superior de forma limpia antes de limpiar
 if ($totalPasos -gt 1) {
-    [PremierFullProbe]::ScrollToTop(1050, 400)
+    [PremierFullProbe]::ScrollToTop($scrollTableX, $scrollTableY)
     Start-Sleep -Milliseconds 250
 }
 
