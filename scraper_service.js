@@ -148,14 +148,15 @@ async function scrape1000Resultados(gameSlug) {
   if (!gameSlug) return [];
   try {
     const slugMap = {
-      'guacharo-activo': 'guacharoactivo',
-      'lotto-activo': 'lottoactivo',
-      'la-granjita': 'granjita',
-      'guacharito-millonario': 'guacharitomillonario',
-      'selva-plus': 'selvaplus',
-      'ruleta-activa': 'ruletaactiva'
+      'guacharo-activo': 'guacharo-activo',
+      'lotto-activo': 'lotto-activo',
+      'la-granjita': 'la-granjita',
+      'guacharito-millonario': 'guacharito-millonario',
+      'guacharo-millonario': 'guacharito-millonario',
+      'selva-plus': 'selva-plus',
+      'ruleta-activa': 'ruleta-activa'
     };
-    const s = slugMap[gameSlug] || gameSlug.replace(/[^a-z0-9]/g, '');
+    const s = slugMap[gameSlug] || gameSlug;
     const { status, html } = await fetchUrl(`https://1000resultados.com/resultados/${s}`);
     if (status !== 200 || !html) return [];
 

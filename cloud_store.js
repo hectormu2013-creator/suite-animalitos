@@ -121,10 +121,35 @@ async function getMasterHistory() {
 async function saveMasterHistory(records) {
   if (!Array.isArray(records)) return false;
   try {
+    let merged = [...records];
+    try {
+      const existing = await getMasterHistory();
+      if (existing && Array.isArray(existing.records) && existing.records.length > 0) {
+        const map = new Map();
+        for (const r of existing.records) {
+          if (r && r.id) map.set(r.id, r);
+        }
+        for (const r of records) {
+          if (!r || !r.id) continue;
+          if (!map.has(r.id)) {
+            map.set(r.id, r);
+          } else {
+            const ex = map.get(r.id);
+            if (r.ganador && r.ganador.verificado) {
+              map.set(r.id, r);
+            } else if (!ex.ganador || !ex.ganador.verificado) {
+              map.set(r.id, r);
+            }
+          }
+        }
+        merged = Array.from(map.values()).sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
+      }
+    } catch (eMerge) {}
+
     const nowIso = new Date().toISOString();
     const payload = {
       key: 'suite_history',
-      data: records,
+      data: merged,
       updated_at: nowIso
     };
 

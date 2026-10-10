@@ -28,6 +28,7 @@ function getAnimalName(num) {
  */
 function mapLoteriaToVisualFx(loteriaStr) {
   const clean = (loteriaStr || '').toLowerCase().trim();
+  if (clean.includes('millonario') || clean.includes('guacharito')) return 'guacharito-millonario';
   if (clean.includes('guacharo')) return 'guacharo-activo';
   if (clean.includes('granjita')) return 'la-granjita';
   if (clean.includes('lotto')) return 'lotto-activo';

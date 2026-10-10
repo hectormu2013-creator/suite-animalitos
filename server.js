@@ -183,15 +183,39 @@ async function getConfigFresh() {
       }
     }
 
-    // Hidratar historial y memoria en Render o si están vacíos
-    if (IS_CLOUD || !fs.existsSync(path.join(__dirname, 'history_db.json'))) {
+    // Hidratar o combinar historial maestro de Supabase (Smart Merge)
+    try {
       const histRes = await cloudStore.getMasterHistory();
       if (histRes && Array.isArray(histRes.records) && histRes.records.length > 0) {
         const historyMgr = require('./history_manager');
-        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(histRes.records, null, 2), 'utf8');
-        historyMgr.rewriteCSV(histRes.records);
-        log(`☁️ [HISTORIAL MAESTRO NUBE] ${histRes.records.length} registros restaurados desde Supabase.`, 'log-success');
+        let localRecords = [];
+        if (fs.existsSync(historyMgr.DB_PATH)) {
+          try { localRecords = JSON.parse(fs.readFileSync(historyMgr.DB_PATH, 'utf8')); } catch (e) {}
+        }
+        const map = new Map();
+        for (const r of histRes.records) {
+          if (r && r.id) map.set(r.id, r);
+        }
+        for (const r of localRecords) {
+          if (!r || !r.id) continue;
+          if (!map.has(r.id)) {
+            map.set(r.id, r);
+          } else {
+            const ex = map.get(r.id);
+            if (r.ganador && r.ganador.verificado) {
+              map.set(r.id, r);
+            } else if (!ex.ganador || !ex.ganador.verificado) {
+              map.set(r.id, r);
+            }
+          }
+        }
+        const merged = Array.from(map.values()).sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
+        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+        historyMgr.rewriteCSV(merged);
+        log(`☁️ [HISTORIAL MAESTRO NUBE] ${merged.length} registros sincronizados (Nube + Local).`, 'log-success');
       }
+    } catch (eHist) {
+      console.warn(`[STARTUP HIST SYNC] ${eHist.message}`);
     }
 
     if (IS_CLOUD || !fs.existsSync(path.join(__dirname, 'memoria_cupo_cero.json'))) {
@@ -1058,7 +1082,11 @@ app.post('/api/sync/receive-history', async (req, res) => {
     }
 
     log(`☁️ [SYNC NUBE] Recibidos y sincronizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
-    // Nota: el respaldo del historial en Supabase lo hace el nodo local en syncToCloudImmediate().
+    // Persistir historial combinado maestro en Supabase para sincronizar a todos los nodos
+    try {
+      const cloudStore = require('./cloud_store');
+      cloudStore.saveMasterHistory(currentDb).catch(() => {});
+    } catch (e) {}
 
     res.json({ ok: true, count: Array.isArray(records) ? records.length : 0 });
   } catch (err) {
@@ -2367,6 +2395,78 @@ if (!process.env.RENDER && !process.env.IS_RENDER) {
       syncToCloudImmediate(false);
     } catch (e) {}
   }, 45000);
+}
+
+// 🏆 WORKER AUTÓNOMO DE VERIFICACIÓN DE RESULTADOS OFICIALES
+// Funciona 24/7 tanto en Render (Nube) como en Nodos Locales sin requerir interacción del usuario.
+let isVerifyingResultsBackground = false;
+setInterval(async () => {
+  if (isVerifyingResultsBackground) return;
+  try {
+    const historyMgr = require('./history_manager');
+    const history = historyMgr.getHistory();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const pendingToday = history.filter(r => r.fecha === todayStr && (!r.ganador || !r.ganador.verificado));
+    if (pendingToday.length === 0) return;
+
+    isVerifyingResultsBackground = true;
+    const syncRes = await historyMgr.syncResultsWithVisualFx();
+    if (syncRes && syncRes.updatedCount > 0) {
+      log(`🏆 [AUTO-VERIFICADOR] ${syncRes.updatedCount} resultados oficiales confirmados (${syncRes.trophiesCount} golpes de banca evitados).`, 'log-success');
+      if (IS_CLOUD) {
+        const cloudStore = require('./cloud_store');
+        await cloudStore.saveMasterHistory(historyMgr.getHistory());
+      } else {
+        syncToCloudImmediate(false, true);
+      }
+    }
+  } catch (eVer) {
+    // silencioso
+  } finally {
+    isVerifyingResultsBackground = false;
+  }
+}, 60000);
+
+// 🔄 SINCRONIZACIÓN DE HISTORIAL SUPABASE -> NODO LOCAL
+// Si otra máquina (ej. Máquina 3) realiza los sondeos, este worker mantiene actualizada la laptop de Hector
+let isPullingCloudHistory = false;
+if (!IS_CLOUD) {
+  setInterval(async () => {
+    if (isPullingCloudHistory) return;
+    try {
+      isPullingCloudHistory = true;
+      const cloudStore = require('./cloud_store');
+      const cloudHist = await cloudStore.getMasterHistory();
+      if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
+        const historyMgr = require('./history_manager');
+        const local = historyMgr.getHistory();
+        const map = new Map();
+        for (const r of local) if (r && r.id) map.set(r.id, r);
+        let changes = false;
+        for (const r of cloudHist.records) {
+          if (!r || !r.id) continue;
+          if (!map.has(r.id)) {
+            map.set(r.id, r);
+            changes = true;
+          } else {
+            const ex = map.get(r.id);
+            if (r.ganador && r.ganador.verificado && (!ex.ganador || !ex.ganador.verificado)) {
+              map.set(r.id, r);
+              changes = true;
+            }
+          }
+        }
+        if (changes) {
+          const merged = Array.from(map.values()).sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
+          fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+          historyMgr.rewriteCSV(merged);
+        }
+      }
+    } catch (e) {
+    } finally {
+      isPullingCloudHistory = false;
+    }
+  }, 30000);
 }
 
 // Worker de recepción de órdenes remotas desde la Web (Render) vía Supabase
