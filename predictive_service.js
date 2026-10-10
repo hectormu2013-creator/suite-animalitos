@@ -208,10 +208,7 @@ function getMostDelayedNumbers(loteriaId, limit = 5) {
 
     const allNumbers = [];
     if (isAnimal) {
-      // Guácharo Activo NO tiene Ballena (00), solo Delfín (0) y 01 a 36/75
-      if (!isGuacharo) {
-        allNumbers.push('00');
-      }
+      allNumbers.push('00');
       allNumbers.push('0');
       for (let i = 1; i <= max; i++) allNumbers.push(String(i).padStart(2, '0'));
     } else {
@@ -295,8 +292,8 @@ function getRandomSystemBlockNumbers(loteriaId, count = 2, excludeList = []) {
   const isGuacharo = gameId.includes('guacharo');
   const maxN = isMillonario ? 70 : isGuacharo ? 75 : 36;
 
-  // Pool de números válidos para este juego (Guácharo Activo NO tiene '00', solo '0')
-  const pool = isGuacharo ? ['0'] : ['00', '0'];
+  // Pool de números válidos para este juego (00 Ballena y 0 Delfín incluidos)
+  const pool = ['00', '0'];
   for (let i = 1; i <= maxN; i++) {
     pool.push(String(i).padStart(2, '0'));
   }
