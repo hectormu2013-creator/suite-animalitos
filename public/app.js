@@ -1278,7 +1278,10 @@ function initTunnelManager() {
   }
 
   checkTunnel();
-  setInterval(checkTunnel, 8000);
+  // Monitorear túnel periódicamente cada 60s solo si la pestaña está visible (Ahorro de red)
+  setInterval(() => {
+    if (window._isTabVisible) checkTunnel();
+  }, 60000);
 }
 
 // Formato legible 12 Horas (ej: "07:00" -> "07:00 AM")
@@ -1615,42 +1618,102 @@ function updateControlUIState(status, info = {}) {
   }
 }
 
-// Polling de estado, logs y control en tiempo real
-function startStatusPolling() {
-  statusInterval = setInterval(async () => {
-    try {
-      // 1. Estado de Ejecución y Control
-      const ctrlRes = await fetch('/api/control-status');
-      const ctrlData = await ctrlRes.json();
-      if (ctrlData && ctrlData.ok) {
-        updateControlUIState(ctrlData.status, ctrlData);
+// ========================================================
+// POLLING ADAPTATIVO INTELIGENTE Y OPTIMIZACIÓN DE DATOS
+// ========================================================
+let statusPollingTimeout = null;
+let currentPollingStatus = 'IDLE';
+window._lastHistoryVersion = null;
+window._isTabVisible = !document.hidden;
+
+// Page Visibility API: Cuando el usuario minimiza o cambia de pestaña, pausar el sondeo
+document.addEventListener('visibilitychange', () => {
+  window._isTabVisible = !document.hidden;
+  if (window._isTabVisible) {
+    // Retorno a la pestaña: reactivar y consultar de inmediato
+    if (statusPollingTimeout) clearTimeout(statusPollingTimeout);
+    pollStatus();
+  }
+});
+
+// Función de refresco manual instantáneo bajo demanda
+window.manualForceRefresh = async function() {
+  const icon = document.getElementById('refresh-icon');
+  if (icon) icon.style.transform = 'rotate(360deg)';
+  showToast('🔄 Refrescando datos en vivo...');
+  window._lastHistoryVersion = null; // Forzar descarga fresca
+  if (statusPollingTimeout) clearTimeout(statusPollingTimeout);
+  await Promise.all([
+    pollStatus(),
+    loadConfig(),
+    loadTrophies()
+  ]);
+  if (icon) {
+    setTimeout(() => { icon.style.transform = 'none'; }, 600);
+  }
+};
+
+async function pollStatus() {
+  // Si la pestaña está en segundo plano / minimizada, ahorrar 100% de peticiones (dormir 60s)
+  if (!window._isTabVisible) {
+    statusPollingTimeout = setTimeout(pollStatus, 60000);
+    return;
+  }
+
+  let nextDelay = 12000; // En reposo: 12 segundos (90% menos consumo de red)
+
+  try {
+    const hvParam = window._lastHistoryVersion ? `?hv=${encodeURIComponent(window._lastHistoryVersion)}` : '';
+    const res = await fetch(`/api/status${hvParam}`);
+    const data = await res.json();
+
+    if (data && data.ok) {
+      // 1. Estado de Control unificado (Sin necesidad de hacer petición adicional)
+      if (data.control) {
+        currentPollingStatus = data.control.status || 'IDLE';
+        updateControlUIState(data.control.status, data.control);
       }
 
-      // 2. Historial y Logs
-      const res = await fetch('/api/status');
-      const data = await res.json();
-
-      if (data.history && data.history.length > 0) {
+      // 2. Historial Versionado (Solo descarga y renderiza cuando hay cambios reales)
+      if (data.historyChanged && data.history) {
+        window._lastHistoryVersion = data.historyVersion;
         renderHistoryTable(data.history);
+      } else if (data.totalHistoryCount !== undefined) {
+        const countBadge = document.getElementById('total-checked-badge');
+        if (countBadge) countBadge.textContent = `${data.totalHistoryCount} sorteos revisados`;
       }
 
+      // 3. Logs de ejecución en tiempo real
       if (data.logs && data.logs.length > 0) {
         data.logs.forEach(l => appendLog(l.msg, l.level));
       }
 
-      // 3. Sincronizar contadores y tarjetas de trofeos periódicamente
-      if (!window._lastTrophyPoll || Date.now() - window._lastTrophyPoll > 3500) {
-        window._lastTrophyPoll = Date.now();
-        loadTrophies();
-      }
-
-      // 4. Sincronizar números atrasados con Visual-FX periódicamente (cada 5 minutos)
-      if (!window._lastDelayedPoll || Date.now() - window._lastDelayedPoll > 300000) {
+      // 4. Sincronizar números atrasados con Visual-FX (cada 15 minutos solo si la pestaña está activa)
+      if (!window._lastDelayedPoll || Date.now() - window._lastDelayedPoll > 900000) {
         window._lastDelayedPoll = Date.now();
         actualizarTodosLosAtrasados();
       }
-    } catch (e) {}
-  }, 1500);
+
+      // Intervalo adaptativo según estado del sistema:
+      if (currentPollingStatus === 'RUNNING') {
+        nextDelay = 3000; // Proceso en marcha: 3 segundos para respuesta fluida
+      } else if (currentPollingStatus === 'PAUSED' || currentPollingStatus === 'WAITING') {
+        nextDelay = 5000; // Pausa / Espera: 5 segundos
+      } else {
+        nextDelay = 12000; // En reposo (la mayor parte del día): 12 segundos
+      }
+    }
+  } catch (e) {
+    nextDelay = 15000;
+  }
+
+  statusPollingTimeout = setTimeout(pollStatus, nextDelay);
+}
+
+// Iniciar polling adaptativo
+function startStatusPolling() {
+  if (statusPollingTimeout) clearTimeout(statusPollingTimeout);
+  pollStatus();
 }
 
 // Formatear fecha para el historial (ej: "2026-10-03" -> "03/10/2026")
@@ -2918,6 +2981,9 @@ function initMemoryManager() {
   }
 
   loadMemoryStatus();
-  setInterval(loadMemoryStatus, 8000);
+  // Monitorear memoria cada 60s solo si la pestaña está visible (Ahorro de red)
+  setInterval(() => {
+    if (window._isTabVisible) loadMemoryStatus();
+  }, 60000);
 }
 

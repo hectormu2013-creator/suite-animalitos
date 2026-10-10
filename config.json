@@ -40,14 +40,14 @@
         "id": "maquina_2",
         "notas": "Laptop de Hector (Opción 3 - Respaldo / Verificadora)",
         "activa": true,
-        "ipOUrl": "https://disks-rochester-image-fifth.trycloudflare.com",
+        "ipOUrl": "https://partly-snowboard-estates-tradition.trycloudflare.com",
         "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
         "keepOpen": true,
         "prioridad": 3,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-09T20:33:06.973Z",
+        "ultimaConexion": "2026-10-10T13:19:53.873Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -327,7 +327,7 @@
     },
     {
       "id": "guacharo_millonario",
-      "activo": false,
+      "activo": true,
       "nombre": "GUACHARO MILLONARIO",
       "horarios": [
         "08:30",

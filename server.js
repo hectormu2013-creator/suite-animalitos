@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const zlib = require('zlib');
 const { spawn, exec } = require('child_process');
 const machinesMgr = require('./machines_manager');
 
@@ -9,13 +10,49 @@ const app = express();
 const PORT = process.env.PORT || 4500;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
+// Middleware nativo de compresión GZIP para reducir ancho de banda en Render (75% - 85% de ahorro)
+app.use((req, res, next) => {
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+  if (!acceptEncoding.includes('gzip')) return next();
+
+  const originalSend = res.send;
+  res.send = function (body) {
+    if (res.headersSent) return originalSend.call(this, body);
+
+    if (typeof body === 'string' || Buffer.isBuffer(body)) {
+      const buffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
+      if (buffer.length > 512) {
+        try {
+          const compressed = zlib.gzipSync(buffer, { level: 6 });
+          res.setHeader('Content-Encoding', 'gzip');
+          res.setHeader('Vary', 'Accept-Encoding');
+          res.removeHeader('Content-Length');
+          return originalSend.call(this, compressed);
+        } catch (e) {
+          return originalSend.call(this, body);
+        }
+      }
+    }
+    return originalSend.call(this, body);
+  };
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Servir archivos estáticos con ETag y Caché inteligente (Elimina descargas redundantes de 200KB en cada recarga)
 app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      // HTML siempre revalida con ETag (304 Not Modified instantáneo)
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    } else {
+      // JS, CSS, imágenes se conservan en caché del navegador 1 hora con revalidación
+      res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+    }
   }
 }));
 
@@ -556,17 +593,32 @@ app.post('/api/tunnel/restart', (req, res) => {
   res.json({ ok: true, message: 'Reiniciando túnel seguro...' });
 });
 
-// Helper de sincronización instantánea hacia Render
-function syncToCloudImmediate(resetAll = false) {
+// Helper de sincronización instantánea hacia Render optimizado para no saturar ancho de banda
+let lastCloudSyncState = { count: -1, lastId: '', memItemsCount: -1, lastSyncTime: 0 };
+
+function syncToCloudImmediate(resetAll = false, force = false) {
   if (process.env.RENDER || process.env.IS_RENDER) return;
   try {
     const historyMgr = require('./history_manager');
     const cupoMem = require('./cupo_cero_memory');
     const cfg = getConfig();
-    // Enviar siempre todo el historial persistente para garantizar sincronización 100% libre de desfases de zona horaria (UTC vs Local)
     const records = historyMgr.getHistory();
     const memory = cupoMem.loadMemory();
     const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_2';
+
+    const lastRec = records.length > 0 ? records[records.length - 1] : null;
+    const lastId = lastRec ? `${lastRec.id || ''}_${lastRec.ganador ? 'v' : 'u'}` : '';
+    const memCount = (memory && Array.isArray(memory.items)) ? memory.items.length : 0;
+
+    // Ahorro de ancho de banda: Si no hay cambios reales y no han pasado 5 min, evitar enviar 1.2MB innecesarios
+    const hasChanges = resetAll || force ||
+      records.length !== lastCloudSyncState.count ||
+      lastId !== lastCloudSyncState.lastId ||
+      memCount !== lastCloudSyncState.memItemsCount ||
+      (Date.now() - lastCloudSyncState.lastSyncTime > 300000);
+
+    if (!hasChanges) return;
+    lastCloudSyncState = { count: records.length, lastId, memItemsCount: memCount, lastSyncTime: Date.now() };
 
     const payload = JSON.stringify({
       records,
@@ -790,10 +842,52 @@ app.get('/api/status', async (req, res) => {
 
   const logsToSend = [...logsQueue];
   logsQueue = []; // Vaciar buffer para polling
+
+  // Control de estado unificado para evitar doble petición a /api/control-status
+  let controlData = null;
+  if (IS_CLOUD || process.platform !== 'win32') {
+    try {
+      const cloudStore = require('./cloud_store');
+      const cloudStatus = await cloudStore.getAutomationStatus();
+      controlData = (cloudStatus && cloudStatus.status) || { status: 'IDLE', requestedAction: 'NONE', isRunning: false, colaPendientes: 0, isCloud: true };
+    } catch (e) {
+      controlData = { status: 'IDLE', requestedAction: 'NONE', isRunning: false, colaPendientes: 0, isCloud: true };
+    }
+  } else {
+    try {
+      const robot = require('./premier_robot');
+      controlData = robot.getEstadoControl();
+    } catch (e) {
+      controlData = { status: 'IDLE', isRunning: false };
+    }
+  }
+
+  // Versionado inteligente de historial: NO reenviar 1.2MB en cada sondeo
+  const allHistory = persistentHistory.length > 0 ? persistentHistory : executionHistory;
+  const totalRecords = allHistory.length;
+  const lastRec = totalRecords > 0 ? allHistory[totalRecords - 1] : null;
+  const currentVersion = totalRecords > 0 
+    ? `${totalRecords}_${lastRec.id || ''}_${lastRec.ganador ? 'v' : 'u'}` 
+    : '0';
+
+  const clientVersion = req.query.hv;
+  const clientWantsFull = req.query.full === '1';
+  const historyChanged = (!clientVersion || clientVersion !== currentVersion);
+
+  let historyToSend = undefined;
+  if (historyChanged || clientWantsFull) {
+    // Si cambió o se solicita por primera vez, enviar los últimos 80 sorteos (o full si se solicita)
+    historyToSend = clientWantsFull ? allHistory : (totalRecords > 80 ? allHistory.slice(-80) : allHistory);
+  }
+
   res.json({
     ok: true,
-    history: persistentHistory.length > 0 ? persistentHistory : executionHistory,
+    historyChanged,
+    historyVersion: currentVersion,
+    totalHistoryCount: totalRecords,
+    ...(historyToSend !== undefined ? { history: historyToSend } : {}),
     logs: logsToSend,
+    control: controlData,
     nodeInfo: {
       maquinaLocalId: (cfg.general && cfg.general.maquinaLocalId) || 'maquina_2',
       maquinaEncargadaVerificacionesId: (cfg.general && cfg.general.maquinaEncargadaVerificacionesId) || 'maquina_1',
