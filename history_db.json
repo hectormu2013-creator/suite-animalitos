@@ -48122,7 +48122,12 @@
         "detalle": "Selección de riesgo del sistema (máx 3)",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)"
       }
-    ]
+    ],
+    "revision": {
+      "estado": "RESUELTO",
+      "intentos": 1,
+      "fechaResolucion": "2026-10-10T18:08:45.584Z"
+    }
   },
   {
     "id": "2026-10-10_1791652551671",
@@ -48189,7 +48194,12 @@
         "detalle": "Selección de riesgo del sistema (máx 3)",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)"
       }
-    ]
+    ],
+    "revision": {
+      "estado": "RESUELTO",
+      "intentos": 1,
+      "fechaResolucion": "2026-10-10T18:08:56.013Z"
+    }
   },
   {
     "id": "2026-10-10_1791652552542",
@@ -48256,7 +48266,12 @@
         "detalle": "Selección de riesgo del sistema (máx 3)",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)"
       }
-    ]
+    ],
+    "revision": {
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-10T18:08:56.538Z"
+    }
   },
   {
     "id": "2026-10-10_1791654002907",
@@ -48358,7 +48373,12 @@
     "t7Status": "Error T7: No se pudieron bloquear los números en Triple 7 (fallidos: [75, 05, 09, 48]).",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null
+    "ganador": null,
+    "revision": {
+      "estado": "RESUELTO",
+      "intentos": 1,
+      "fechaResolucion": "2026-10-10T18:08:45.697Z"
+    }
   },
   {
     "id": "2026-10-10_1791654085818",
@@ -48425,7 +48445,12 @@
     "t7Status": "Error T7: No se pudieron bloquear los números en Triple 7 (fallidos: [02, 13]).",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null
+    "ganador": null,
+    "revision": {
+      "estado": "RESUELTO",
+      "intentos": 1,
+      "fechaResolucion": "2026-10-10T18:08:56.144Z"
+    }
   },
   {
     "id": "2026-10-10_1791654152528",
@@ -48575,7 +48600,12 @@
     "t7Status": "Error T7: No se pudieron bloquear los números en Triple 7 (fallidos: [22, 35, 11]).",
     "t7Blocked": true,
     "captureFile": "premier_tabla_sondeo.png",
-    "ganador": null
+    "ganador": null,
+    "revision": {
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-10T18:08:56.538Z"
+    }
   },
   {
     "id": "2026-10-10_1791653723459",

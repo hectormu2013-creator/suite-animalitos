@@ -714,23 +714,9 @@ async function lookupAndUpdateRecord(recordId) {
  * @param {string} fechaStr - Fecha YYYY-MM-DD
  * @param {number} intentoNum - 1 o 2
  */
-function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNum = 1) {
+async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNum = 1) {
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, found: false, message: 'Sin registros históricos' };
-
-    let fxResults = null;
-    let fxHistory = null;
-
-    if (fs.existsSync(VISUAL_FX_RESULTS_PATH)) {
-      try { fxResults = JSON.parse(fs.readFileSync(VISUAL_FX_RESULTS_PATH, 'utf8')); } catch (e) {}
-    }
-    if (fs.existsSync(VISUAL_FX_HISTORY_PATH)) {
-      try { fxHistory = JSON.parse(fs.readFileSync(VISUAL_FX_HISTORY_PATH, 'utf8')); } catch (e) {}
-    }
-
-    if (!fxResults && !fxHistory) {
-      return { ok: false, found: false, message: 'No hay base de datos de Visual-FX en disco' };
-    }
 
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     const gameKey = mapLoteriaToVisualFx(loteriaKeyOrId);
@@ -748,7 +734,21 @@ function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNu
       return matchGame && matchTime && matchDate && pendiente;
     });
 
-    // Buscar en la base de datos de Visual-FX para ese juego y fecha
+    // Si ya no hay registros pendientes para este sorteo, no realizar ninguna petición innecesaria
+    if (matchingRecords.length === 0) {
+      return { ok: true, found: false, yaVerificado: true, message: 'Todos los registros de este sorteo ya están verificados' };
+    }
+
+    let fxResults = null;
+    let fxHistory = null;
+    if (fs.existsSync(VISUAL_FX_RESULTS_PATH)) {
+      try { fxResults = JSON.parse(fs.readFileSync(VISUAL_FX_RESULTS_PATH, 'utf8')); } catch (e) {}
+    }
+    if (fs.existsSync(VISUAL_FX_HISTORY_PATH)) {
+      try { fxHistory = JSON.parse(fs.readFileSync(VISUAL_FX_HISTORY_PATH, 'utf8')); } catch (e) {}
+    }
+
+    // 1. Buscar en la base de datos de Visual-FX en disco (si existe localmente)
     let candidateDraws = [];
     if (fxResults) {
       const dayData = fxResults[fechaStr];
@@ -771,6 +771,17 @@ function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNu
         const dMins = parseTimeToMinutes(d.time);
         return dMins !== null && Math.abs(dMins - targetMinutes) <= 25;
       });
+    }
+
+    // 2. Si no se encontró en disco local, realizar UNA ÚNICA consulta puntual al scraper
+    if (!matchedDraw || !matchedDraw.number) {
+      try {
+        const scraper = require('./scraper_service');
+        const liveLookup = await scraper.lookupDrawResult(loteriaKeyOrId, sorteoHora, fechaStr);
+        if (liveLookup && liveLookup.found && liveLookup.number) {
+          matchedDraw = { number: liveLookup.number, name: liveLookup.name };
+        }
+      } catch (eScrap) {}
     }
 
     if (matchedDraw && matchedDraw.number) {
@@ -813,7 +824,7 @@ function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNu
         intentoNum,
         detenerIntentos: intentoNum >= 2,
         message: intentoNum >= 2 
-          ? `Resultado no publicado tras 2do intento (+10 min). Deteniendo revisiones.`
+          ? `Resultado no publicado tras 2do intento (+10 min). Deteniendo revisiones automáticas.`
           : `Resultado no publicado en 1er intento (+5 min). Se reintentará al minuto +10.`
       };
     }

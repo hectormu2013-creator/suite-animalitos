@@ -2298,176 +2298,86 @@ setInterval(async () => {
         }
       }
 
-      const isVerifierNode = machinesMgr.isLocalMachineVerifier(cfg);
-      const keyNoVerifierLog = `${todayStr}_${lot.id}_${hStr}_noverifier`;
+      // =========================================================================
+      // 6. REGLA ESTRICTA DE REVISIÓN DE RESULTADOS:
+      // - Intento 1: Exactamente a los 5 minutos después del sorteo (+5 min)
+      // - Intento 2: Exactamente a los 10 minutos después del sorteo (+10 min, si el 1 no lo consiguió)
+      // - Si no lo consigue tras el 2do intento, PARA por completo (máximo 2 consultas por sorteo)
+      // =========================================================================
+      // INTENTO 1 (+5 MINUTOS TRAS EL SORTEO: ventana entre +5 y +9 minutos)
+      if (diffMinutes >= 5 && diffMinutes < 10 && !revisionesRealizadas.has(keyIntento1) && !revisionesRealizadas.has(keyResuelto)) {
+        revisionesRealizadas.add(keyIntento1);
+        log(`🔍 [REVISIÓN RESULTADOS] Intento 1 (+5 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando resultado oficial...`, 'log-info');
+        
+        try {
+          const historyMgr = require('./history_manager');
+          const syncRes = await historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 1);
+          if (syncRes.found) {
+            revisionesRealizadas.add(keyResuelto);
+            log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
+            
+            // Auto-liberar sorteos futuros si estaba en memoria
+            await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
 
-      if (!isVerifierNode) {
-        if (diffMinutes >= 5 && !revisionesRealizadas.has(keyNoVerifierLog)) {
-          revisionesRealizadas.add(keyNoVerifierLog);
-          const vMachine = machinesMgr.getVerificationMachine(cfg);
-          const vNombre = vMachine ? vMachine.nombre : (cfg.general.maquinaEncargadaVerificacionesId || 'Máquina 1');
-          log(`ℹ️ [MODO SÓLO PESCA] Este nodo (${cfg.general.maquinaLocalId || 'Máquina 2'}) no realiza consultas a Visual-FX. Verificaciones delegadas exclusivamente a: ${vNombre}.`, 'log-info');
-        }
-      } else {
-        // INTENTO 1 (+5 MINUTOS TRAS EL SORTEO: ventana entre +5 y +9 minutos)
-        if (diffMinutes >= 5 && diffMinutes < 10 && !revisionesRealizadas.has(keyIntento1) && !revisionesRealizadas.has(keyResuelto)) {
-          revisionesRealizadas.add(keyIntento1);
-          log(`🔍 [REVISIÓN RESULTADOS] Intento 1 (+5 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con Visual-FX...`, 'log-info');
-          
-          try {
-            const predictive = require('./predictive_service');
-            // Consultar y sincronizar dinámicamente con Visual-FX (1000Resultados / TuAzar) 5 minutos después del sorteo
-            await predictive.syncVisualFxDraws(lot.id);
-
-            const historyMgr = require('./history_manager');
-            const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 1);
-            if (syncRes.found) {
-              revisionesRealizadas.add(keyResuelto);
-              log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
-              
-              // Auto-liberar sorteos futuros si estaba en memoria
-              await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
-
-              // Actualizar modelo predictivo de atrasados dinámicamente con el nuevo resultado
+            // Actualizar modelo predictivo de atrasados dinámicamente con el nuevo resultado
+            try {
+              const predictive = require('./predictive_service');
               const updatedAtrasados = predictive.getMostDelayedNumbers(lot.id, 5);
               const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
               log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
+            } catch (ePred) {}
 
-              syncToCloudImmediate(false);
+            syncToCloudImmediate(false);
 
-              if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
-                enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
-              }
-            } else {
-              log(`⏳ [RESULTADO PENDIENTE] Intento 1 (+5 min) para ${lot.nombre} (${hStr}): Aún no publicado en Visual-FX. Se reintentará al minuto +10.`, 'log-warn');
+            if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
+              enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
             }
-          } catch (err) {
-            log(`Aviso al consultar resultado intento 1: ${err.message}`, 'log-warn');
+          } else {
+            log(`⏳ [RESULTADO PENDIENTE] Intento 1 (+5 min) para ${lot.nombre} (${hStr}): Aún no publicado. Se reintentará únicamente al minuto +10.`, 'log-warn');
           }
+        } catch (err) {
+          log(`Aviso al consultar resultado intento 1: ${err.message}`, 'log-warn');
         }
+      }
 
-        // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ)
-        if (diffMinutes >= 10 && diffMinutes < 60 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
-          revisionesRealizadas.add(keyIntento2);
-          log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con Visual-FX...`, 'log-info');
-          
-          try {
-            const predictive = require('./predictive_service');
-            // Reintentar sincronización activa con Visual-FX
-            await predictive.syncVisualFxDraws(lot.id);
+      // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ)
+      if (diffMinutes >= 10 && diffMinutes < 60 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
+        revisionesRealizadas.add(keyIntento2);
+        log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando resultado oficial...`, 'log-info');
+        
+        try {
+          const historyMgr = require('./history_manager');
+          const syncRes = await historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 2);
+          if (syncRes.found) {
+            revisionesRealizadas.add(keyResuelto);
+            log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
+            
+            // Auto-liberar sorteos futuros si estaba en memoria
+            await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
 
-            const historyMgr = require('./history_manager');
-            const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 2);
-            if (syncRes.found) {
-              revisionesRealizadas.add(keyResuelto);
-              log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
-              
-              // Auto-liberar sorteos futuros si estaba en memoria
-              await procesarAutoLiberacionGanador(lot.id, lot.nombre, hStr, syncRes.winnerNumber, syncRes.winnerName);
-
-              // Actualizar modelo predictivo de atrasados dinámicamente con el nuevo resultado
+            try {
+              const predictive = require('./predictive_service');
               const updatedAtrasados = predictive.getMostDelayedNumbers(lot.id, 5);
               const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
               log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
+            } catch (ePred) {}
 
-              syncToCloudImmediate(false);
+            syncToCloudImmediate(false);
 
-              if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
-                enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 2do intento (+10 min)!`);
-              }
-            } else {
-              revisionesRealizadas.add(keyParado);
-              log(`🛑 [DETENIENDO CONSULTAS] Intento 2 (+10 min) para ${lot.nombre} (${hStr}): No publicado en Visual-FX. Se detienen las consultas para este sorteo (máximo 2 intentos alcanzado).`, 'log-warn');
+            if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
+              enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 2do intento (+10 min)!`);
             }
-          } catch (err) {
-            log(`Aviso al consultar resultado intento 2: ${err.message}`, 'log-warn');
+          } else {
+            revisionesRealizadas.add(keyParado);
+            log(`🛑 [DETENIENDO CONSULTAS] Intento 2 (+10 min) para ${lot.nombre} (${hStr}): No publicado en fuentes oficiales. Se detienen las consultas para este sorteo (máximo 2 intentos alcanzado).`, 'log-warn');
           }
+        } catch (err) {
+          log(`Aviso al consultar resultado intento 2: ${err.message}`, 'log-warn');
         }
       }
     }
   }
 }, 30000);
-
-// Sincronización continua de fondo Nodo Local -> Render (cada 45 segundos)
-if (!process.env.RENDER && !process.env.IS_RENDER) {
-  setInterval(() => {
-    try {
-      syncToCloudImmediate(false);
-    } catch (e) {}
-  }, 45000);
-}
-
-// 🏆 WORKER AUTÓNOMO DE VERIFICACIÓN DE RESULTADOS OFICIALES
-// Funciona 24/7 tanto en Render (Nube) como en Nodos Locales sin requerir interacción del usuario.
-let isVerifyingResultsBackground = false;
-setInterval(async () => {
-  if (isVerifyingResultsBackground) return;
-  try {
-    const historyMgr = require('./history_manager');
-    const history = historyMgr.getHistory();
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const pendingToday = history.filter(r => r.fecha === todayStr && (!r.ganador || !r.ganador.verificado));
-    if (pendingToday.length === 0) return;
-
-    isVerifyingResultsBackground = true;
-    const syncRes = await historyMgr.syncResultsWithVisualFx();
-    if (syncRes && syncRes.updatedCount > 0) {
-      log(`🏆 [AUTO-VERIFICADOR] ${syncRes.updatedCount} resultados oficiales confirmados (${syncRes.trophiesCount} golpes de banca evitados).`, 'log-success');
-      if (IS_CLOUD) {
-        const cloudStore = require('./cloud_store');
-        await cloudStore.saveMasterHistory(historyMgr.getHistory());
-      } else {
-        syncToCloudImmediate(false, true);
-      }
-    }
-  } catch (eVer) {
-    // silencioso
-  } finally {
-    isVerifyingResultsBackground = false;
-  }
-}, 60000);
-
-// 🔄 SINCRONIZACIÓN DE HISTORIAL SUPABASE -> NODO LOCAL
-// Si otra máquina (ej. Máquina 3) realiza los sondeos, este worker mantiene actualizada la laptop de Hector
-let isPullingCloudHistory = false;
-if (!IS_CLOUD) {
-  setInterval(async () => {
-    if (isPullingCloudHistory) return;
-    try {
-      isPullingCloudHistory = true;
-      const cloudStore = require('./cloud_store');
-      const cloudHist = await cloudStore.getMasterHistory();
-      if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
-        const historyMgr = require('./history_manager');
-        const local = historyMgr.getHistory();
-        const map = new Map();
-        for (const r of local) if (r && r.id) map.set(r.id, r);
-        let changes = false;
-        for (const r of cloudHist.records) {
-          if (!r || !r.id) continue;
-          if (!map.has(r.id)) {
-            map.set(r.id, r);
-            changes = true;
-          } else {
-            const ex = map.get(r.id);
-            if (r.ganador && r.ganador.verificado && (!ex.ganador || !ex.ganador.verificado)) {
-              map.set(r.id, r);
-              changes = true;
-            }
-          }
-        }
-        if (changes) {
-          const merged = Array.from(map.values()).sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
-          fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
-          historyMgr.rewriteCSV(merged);
-        }
-      }
-    } catch (e) {
-    } finally {
-      isPullingCloudHistory = false;
-    }
-  }, 30000);
-}
 
 // Worker de recepción de órdenes remotas desde la Web (Render) vía Supabase
 let isProcessingCloudCommand = false;
