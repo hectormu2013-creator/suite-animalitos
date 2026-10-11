@@ -50493,10 +50493,15 @@
     ],
     "sorteo": "17:00",
     "ganador": {
-      "verificado": false,
-      "numero": null,
-      "nombre": null,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "07",
+      "nombre": "Perico",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 07 (Perico) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-11T21:06:29.565Z"
     },
     "loteria": "GUACHARO ACTIVO",
     "numFijos": [
@@ -50604,9 +50609,9 @@
       }
     ],
     "revision": {
-      "estado": "AGOTADO_2_INTENTOS",
-      "intentos": 2,
-      "ultimoIntento": "2026-10-11T20:31:29.055Z"
+      "estado": "RESUELTO",
+      "intentos": 1,
+      "fechaResolucion": "2026-10-11T21:06:29.566Z"
     }
   },
   {
@@ -50714,9 +50719,9 @@
       }
     ],
     "revision": {
-      "estado": "AGOTADO_2_INTENTOS",
-      "intentos": 2,
-      "ultimoIntento": "2026-10-11T20:31:29.164Z"
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-11T21:06:29.566Z"
     }
   },
   {
@@ -50824,9 +50829,9 @@
       }
     ],
     "revision": {
-      "estado": "AGOTADO_2_INTENTOS",
-      "intentos": 2,
-      "ultimoIntento": "2026-10-11T20:31:29.271Z"
+      "estado": "INTENTO_1_PENDIENTE",
+      "intentos": 1,
+      "ultimoIntento": "2026-10-11T21:06:29.566Z"
     }
   }
 ]

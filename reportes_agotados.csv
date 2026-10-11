@@ -310,6 +310,6 @@ Call log:
 2026-10-11_1791746121839;2026-10-11;15:36:32;"LOTTO ACTIVO";"16:00";5000;4;"";"";"02, 24";"07, 31";"02, 24, 07, 31";"34";"Venado";NO;"NO_BLOQUEADO";"Error T7: No se pudieron bloquear los números en Triple 7 (fallidos: [02, 24, 07, 31])."
 2026-10-11_1791746123204;2026-10-11;15:34:42;"LA GRANJITA";"16:00";5000;4;"";"";"35, 14";"27, 17";"35, 14, 27, 17";"24";"Iguana";NO;"NO_BLOQUEADO";"Error T7: No se pudieron bloquear los números en Triple 7 (fallidos: [35, 14, 27, 17])."
 2026-10-11_1791747320414;2026-10-11;16:03:27;"GUACHARO MILLONARIO";"16:30";5000;7;"";"99";"11, 10, 03";"19, 00, 06";"99, 11, 10, 03, 19, 00, 06";"58";"Hormiga";NO;"NO_BLOQUEADO";"Bloqueados (6) en Triple 7"
-2026-10-11_1791749422826;2026-10-11;16:23:06;"GUACHARO ACTIVO";"17:00";5000;5;"";"75";"05, 09, 19";"72";"75, 05, 09, 19, 72";"null";"null";NO;"N/A";"Bloqueados (1) en Triple 7"
+2026-10-11_1791749422826;2026-10-11;16:23:06;"GUACHARO ACTIVO";"17:00";5000;5;"";"75";"05, 09, 19";"72";"75, 05, 09, 19, 72";"07";"Perico";NO;"NO_BLOQUEADO";"Bloqueados (1) en Triple 7"
 2026-10-11_1791749725720;2026-10-11;16:26:50;"LOTTO ACTIVO";"17:00";5000;4;"";"";"02, 24";"34, 19";"02, 24, 34, 19";"null";"null";NO;"N/A";"Bloqueados (4) en Triple 7"
 2026-10-11_1791749727817;2026-10-11;16:24:59;"LA GRANJITA";"17:00";5000;4;"";"";"35, 14";"19, 23";"35, 14, 19, 23";"null";"null";NO;"N/A";"Bloqueados (4) en Triple 7"

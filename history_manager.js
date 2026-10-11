@@ -64,6 +64,26 @@ function parseTimeToMinutes(timeStr) {
 }
 
 /**
+ * Obtener minutos actuales en la zona horaria oficial de Venezuela (America/Caracas)
+ */
+function getVenezuelaCurrentMinutes() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Caracas',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    }).formatToParts(new Date());
+    const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+    const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
+    return h * 60 + m;
+  } catch (e) {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+}
+
+/**
  * Inicializar archivo CSV si no existe
  */
 function initCSV() {
@@ -660,17 +680,18 @@ async function syncResultsWithVisualFx(forceReverify = false, targetDate = null)
       const gameKey = mapLoteriaToVisualFx(rec.loteria);
       const recTimeMinutes = parseTimeToMinutes(rec.sorteo || rec.horaSorteo);
 
-      // Si es automático, verificar ventana de tiempo (+5m mínimo desde sorteo)
+      // Si es automático, verificar ventana de tiempo con hora oficial de Venezuela
+      // Regla: Intento 1 a los +5m del sorteo. Intento 2 a los +10m del sorteo. Máximo 2 intentos.
       if (!forceReverify && recTimeMinutes !== null) {
-        const now = new Date();
-        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const currentMins = getVenezuelaCurrentMinutes();
         const diff = currentMins - recTimeMinutes;
         if (diff < 5) continue; // Aún no han pasado 5 minutos desde el sorteo
         const intentosPrev = (rec.revision && rec.revision.intentos) || 0;
+        if (intentosPrev >= 2) continue; // Máximo 2 intentos automáticos agotados
         if (diff < 10 && intentosPrev >= 1) continue; // Ya se hizo el intento 1 (+5m), esperar al +10m
       }
 
-      // 1. Scraping en vivo DIRECTO desde 1000Resultados
+      // Scraping en vivo DIRECTO Y EXCLUSIVO desde 1000Resultados
       let matchedDraw = null;
       try {
         const liveLookup = await scraper.lookupDrawResult(rec.loteria, rec.sorteo || rec.horaSorteo, rec.fecha);
@@ -678,30 +699,6 @@ async function syncResultsWithVisualFx(forceReverify = false, targetDate = null)
           matchedDraw = { number: liveLookup.number, name: liveLookup.name };
         }
       } catch (eScrap) {}
-
-      // 2. Si no se encontró en scraper, buscar en cache local si existe
-      if (!matchedDraw || !matchedDraw.number) {
-        let candidateDraws = [];
-        if (fxResults) {
-          const dayData = fxResults[recDate];
-          if (dayData && dayData[gameKey] && Array.isArray(dayData[gameKey].draws)) {
-            candidateDraws = candidateDraws.concat(dayData[gameKey].draws);
-          }
-        }
-        if (candidateDraws.length === 0 && fxHistory && fxHistory[gameKey]) {
-          const historyDay = fxHistory[gameKey][recDate];
-          if (Array.isArray(historyDay)) {
-            candidateDraws = candidateDraws.concat(historyDay);
-          }
-        }
-        if (candidateDraws.length > 0 && recTimeMinutes !== null) {
-          matchedDraw = candidateDraws.find(d => {
-            if (d.isPending || !d.number) return false;
-            const drawMinutes = parseTimeToMinutes(d.time);
-            return drawMinutes !== null && Math.abs(drawMinutes - recTimeMinutes) <= 25;
-          });
-        }
-      }
 
       if (matchedDraw && matchedDraw.number) {
         const res = verifyRecordWinner(rec.id, matchedDraw.number, matchedDraw.name);
@@ -847,25 +844,6 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
       }
     } catch (eScrap) {}
 
-    // 2. Si no se obtuvo de scraper, consultar archivos locales de Visual-FX si existen
-    if (!matchedDraw) {
-      let candidateDraws = [];
-      if (fs.existsSync(VISUAL_FX_RESULTS_PATH)) {
-        try {
-          const fxResults = JSON.parse(fs.readFileSync(VISUAL_FX_RESULTS_PATH, 'utf8'));
-          if (fxResults[fechaStr] && fxResults[fechaStr][gameKey] && Array.isArray(fxResults[fechaStr][gameKey].draws)) {
-            candidateDraws = candidateDraws.concat(fxResults[fechaStr][gameKey].draws);
-          }
-        } catch (e) {}
-      }
-      if (candidateDraws.length > 0 && targetMinutes !== null) {
-        matchedDraw = candidateDraws.find(d => {
-          if (d.isPending || !d.number) return false;
-          const dMins = parseTimeToMinutes(d.time);
-          return dMins !== null && Math.abs(dMins - targetMinutes) <= 25;
-        });
-      }
-    }
 
     if (matchedDraw && matchedDraw.number) {
       let trophiesWon = 0;

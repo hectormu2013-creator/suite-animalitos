@@ -909,15 +909,19 @@ app.post('/api/sync/receive-history', async (req, res) => {
           return existing.id === rec.id || (existing.fecha === rec.fecha && existing.loteria === rec.loteria && exSorteo === recSorteo);
         });
         if (idx >= 0) {
-          // Si el registro existente ya está verificado oficialmente, NUNCA sobreescribir su ganador con datos no verificados o de scrapers viejos
-          if (currentDb[idx].ganador && currentDb[idx].ganador.verificado) {
-            const officialWinner = currentDb[idx].ganador;
-            const officialRev = currentDb[idx].revision;
-            currentDb[idx] = { ...rec, ganador: officialWinner, revision: officialRev };
-          } else {
-            currentDb[idx] = rec;
-          }
+          // El ganador oficial SOLO es determinado por 1000Resultados en la suite.
+          // Los nodos de sondeo locales NUNCA deben sobreescribir ni dictar ganadores.
+          const officialWinner = currentDb[idx].ganador || { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
+          const officialRev = currentDb[idx].revision || null;
+          currentDb[idx] = { 
+            ...rec, 
+            ganador: officialWinner, 
+            revision: officialRev 
+          };
         } else {
+          if (!rec.ganador || !rec.ganador.verificado) {
+            rec.ganador = { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
+          }
           currentDb.push(rec);
         }
       }

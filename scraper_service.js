@@ -305,62 +305,6 @@ async function lookupDrawResult(loteriaNameOrId, targetDrawTime, targetDate) {
     }
   } catch (e) {}
 
-  // 2. Scraping en vivo desde TuAzar (Respaldo)
-  try {
-    const tuAzarData = await scrapeTuAzarAnimalitos();
-    const tuAzarDraws = tuAzarData[normKey] || [];
-    if (tuAzarDraws.length > 0) {
-      const match = tuAzarDraws.find(d => {
-        const dMins = parseTimeToMinutes(d.time);
-        return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
-      });
-
-      if (match) {
-        if (!match.isPending && match.number && isValidLotteryNumber(normKey, match.number)) {
-          return {
-            found: true,
-            number: String(match.number).padStart(2, '0'),
-            name: match.name || getAnimalName(match.number),
-            drawTime: match.time,
-            source: 'TuAzar Oficial'
-          };
-        } else if (match.isPending) {
-          return {
-            found: false,
-            pending: true,
-            drawTime: match.time,
-            message: `El sorteo de ${targetDrawTime} figura "En Espera" en TuAzar.`
-          };
-        }
-      }
-    }
-  } catch (e) {}
-
-  // 3. Fallback a archivo de Visual-FX en disco (si existe)
-  const fxResultsPath = path.join('C:', 'Users', 'Hector', 'Fenix_2026_1', 'PROYECTO_VISUAL_FX', 'data', 'lottery_results.json');
-  if (fs.existsSync(fxResultsPath)) {
-    try {
-      const fxData = JSON.parse(fs.readFileSync(fxResultsPath, 'utf8'));
-      const dateKey = targetDate || new Date().toISOString().slice(0, 10);
-      if (fxData[dateKey] && fxData[dateKey][normKey] && Array.isArray(fxData[dateKey][normKey].draws)) {
-        const candidate = fxData[dateKey][normKey].draws.find(d => {
-          if (d.isPending || !d.number) return false;
-          const dMins = parseTimeToMinutes(d.time);
-          return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
-        });
-        if (candidate && candidate.number && isValidLotteryNumber(normKey, candidate.number)) {
-          return {
-            found: true,
-            number: String(candidate.number).padStart(2, '0'),
-            name: candidate.name || getAnimalName(candidate.number),
-            drawTime: candidate.time,
-            source: 'Visual-FX Local Cache'
-          };
-        }
-      }
-    } catch (e) {}
-  }
-
   return {
     found: false,
     pending: true,
