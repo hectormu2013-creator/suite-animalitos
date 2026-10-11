@@ -765,7 +765,7 @@ app.get('/api/status', async (req, res) => {
   }
 
   let persistentHistory = historyMgr.getHistory();
-  if (persistentHistory.length === 0 && (IS_CLOUD || process.env.RENDER)) {
+  if (IS_CLOUD || process.env.RENDER) {
     try {
       const cloudStore = require('./cloud_store');
       const cloudHist = await cloudStore.getMasterHistory();
