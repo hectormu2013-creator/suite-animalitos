@@ -792,9 +792,19 @@ app.get('/api/status', async (req, res) => {
 });
 
 // API: Consulta Histórica Filtrada
-app.get('/api/history', (req, res) => {
+app.get('/api/history', async (req, res) => {
   const historyMgr = require('./history_manager');
   const { loteria, fecha } = req.query;
+  if (IS_CLOUD) {
+    try {
+      const cloudStore = require('./cloud_store');
+      const cloudHist = await cloudStore.getMasterHistory();
+      if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
+        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cloudHist.records, null, 2), 'utf8');
+        historyMgr.rewriteCSV(cloudHist.records);
+      }
+    } catch (e) {}
+  }
   const records = historyMgr.getHistory({ loteria, fecha });
   res.json({ ok: true, count: records.length, records });
 });

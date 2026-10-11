@@ -50329,10 +50329,15 @@
     ],
     "sorteo": "16:30",
     "ganador": {
-      "verificado": false,
-      "numero": null,
-      "nombre": null,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "58",
+      "nombre": "Hormiga",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 58 (Hormiga) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-11T20:54:16.293Z"
     },
     "loteria": "GUACHARO MILLONARIO",
     "numFijos": [
