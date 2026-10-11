@@ -604,11 +604,8 @@ function syncToCloudImmediate(resetAll = false) {
     syncReq.write(payload);
     syncReq.end();
 
-    // Guardar también en Supabase para persistencia perpetua
-    try {
-      const cloudStore = require('./cloud_store');
-      cloudStore.saveMasterHistory(records);
-    } catch (e) {}
+    // El respaldo del historial en Supabase lo administra la instancia maestra en Render
+    // para evitar colisiones entre múltiples máquinas o degradación de resultados oficiales.
   } catch (e) {
     console.error(`[SYNC NUBE ERROR] ${e.message}`);
   }
@@ -912,7 +909,14 @@ app.post('/api/sync/receive-history', async (req, res) => {
           return existing.id === rec.id || (existing.fecha === rec.fecha && existing.loteria === rec.loteria && exSorteo === recSorteo);
         });
         if (idx >= 0) {
-          currentDb[idx] = rec;
+          // Si el registro existente ya está verificado oficialmente, NUNCA sobreescribir su ganador con datos no verificados o de scrapers viejos
+          if (currentDb[idx].ganador && currentDb[idx].ganador.verificado) {
+            const officialWinner = currentDb[idx].ganador;
+            const officialRev = currentDb[idx].revision;
+            currentDb[idx] = { ...rec, ganador: officialWinner, revision: officialRev };
+          } else {
+            currentDb[idx] = rec;
+          }
         } else {
           currentDb.push(rec);
         }
@@ -921,6 +925,13 @@ app.post('/api/sync/receive-history', async (req, res) => {
       currentDb.sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
       fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(currentDb, null, 2), 'utf8');
       historyMgr.rewriteCSV(currentDb);
+
+      if (IS_CLOUD) {
+        try {
+          const cloudStore = require('./cloud_store');
+          cloudStore.saveMasterHistory(currentDb);
+        } catch (e) {}
+      }
     }
 
     if (memory) {
