@@ -2195,18 +2195,23 @@ async function triggerSingleDrawLookup(recordId, buttonEl) {
     const data = await res.json();
 
     if (data.ok && data.found) {
-      if (data.isHit) {
-        showToast(`🏆 ¡GOLPE EVITADO! Salió el ${data.winner.numero} (${data.winner.nombre})`);
-        appendLog(`[TROFEO] ¡GOLPE DE BANCA EVITADO! Salió el ${data.winner.numero} (${data.winner.nombre}) que ESTABA BLOQUEADO.`, 'log-success');
+      const numGanador = data.winnerNumber || (data.winner && data.winner.numero) || (data.record && data.record.ganador && data.record.ganador.numero) || '??';
+      const nomGanador = data.winnerName || (data.winner && data.winner.nombre) || (data.record && data.record.ganador && data.record.ganador.nombre) || '';
+      const esAcierto = !!(data.bloqueoAcertado || data.isHit || (data.record && data.record.ganador && data.record.ganador.bloqueoAcertado));
+
+      if (esAcierto) {
+        showToast(`🏆 ¡GOLPE EVITADO! Salió el ${numGanador} (${nomGanador})`);
+        appendLog(`[TROFEO] ¡GOLPE DE BANCA EVITADO! Salió el ${numGanador} (${nomGanador}) que ESTABA BLOQUEADO.`, 'log-success');
       } else {
-        showToast(`✅ Verificado: Salió ${data.winner.numero} (${data.winner.nombre})`);
-        appendLog(`[VERIFICADO] Resultado oficial obtenido: ${data.winner.numero} - ${data.winner.nombre}`, 'log-info');
+        showToast(`✅ Verificado: Salió ${numGanador} (${nomGanador})`);
+        appendLog(`[VERIFICADO] Resultado oficial obtenido: ${numGanador} - ${nomGanador}`, 'log-info');
       }
 
       await Promise.all([refreshStatusAndHistory(), loadTrophies()]);
     } else {
-      showToast(data.message || 'El resultado aún no ha sido publicado en los portales oficiales.');
-      appendLog(`[AVISO] ${data.message || 'Resultado no publicado aún'}`, 'log-warn');
+      const msg = data.mensaje || data.message || 'El resultado aún no ha sido publicado en 1000Resultados.';
+      showToast(msg);
+      appendLog(`[AVISO] ${msg}`, 'log-warn');
       if (buttonEl) {
         buttonEl.disabled = false;
         buttonEl.innerHTML = originalText || '⏳ Por verificar 🔍';

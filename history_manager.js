@@ -648,60 +648,78 @@ async function syncResultsWithVisualFx(forceReverify = false, targetDate = null)
       // Si ya está verificado y no se pide forzar reverificación, saltar
       if (rec.ganador && rec.ganador.verificado && !forceReverify) continue;
 
+      // Regla de los 2 intentos automáticos: si ya agotó sus 2 intentos y no es forzado, saltar
+      if (!forceReverify && rec.revision && rec.revision.estado === 'AGOTADO_2_INTENTOS') {
+        continue;
+      }
+
       const recDate = rec.fecha; // ej: 2026-10-11
       const gameKey = mapLoteriaToVisualFx(rec.loteria);
       const recTimeMinutes = parseTimeToMinutes(rec.sorteo || rec.horaSorteo);
 
-      let candidateDraws = [];
-
-      // 1. Buscar en lottery_results.json local
-      if (fxResults) {
-        const dayData = fxResults[recDate];
-        if (dayData && dayData[gameKey] && Array.isArray(dayData[gameKey].draws)) {
-          candidateDraws = candidateDraws.concat(dayData[gameKey].draws);
-        }
+      // Si es automático, verificar ventana de tiempo (+5m mínimo desde sorteo)
+      if (!forceReverify && recTimeMinutes !== null) {
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const diff = currentMins - recTimeMinutes;
+        if (diff < 5) continue; // Aún no han pasado 5 minutos desde el sorteo
+        const intentosPrev = (rec.revision && rec.revision.intentos) || 0;
+        if (diff < 10 && intentosPrev >= 1) continue; // Ya se hizo el intento 1 (+5m), esperar al +10m
       }
 
-      // 2. Si no hay suficientes, buscar en lottery_history.json
-      if (candidateDraws.length === 0 && fxHistory && fxHistory[gameKey]) {
-        const historyDay = fxHistory[gameKey][recDate];
-        if (Array.isArray(historyDay)) {
-          candidateDraws = candidateDraws.concat(historyDay);
-        }
-      }
-
+      // 1. Scraping en vivo DIRECTO desde 1000Resultados
       let matchedDraw = null;
+      try {
+        const liveLookup = await scraper.lookupDrawResult(rec.loteria, rec.sorteo || rec.horaSorteo, rec.fecha);
+        if (liveLookup && liveLookup.found && liveLookup.number) {
+          matchedDraw = { number: liveLookup.number, name: liveLookup.name };
+        }
+      } catch (eScrap) {}
 
-      if (candidateDraws.length > 0) {
-        if (recTimeMinutes !== null) {
+      // 2. Si no se encontró en scraper, buscar en cache local si existe
+      if (!matchedDraw || !matchedDraw.number) {
+        let candidateDraws = [];
+        if (fxResults) {
+          const dayData = fxResults[recDate];
+          if (dayData && dayData[gameKey] && Array.isArray(dayData[gameKey].draws)) {
+            candidateDraws = candidateDraws.concat(dayData[gameKey].draws);
+          }
+        }
+        if (candidateDraws.length === 0 && fxHistory && fxHistory[gameKey]) {
+          const historyDay = fxHistory[gameKey][recDate];
+          if (Array.isArray(historyDay)) {
+            candidateDraws = candidateDraws.concat(historyDay);
+          }
+        }
+        if (candidateDraws.length > 0 && recTimeMinutes !== null) {
           matchedDraw = candidateDraws.find(d => {
             if (d.isPending || !d.number) return false;
             const drawMinutes = parseTimeToMinutes(d.time);
-            if (drawMinutes === null) return false;
-            return Math.abs(drawMinutes - recTimeMinutes) <= 25;
+            return drawMinutes !== null && Math.abs(drawMinutes - recTimeMinutes) <= 25;
           });
-        } else {
-          const completedDraws = candidateDraws.filter(d => !d.isPending && d.number);
-          if (completedDraws.length > 0) matchedDraw = completedDraws[completedDraws.length - 1];
         }
-      }
-
-      // 3. Si no se encontró en disco local, usar scraper_service en vivo (TuAzar / 1000Resultados)
-      if (!matchedDraw || !matchedDraw.number) {
-        try {
-          const liveLookup = await scraper.lookupDrawResult(rec.loteria, rec.sorteo || rec.horaSorteo, rec.fecha);
-          if (liveLookup && liveLookup.found && liveLookup.number) {
-            matchedDraw = { number: liveLookup.number, name: liveLookup.name };
-          }
-        } catch (eScrap) {}
       }
 
       if (matchedDraw && matchedDraw.number) {
         const res = verifyRecordWinner(rec.id, matchedDraw.number, matchedDraw.name);
+        rec.revision = {
+          estado: 'RESUELTO',
+          intentos: ((rec.revision && rec.revision.intentos) || 0) + 1,
+          fechaResolucion: new Date().toISOString()
+        };
         if (res.ok) {
           updatedCount++;
           if (res.bloqueoAcertado) trophiesCount++;
         }
+      } else if (!forceReverify) {
+        // Registrar intento fallido (máximo 2 intentos)
+        const intentosPrev = (rec.revision && rec.revision.intentos) || 0;
+        const nuevosIntentos = intentosPrev + 1;
+        rec.revision = {
+          estado: nuevosIntentos >= 2 ? 'AGOTADO_2_INTENTOS' : 'INTENTO_1_PENDIENTE',
+          intentos: nuevosIntentos,
+          ultimoIntento: new Date().toISOString()
+        };
       }
     }
 
@@ -741,7 +759,13 @@ async function lookupAndUpdateRecord(recordId) {
 
     if (lookup.found && lookup.number) {
       const verifyRes = verifyRecordWinner(rec.id, lookup.number, lookup.name);
-      
+      rec.revision = {
+        estado: 'RESUELTO',
+        intentos: ((rec.revision && rec.revision.intentos) || 0) + 1,
+        fechaResolucion: new Date().toISOString(),
+        origen: 'MANUAL_USUARIO'
+      };
+
       try {
         const cloudStore = require('./cloud_store');
         const freshHistory = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
@@ -753,8 +777,11 @@ async function lookupAndUpdateRecord(recordId) {
         found: true,
         winnerNumber: lookup.number,
         winnerName: lookup.name,
+        winner: { numero: lookup.number, nombre: lookup.name },
         bloqueoAcertado: verifyRes.bloqueoAcertado,
+        isHit: verifyRes.bloqueoAcertado,
         mensaje: verifyRes.mensaje,
+        message: verifyRes.mensaje,
         record: verifyRes.record,
         source: lookup.source
       };
@@ -763,7 +790,8 @@ async function lookupAndUpdateRecord(recordId) {
         ok: true,
         found: false,
         pending: true,
-        mensaje: lookup.message || `El sorteo de ${rec.loteria} (${drawTime}) aún está en espera de publicación oficial.`
+        mensaje: lookup.message || `El sorteo de ${rec.loteria} (${drawTime}) aún está en espera de publicación en 1000Resultados.`,
+        message: lookup.message || `El sorteo de ${rec.loteria} (${drawTime}) aún está en espera de publicación en 1000Resultados.`
       };
     }
   } catch (err) {
@@ -772,33 +800,19 @@ async function lookupAndUpdateRecord(recordId) {
 }
 
 /**
- * Extraer resultado de un sorteo programado específico en Visual-FX
+ * Extraer resultado de un sorteo programado específico en 1000Resultados
  * Sigue la regla:
- * - Intento 1: Exactamente a los 5 minutos tras el sorteo (+5 min)
- * - Intento 2: Exactamente a los 10 minutos tras el sorteo (+10 min, si el 1 no lo consiguió)
- * - Al segundo intento sin conseguirlo, PARA por completo para evitar consultas innecesarias.
+ * - Intento 1: A los 5 minutos tras el sorteo (+5 min)
+ * - Intento 2: A los 10 minutos tras el sorteo (+10 min, si el 1 no lo consiguió)
+ * - Al segundo intento sin conseguirlo, PARA por completo (máximo 2 intentos automáticos).
  * @param {string} loteriaKeyOrId - Lotería
  * @param {string} sorteoHora - Hora del sorteo
  * @param {string} fechaStr - Fecha YYYY-MM-DD
  * @param {number} intentoNum - 1 o 2
  */
-function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNum = 1) {
+async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNum = 1) {
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, found: false, message: 'Sin registros históricos' };
-
-    let fxResults = null;
-    let fxHistory = null;
-
-    if (fs.existsSync(VISUAL_FX_RESULTS_PATH)) {
-      try { fxResults = JSON.parse(fs.readFileSync(VISUAL_FX_RESULTS_PATH, 'utf8')); } catch (e) {}
-    }
-    if (fs.existsSync(VISUAL_FX_HISTORY_PATH)) {
-      try { fxHistory = JSON.parse(fs.readFileSync(VISUAL_FX_HISTORY_PATH, 'utf8')); } catch (e) {}
-    }
-
-    if (!fxResults && !fxHistory) {
-      return { ok: false, found: false, message: 'No hay base de datos de Visual-FX en disco' };
-    }
 
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     const gameKey = mapLoteriaToVisualFx(loteriaKeyOrId);
@@ -816,29 +830,38 @@ function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNu
       return matchGame && matchTime && matchDate && pendiente;
     });
 
-    // Buscar en la base de datos de Visual-FX para ese juego y fecha
-    let candidateDraws = [];
-    if (fxResults) {
-      const dayData = fxResults[fechaStr];
-      if (dayData && dayData[gameKey] && Array.isArray(dayData[gameKey].draws)) {
-        candidateDraws = candidateDraws.concat(dayData[gameKey].draws);
-      }
+    if (matchingRecords.length === 0) {
+      return { ok: true, found: false, message: 'No hay sorteos pendientes para verificar' };
     }
 
-    if (candidateDraws.length === 0 && fxHistory && fxHistory[gameKey]) {
-      const historyDay = fxHistory[gameKey][fechaStr];
-      if (Array.isArray(historyDay)) {
-        candidateDraws = candidateDraws.concat(historyDay);
-      }
-    }
-
+    // 1. Scraping directo desde 1000Resultados
+    const scraper = require('./scraper_service');
     let matchedDraw = null;
-    if (candidateDraws.length > 0 && targetMinutes !== null) {
-      matchedDraw = candidateDraws.find(d => {
-        if (d.isPending || !d.number) return false;
-        const dMins = parseTimeToMinutes(d.time);
-        return dMins !== null && Math.abs(dMins - targetMinutes) <= 25;
-      });
+    try {
+      const lookup = await scraper.lookupDrawResult(loteriaKeyOrId, sorteoHora, fechaStr);
+      if (lookup && lookup.found && lookup.number) {
+        matchedDraw = { number: lookup.number, name: lookup.name };
+      }
+    } catch (eScrap) {}
+
+    // 2. Si no se obtuvo de scraper, consultar archivos locales de Visual-FX si existen
+    if (!matchedDraw) {
+      let candidateDraws = [];
+      if (fs.existsSync(VISUAL_FX_RESULTS_PATH)) {
+        try {
+          const fxResults = JSON.parse(fs.readFileSync(VISUAL_FX_RESULTS_PATH, 'utf8'));
+          if (fxResults[fechaStr] && fxResults[fechaStr][gameKey] && Array.isArray(fxResults[fechaStr][gameKey].draws)) {
+            candidateDraws = candidateDraws.concat(fxResults[fechaStr][gameKey].draws);
+          }
+        } catch (e) {}
+      }
+      if (candidateDraws.length > 0 && targetMinutes !== null) {
+        matchedDraw = candidateDraws.find(d => {
+          if (d.isPending || !d.number) return false;
+          const dMins = parseTimeToMinutes(d.time);
+          return dMins !== null && Math.abs(dMins - targetMinutes) <= 25;
+        });
+      }
     }
 
     if (matchedDraw && matchedDraw.number) {
@@ -854,6 +877,10 @@ function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNu
       });
 
       fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
+      try {
+        const cloudStore = require('./cloud_store');
+        await cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+      } catch (eC) {}
 
       return {
         ok: true,
@@ -874,6 +901,10 @@ function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNu
         };
       });
       fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
+      try {
+        const cloudStore = require('./cloud_store');
+        await cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+      } catch (eC) {}
 
       return {
         ok: true,
@@ -881,7 +912,7 @@ function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNu
         intentoNum,
         detenerIntentos: intentoNum >= 2,
         message: intentoNum >= 2 
-          ? `Resultado no publicado tras 2do intento (+10 min). Deteniendo revisiones.`
+          ? `Resultado no publicado tras 2do intento (+10 min). Deteniendo revisiones automáticas.`
           : `Resultado no publicado en 1er intento (+5 min). Se reintentará al minuto +10.`
       };
     }

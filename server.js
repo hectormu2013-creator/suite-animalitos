@@ -2155,7 +2155,7 @@ setInterval(async () => {
             await predictive.syncVisualFxDraws(lot.id);
 
             const historyMgr = require('./history_manager');
-            const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 1);
+            const syncRes = await historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 1);
             if (syncRes.found) {
               revisionesRealizadas.add(keyResuelto);
               log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
@@ -2174,7 +2174,7 @@ setInterval(async () => {
                 enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
               }
             } else {
-              log(`⏳ [RESULTADO PENDIENTE] Intento 1 (+5 min) para ${lot.nombre} (${hStr}): Aún no publicado en Visual-FX. Se reintentará al minuto +10.`, 'log-warn');
+              log(`⏳ [RESULTADO PENDIENTE] Intento 1 (+5 min) para ${lot.nombre} (${hStr}): Aún no publicado en 1000Resultados. Se reintentará al minuto +10.`, 'log-warn');
             }
           } catch (err) {
             log(`Aviso al consultar resultado intento 1: ${err.message}`, 'log-warn');
@@ -2184,15 +2184,14 @@ setInterval(async () => {
         // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ)
         if (diffMinutes >= 10 && diffMinutes < 60 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
           revisionesRealizadas.add(keyIntento2);
-          log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con Visual-FX...`, 'log-info');
+          log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con 1000Resultados...`, 'log-info');
           
           try {
             const predictive = require('./predictive_service');
-            // Reintentar sincronización activa con Visual-FX
             await predictive.syncVisualFxDraws(lot.id);
 
             const historyMgr = require('./history_manager');
-            const syncRes = historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 2);
+            const syncRes = await historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 2);
             if (syncRes.found) {
               revisionesRealizadas.add(keyResuelto);
               log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');

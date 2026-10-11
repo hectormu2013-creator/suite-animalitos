@@ -244,7 +244,29 @@ async function scrape1000Resultados(gameSlug) {
 }
 
 /**
+ * Validador estricto de número según la lotería:
+ * - Lotto Activo: 00, 0..36
+ * - La Granjita: 00, 0..36
+ * - Guácharo Activo: 00, 0..77
+ * - Guacharito Millonario: 00, 0..77
+ */
+function isValidLotteryNumber(normKey, numStr) {
+  if (!numStr) return false;
+  if (numStr === '00' || numStr === '0') return true;
+  const val = parseInt(numStr, 10);
+  if (isNaN(val)) return false;
+  if (normKey === 'lotto-activo' || normKey === 'la-granjita') {
+    return val >= 0 && val <= 36;
+  }
+  if (normKey === 'guacharo-activo' || normKey === 'guacharito-millonario') {
+    return val >= 0 && val <= 77;
+  }
+  return val >= 0 && val <= 100;
+}
+
+/**
  * Buscar resultado oficial para una lotería y hora de sorteo específica
+ * Conexión DIRECTA a 1000Resultados como fuente primaria
  * @param {string} loteriaNameOrId - Lotería
  * @param {string} targetDrawTime - "10:00 AM", "10:00", etc.
  * @param {string} targetDate - "YYYY-MM-DD"
@@ -253,7 +275,68 @@ async function lookupDrawResult(loteriaNameOrId, targetDrawTime, targetDate) {
   const normKey = normalizeLoteria(loteriaNameOrId);
   const targetMinutes = parseTimeToMinutes(targetDrawTime);
 
-  // 1. Si existe archivo de Visual-FX en disco (nodo local), consultar primero
+  // 1. Scraping en vivo DIRECTO desde 1000Resultados (Fuente Oficial Primaria)
+  try {
+    const res1000Draws = await scrape1000Resultados(normKey);
+    if (res1000Draws.length > 0) {
+      const match = res1000Draws.find(d => {
+        const dMins = parseTimeToMinutes(d.time);
+        return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
+      });
+
+      if (match) {
+        if (!match.isPending && match.number && isValidLotteryNumber(normKey, match.number)) {
+          return {
+            found: true,
+            number: String(match.number).padStart(2, '0'),
+            name: match.name || getAnimalName(match.number),
+            drawTime: match.time,
+            source: '1000Resultados Oficial'
+          };
+        } else if (match.isPending) {
+          return {
+            found: false,
+            pending: true,
+            drawTime: match.time,
+            message: `El sorteo de ${targetDrawTime} figura "En Espera" en 1000Resultados.`
+          };
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Scraping en vivo desde TuAzar (Respaldo)
+  try {
+    const tuAzarData = await scrapeTuAzarAnimalitos();
+    const tuAzarDraws = tuAzarData[normKey] || [];
+    if (tuAzarDraws.length > 0) {
+      const match = tuAzarDraws.find(d => {
+        const dMins = parseTimeToMinutes(d.time);
+        return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
+      });
+
+      if (match) {
+        if (!match.isPending && match.number && isValidLotteryNumber(normKey, match.number)) {
+          return {
+            found: true,
+            number: String(match.number).padStart(2, '0'),
+            name: match.name || getAnimalName(match.number),
+            drawTime: match.time,
+            source: 'TuAzar Oficial'
+          };
+        } else if (match.isPending) {
+          return {
+            found: false,
+            pending: true,
+            drawTime: match.time,
+            message: `El sorteo de ${targetDrawTime} figura "En Espera" en TuAzar.`
+          };
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 3. Fallback a archivo de Visual-FX en disco (si existe)
   const fxResultsPath = path.join('C:', 'Users', 'Hector', 'Fenix_2026_1', 'PROYECTO_VISUAL_FX', 'data', 'lottery_results.json');
   if (fs.existsSync(fxResultsPath)) {
     try {
@@ -265,7 +348,7 @@ async function lookupDrawResult(loteriaNameOrId, targetDrawTime, targetDate) {
           const dMins = parseTimeToMinutes(d.time);
           return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
         });
-        if (candidate && candidate.number) {
+        if (candidate && candidate.number && isValidLotteryNumber(normKey, candidate.number)) {
           return {
             found: true,
             number: String(candidate.number).padStart(2, '0'),
@@ -278,71 +361,10 @@ async function lookupDrawResult(loteriaNameOrId, targetDrawTime, targetDate) {
     } catch (e) {}
   }
 
-  // 2. Scraping en vivo desde TuAzar
-  try {
-    const tuAzarData = await scrapeTuAzarAnimalitos();
-    const tuAzarDraws = tuAzarData[normKey] || [];
-    if (tuAzarDraws.length > 0) {
-      const match = tuAzarDraws.find(d => {
-        const dMins = parseTimeToMinutes(d.time);
-        return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
-      });
-
-      if (match) {
-        if (!match.isPending && match.number) {
-          return {
-            found: true,
-            number: String(match.number).padStart(2, '0'),
-            name: match.name || getAnimalName(match.number),
-            drawTime: match.time,
-            source: 'TuAzar Oficial'
-          };
-        } else {
-          return {
-            found: false,
-            pending: true,
-            drawTime: match.time,
-            message: `El sorteo de ${targetDrawTime} figura "En Espera" en TuAzar.`
-          };
-        }
-      }
-    }
-  } catch (e) {}
-
-  // 3. Scraping en vivo desde 1000Resultados (fallback robusto)
-  try {
-    const res1000Draws = await scrape1000Resultados(normKey);
-    if (res1000Draws.length > 0) {
-      const match = res1000Draws.find(d => {
-        const dMins = parseTimeToMinutes(d.time);
-        return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
-      });
-
-      if (match) {
-        if (!match.isPending && match.number) {
-          return {
-            found: true,
-            number: String(match.number).padStart(2, '0'),
-            name: match.name || getAnimalName(match.number),
-            drawTime: match.time,
-            source: '1000Resultados'
-          };
-        } else {
-          return {
-            found: false,
-            pending: true,
-            drawTime: match.time,
-            message: `El sorteo de ${targetDrawTime} figura "En Espera" en 1000Resultados.`
-          };
-        }
-      }
-    }
-  } catch (e) {}
-
   return {
     found: false,
     pending: true,
-    message: `Aún no se ha publicado el resultado para ${loteriaNameOrId} (${targetDrawTime}). Intente de nuevo en unos minutos.`
+    message: `Aún no se ha publicado el resultado para ${loteriaNameOrId} (${targetDrawTime}) en 1000Resultados.`
   };
 }
 
