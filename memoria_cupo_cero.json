@@ -1755,13 +1755,52 @@
       "fechaOrigen": "2026-10-11",
       "sorteoOrigen": "17:00",
       "sorteosConfigurados": 1,
-      "sorteosRestantes": 1,
+      "sorteosRestantes": 0,
       "sorteosPrebloqueados": [
         "18:00"
       ],
+      "sorteosProcesados": [
+        "08:00"
+      ],
+      "estado": "EXPIRADO",
+      "timestamp": "2026-10-11T20:44:23.550Z",
+      "fechaExpiracion": "2026-10-11T21:51:37.939Z"
+    },
+    {
+      "id": "guacharo_activo_este_2026-10-11_1791755738943",
+      "loteriaId": "guacharo_activo",
+      "loteriaNombre": "GUACHARO ACTIVO",
+      "numero": "este",
+      "nombre": "Animal este",
+      "fechaOrigen": "2026-10-11",
+      "sorteoOrigen": "18:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:00"
+      ],
       "sorteosProcesados": [],
       "estado": "ACTIVO",
-      "timestamp": "2026-10-11T20:44:23.550Z"
+      "timestamp": "2026-10-11T21:55:38.943Z"
+    },
+    {
+      "id": "lotto_activo_este_2026-10-11_1791755793674",
+      "loteriaId": "lotto_activo",
+      "loteriaNombre": "LOTTO ACTIVO",
+      "numero": "este",
+      "nombre": "Animal este",
+      "fechaOrigen": "2026-10-11",
+      "sorteoOrigen": "18:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "19:00"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-11T21:56:33.674Z",
+      "ultimoSorteoDetectado": "18:00",
+      "timestampActualizacion": "2026-10-11T21:57:29.028Z"
     }
   ]
 }

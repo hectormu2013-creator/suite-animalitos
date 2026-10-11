@@ -2083,20 +2083,20 @@ setInterval(async () => {
       }
 
       // =========================================================================
-      // 4.5. DESINCORPORACIÓN AUTOMÁTICA EN TRIPLE 7 (EXACTAMENTE 5 MINUTOS ANTES)
+      // 4.5. DESINCORPORACIÓN AUTOMÁTICA EN TRIPLE 7 (EXACTAMENTE 4 MINUTOS ANTES)
       // Regla Operativa Maestra: Triple 7 cierra ventas 10 min antes de la hora.
-      // A los 5 min antes (ej. 3:55 PM para sorteo de 4:00 PM), ya nadie puede jugar.
+      // A los 4 min antes (ej. 3:56 PM para sorteo de 4:00 PM), ya nadie puede jugar.
       // En ese instante se desincorporan (reincorporan) todos los animales del sorteo,
       // dejándolo limpio para mañana y evitando que bloquee ventas futuras.
       // =========================================================================
       if (cfg.general.triple7 && cfg.general.triple7.enabled !== false) {
-        const targetCleanMinutes = drawMinutes - 5;
+        const targetCleanMinutes = drawMinutes - 4;
         const diffClean = currentTotalMinutes - targetCleanMinutes;
-        const keyClean5m = `${todayStr}_${lot.id}_${hStr}_clean5m`;
+        const keyClean4m = `${todayStr}_${lot.id}_${hStr}_clean4m`;
 
-        if (diffClean >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyClean5m)) {
-          tareasEjecutadas.add(keyClean5m);
-          log(`🔓 [DESINCORPORACIÓN POST-CIERRE (5m antes)] Sorteo ${lot.nombre} (${hStr}). Ventas de Triple 7 cerradas (hace 5 min). Liberando sorteo para dejarlo 100% limpio para mañana...`, 'log-info');
+        if (diffClean >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyClean4m)) {
+          tareasEjecutadas.add(keyClean4m);
+          log(`🔓 [DESINCORPORACIÓN POST-CIERRE (4m antes)] Sorteo ${lot.nombre} (${hStr}). Ventas de Triple 7 cerradas (hace 6 min). Liberando sorteo para dejarlo 100% limpio para mañana...`, 'log-info');
           try {
             delete require.cache[require.resolve('./triple7_robot')];
             const t7 = require('./triple7_robot');
@@ -2107,7 +2107,7 @@ setInterval(async () => {
               log(`⚠️ [TRIPLE 7 DESINCORPORACIÓN AVISO] ${unblockRes.message}`, 'log-warn');
             }
           } catch (eClean) {
-            log(`Error en desincorporación a -5 min: ${eClean.message}`, 'log-danger');
+            log(`Error en desincorporación a -4 min: ${eClean.message}`, 'log-danger');
           }
         }
       }

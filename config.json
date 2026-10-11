@@ -38,7 +38,7 @@
       },
       {
         "id": "maquina_2",
-        "notas": "Túnel en vivo: 4:46:52 PM",
+        "notas": "Túnel en vivo: 8:42:36 PM",
         "activa": true,
         "ipOUrl": "https://architecture-tea-ideal-director.trycloudflare.com",
         "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
@@ -47,7 +47,7 @@
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-11T20:41:24.555Z",
+        "ultimaConexion": "2026-10-11T21:47:57.918Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
