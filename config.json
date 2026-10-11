@@ -9,11 +9,11 @@
     },
     "maquinas": [
       {
-        "id": "maquina_1",
-        "notas": "Taquilla de pesca 24/7 dedicada (Auto-reporta túnel Cloudflare)",
-        "activa": false,
+        "id": "maquina_3",
+        "notas": "Taquilla de pesca principal 24/7 (Opción 1)",
+        "activa": true,
         "ipOUrl": "",
-        "nombre": "Nodo de Pesca Dedicado (Producción)",
+        "nombre": "Máquina 3 (Opción 1 - Principal)",
         "keepOpen": true,
         "prioridad": 1,
         "clavePremier": "123",
@@ -23,17 +23,31 @@
         "esEncargadaVerificaciones": false
       },
       {
-        "id": "maquina_2",
-        "notas": "Túnel en vivo: 3:33:06 PM",
+        "id": "maquina_1",
+        "notas": "Taquilla de pesca secundaria (Opción 2)",
         "activa": true,
-        "ipOUrl": "https://tractor-experiments-connector-terrorist.trycloudflare.com",
-        "nombre": "Estación de Trabajo / Dev (Hector)",
+        "ipOUrl": "",
+        "nombre": "Máquina 1 (Opción 2 - Secundaria)",
         "keepOpen": true,
         "prioridad": 2,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-08T21:06:08.893Z",
+        "usuarioPremier": "TCOP101",
+        "esEncargadaVerificaciones": false
+      },
+      {
+        "id": "maquina_2",
+        "notas": "Túnel en vivo: 2:25:35 PM",
+        "activa": true,
+        "ipOUrl": "https://league-hour-potter-humanity.trycloudflare.com",
+        "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
+        "keepOpen": true,
+        "prioridad": 3,
+        "clavePremier": "123",
+        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
+        "tipoPlataforma": "PREMIER_PLUS_20",
+        "ultimaConexion": "2026-10-11T15:22:03.331Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -65,6 +79,7 @@
     },
     "horaActivacionDiaria": "07:00",
     "activacionDiariaActiva": true,
+    "maquinaEncargadaSondeoId": "maquina_3",
     "maquinaEncargadaVerificacionesId": "maquina_2"
   },
   "loterias": [
@@ -129,6 +144,7 @@
       "minutosAntesPremier": 50,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -146,7 +162,7 @@
       "bloqueoAleatorioSistema": true,
       "maximoBloqueosPorSorteo": 6,
       "bloqueoPredictivosAtrasados": true,
-      "cantidadAleatoriosABloquear": 1,
+      "cantidadAleatoriosABloquear": 2,
       "cantidadPredictivosABloquear": 2
     },
     {
@@ -169,7 +185,7 @@
       ],
       "montoSondeo": 5000,
       "bloqueoFijos": true,
-      "minutosAntes": 28,
+      "minutosAntes": 37,
       "numerosFijos": [],
       "totalAnimales": 38,
       "memoriaCupoCero": {
@@ -179,13 +195,13 @@
       "sondeosMultiples": [
         {
           "id": 1,
-          "activo": false,
-          "minutosAntes": 38
+          "activo": true,
+          "minutosAntes": 37
         },
         {
           "id": 2,
           "activo": true,
-          "minutosAntes": 28
+          "minutosAntes": 27
         },
         {
           "id": 3,
@@ -205,9 +221,10 @@
       ],
       "bloquearSoloRojos": true,
       "minutosAntesFijos": 50,
-      "minutosAntesPremier": 28,
+      "minutosAntesPremier": 37,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",
@@ -248,7 +265,7 @@
       ],
       "montoSondeo": 5000,
       "bloqueoFijos": true,
-      "minutosAntes": 27,
+      "minutosAntes": 38,
       "numerosFijos": [],
       "totalAnimales": 38,
       "memoriaCupoCero": {
@@ -258,13 +275,13 @@
       "sondeosMultiples": [
         {
           "id": 1,
-          "activo": false,
-          "minutosAntes": 37
+          "activo": true,
+          "minutosAntes": 38
         },
         {
           "id": 2,
           "activo": true,
-          "minutosAntes": 27
+          "minutosAntes": 28
         },
         {
           "id": 3,
@@ -284,9 +301,10 @@
       ],
       "bloquearSoloRojos": true,
       "minutosAntesFijos": 50,
-      "minutosAntesPremier": 27,
+      "minutosAntesPremier": 38,
       "minutosAntesVisualFx": 40,
       "sorteosSondeoActivos": [
+        "08:00",
         "09:00",
         "10:00",
         "11:00",

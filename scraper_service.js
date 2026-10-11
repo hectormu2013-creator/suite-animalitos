@@ -91,48 +91,87 @@ async function scrapeTuAzarAnimalitos() {
     if (status !== 200 || !html) return {};
 
     const gameMap = {};
-    const sections = html.split('<h2 class="lotResTit');
 
-    for (let i = 1; i < sections.length; i++) {
-      const sec = sections[i];
-      const titleMatch = sec.match(/class="[^"]*">\s*([A-Z0-9\s]+)\s*<\/h2>/i) || sec.match(/>\s*([A-Z0-9\s]+)\s*<\/h2>/i);
-      const title = titleMatch ? titleMatch[1].trim() : '';
-      const normKey = normalizeLoteria(title);
+    // 1. Soporte para el formato actual de TuAzar (<h3 class="lc-title"> y .lc-tile)
+    if (html.includes('class="lc-title"') || html.includes('lc-tile')) {
+      const sections = html.split(/<h3 class="lc-title">/i);
+      for (let i = 1; i < sections.length; i++) {
+        const sec = sections[i];
+        const title = sec.split('</h3>')[0].trim();
+        const normKey = normalizeLoteria(title);
 
-      const boxRegex = /<div class="col-xs-6 col-sm-3">([\s\S]*?)<\/div>\s*<\/div>/gi;
-      let match;
-      const draws = [];
+        const tileRegex = /<div class="lc-tile([^"]*)"[\s\S]*?<div class="lc-tile-time">([^<]+)<\/div>[\s\S]*?<div class="lc-tile-label[^"]*">([\s\S]*?)<\/div>/gi;
+        let m;
+        const draws = [];
 
-      while ((match = boxRegex.exec(sec)) !== null) {
-        const content = match[1];
-        const timeM = content.match(/<div class="horario">\s*<span[^>]*>([^<]+)<\/span>/i);
-        const nameM = content.match(/<span>\s*([0-9]+)\s*<i[^>]*>[^<]*<\/i>\s*(?:<br[^>]*>)?\s*([^<]+)<\/span>/i);
-        const isPending = /en espera/i.test(content) || !nameM;
+        while ((m = tileRegex.exec(sec)) !== null) {
+          const isPending = m[1].includes('empty') || m[3].includes('--empty');
+          let time = m[2].trim();
+          if (time.indexOf(':') === 1) time = '0' + time;
 
-        let time = timeM ? timeM[1].trim() : null;
-        if (time) {
-          const parts = time.split(':');
-          if (parts[0].length === 1) time = `0${time}`;
+          let number = null, name = null;
+          if (!isPending) {
+            const numM = m[3].match(/class="lc-tile-num">([^<]+)<\/span>/i);
+            const nameM = m[3].match(/class="lc-tile-animal">([^<]+)<\/span>/i);
+            if (numM) number = numM[1].trim().padStart(2, '0');
+            if (nameM) name = nameM[1].trim();
+            if (number && !name) name = getAnimalName(number);
+          }
+
+          draws.push({ time, isPending, number, name });
         }
 
-        let numStr = (!isPending && nameM) ? nameM[1].trim() : null;
-        let animalName = (!isPending && nameM) ? nameM[2].trim() : null;
-
-        if (numStr) {
-          numStr = String(numStr).padStart(2, '0');
-          if (!animalName || animalName.length < 2) animalName = getAnimalName(numStr);
+        if (draws.length > 0) {
+          if (!gameMap[normKey]) gameMap[normKey] = [];
+          gameMap[normKey] = gameMap[normKey].concat(draws);
         }
-
-        draws.push({
-          time,
-          isPending,
-          number: numStr,
-          name: animalName
-        });
       }
+    }
 
-      if (!gameMap[normKey]) gameMap[normKey] = [];
-      gameMap[normKey] = gameMap[normKey].concat(draws);
+    // 2. Fallback de formato clásico (<h2 class="lotResTit)
+    if (Object.keys(gameMap).length === 0 && html.includes('<h2 class="lotResTit')) {
+      const sections = html.split('<h2 class="lotResTit');
+      for (let i = 1; i < sections.length; i++) {
+        const sec = sections[i];
+        const titleMatch = sec.match(/class="[^"]*">\s*([A-Z0-9\s]+)\s*<\/h2>/i) || sec.match(/>\s*([A-Z0-9\s]+)\s*<\/h2>/i);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+        const normKey = normalizeLoteria(title);
+
+        const boxRegex = /<div class="col-xs-6 col-sm-3">([\s\S]*?)<\/div>\s*<\/div>/gi;
+        let match;
+        const draws = [];
+
+        while ((match = boxRegex.exec(sec)) !== null) {
+          const content = match[1];
+          const timeM = content.match(/<div class="horario">\s*<span[^>]*>([^<]+)<\/span>/i);
+          const nameM = content.match(/<span>\s*([0-9]+)\s*<i[^>]*>[^<]*<\/i>\s*(?:<br[^>]*>)?\s*([^<]+)<\/span>/i);
+          const isPending = /en espera/i.test(content) || !nameM;
+
+          let time = timeM ? timeM[1].trim() : null;
+          if (time) {
+            const parts = time.split(':');
+            if (parts[0].length === 1) time = `0${time}`;
+          }
+
+          let numStr = (!isPending && nameM) ? nameM[1].trim() : null;
+          let animalName = (!isPending && nameM) ? nameM[2].trim() : null;
+
+          if (numStr) {
+            numStr = String(numStr).padStart(2, '0');
+            if (!animalName || animalName.length < 2) animalName = getAnimalName(numStr);
+          }
+
+          draws.push({
+            time,
+            isPending,
+            number: numStr,
+            name: animalName
+          });
+        }
+
+        if (!gameMap[normKey]) gameMap[normKey] = [];
+        gameMap[normKey] = gameMap[normKey].concat(draws);
+      }
     }
 
     return gameMap;
@@ -148,16 +187,24 @@ async function scrape1000Resultados(gameSlug) {
   if (!gameSlug) return [];
   try {
     const slugMap = {
-      'guacharo-activo': 'guacharoactivo',
-      'lotto-activo': 'lottoactivo',
-      'la-granjita': 'granjita',
-      'guacharito-millonario': 'guacharitomillonario',
-      'selva-plus': 'selvaplus',
-      'ruleta-activa': 'ruletaactiva'
+      'guacharo-activo': 'guacharo-activo',
+      'lotto-activo': 'lotto-activo',
+      'la-granjita': 'la-granjita',
+      'guacharito-millonario': 'guacharito-millonario',
+      'selva-plus': 'selva-plus',
+      'ruleta-activa': 'ruleta-activa'
     };
-    const s = slugMap[gameSlug] || gameSlug.replace(/[^a-z0-9]/g, '');
+    const s = slugMap[gameSlug] || gameSlug.replace(/_/g, '-');
     const { status, html } = await fetchUrl(`https://1000resultados.com/resultados/${s}`);
     if (status !== 200 || !html) return [];
+
+    // Salvaguarda anti-fallback: Si 1000Resultados redirige internamente a 'zoologico-activo' al fallar un slug
+    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+    const titleText = (titleMatch ? titleMatch[1] : '').toLowerCase();
+    if (!s.includes('zoologico') && (titleText.includes('zoologico activo') || titleText.includes('zoológico activo'))) {
+      console.warn(`[1000Resultados] Redirección no deseada a Zoológico Activo al consultar ${s}. Descartando.`);
+      return [];
+    }
 
     const articleRegex = /<article[\s\S]*?<\/article>/gi;
     const articles = html.match(articleRegex) || [];

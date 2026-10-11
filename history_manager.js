@@ -605,11 +605,26 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
 /**
  * Sincronizar automáticamente resultados con Visual-FX y scrapers oficiales en vivo
  * (TOTALMENTE AUTÓNOMO: Funciona en Localhost y en Render con scrapers nativos)
+ * @param {boolean} forceReverify - Si es true, vuelve a verificar incluso registros previamente marcados
+ * @param {string} targetDate - "YYYY-MM-DD" opcional para limitar la sincronización a una fecha específica
  */
-async function syncResultsWithVisualFx() {
+async function syncResultsWithVisualFx(forceReverify = false, targetDate = null) {
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Sin registros históricos', updatedCount: 0, trophiesCount: 0 };
     
+    // Si la nube (Supabase) tiene registros adicionales que no están en el disco local, sincronizarlos
+    try {
+      const cloudStore = require('./cloud_store');
+      const cloudRes = await cloudStore.getMasterHistory();
+      if (cloudRes && Array.isArray(cloudRes.records) && cloudRes.records.length > 0) {
+        const local = JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]');
+        if (cloudRes.records.length > local.length) {
+          fs.writeFileSync(DB_PATH, JSON.stringify(cloudRes.records, null, 2), 'utf8');
+          rewriteCSV(cloudRes.records);
+        }
+      }
+    } catch (eCloudMerge) {}
+
     // Cargar bases de datos de Visual-FX si existen en disco
     let fxResults = null;
     let fxHistory = null;
@@ -628,10 +643,12 @@ async function syncResultsWithVisualFx() {
     const scraper = require('./scraper_service');
 
     for (const rec of history) {
-      // Si ya está verificado, saltar
-      if (rec.ganador && rec.ganador.verificado) continue;
+      if (targetDate && rec.fecha !== targetDate) continue;
 
-      const recDate = rec.fecha; // ej: 2026-10-06
+      // Si ya está verificado y no se pide forzar reverificación, saltar
+      if (rec.ganador && rec.ganador.verificado && !forceReverify) continue;
+
+      const recDate = rec.fecha; // ej: 2026-10-11
       const gameKey = mapLoteriaToVisualFx(rec.loteria);
       const recTimeMinutes = parseTimeToMinutes(rec.sorteo || rec.horaSorteo);
 
@@ -691,7 +708,7 @@ async function syncResultsWithVisualFx() {
     if (updatedCount > 0) {
       try {
         const cloudStore = require('./cloud_store');
-        cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+        await cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
       } catch (eCloud) {}
     }
 
@@ -728,7 +745,7 @@ async function lookupAndUpdateRecord(recordId) {
       try {
         const cloudStore = require('./cloud_store');
         const freshHistory = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-        cloudStore.saveMasterHistory(freshHistory);
+        await cloudStore.saveMasterHistory(freshHistory);
       } catch (eC) {}
 
       return {
