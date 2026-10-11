@@ -1824,7 +1824,9 @@ setInterval(async () => {
             const yaBloqueados = existingRec ? (existingRec.rojos || []) : [];
 
             const aleatorios = predictive.getRandomSystemBlockNumbers(lot.id, lot.cantidadAleatoriosABloquear, yaBloqueados);
-            const numerosParaBloquear = aleatorios.map(a => a.numero);
+            const maxBloqueosConfig = parseInt(lot.maximoBloqueosPorSorteo, 10) || 6;
+            const fijosPrevios = existingRec ? (existingRec.numFijos || []) : predictive.getFixedBlockNumbers(cfg, lot.id).map(f => f.numero);
+            const numerosParaBloquear = Array.from(new Set([...fijosPrevios, ...aleatorios.map(a => a.numero)])).slice(0, maxBloqueosConfig);
 
             let t7Status = !cfg.general.triple7.enabled 
               ? 'Desactivado' 
@@ -1832,7 +1834,7 @@ setInterval(async () => {
             let t7Blocked = false;
 
             if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
-              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${numerosParaBloquear.length} números aleatorios a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
+              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${numerosParaBloquear.length} números (Fijos + Aleatorios, máx ${maxBloqueosConfig}) a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
               try {
                 const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
                 t7Blocked = t7Res.ok;
@@ -1849,8 +1851,9 @@ setInterval(async () => {
               montoSondeo: lot.montoSondeo || 3000,
               totalAnimalesAnalizados: lot.totalAnimales || 38,
               rojos: numerosParaBloquear,
-              numAleatorios: numerosParaBloquear,
+              numAleatorios: aleatorios.map(a => a.numero),
               aleatoriosSistema: aleatorios,
+              maximoBloqueosConfigurado: maxBloqueosConfig,
               t7Status,
               t7Blocked
             });
@@ -1889,7 +1892,15 @@ setInterval(async () => {
             const t7 = require('./triple7_robot');
 
             const atrasados = predictive.getMostDelayedNumbers(lot.id, lot.cantidadPredictivosABloquear);
-            const numerosParaBloquear = atrasados.map(a => a.numero);
+            const maxBloqueosConfig = parseInt(lot.maximoBloqueosPorSorteo, 10) || 6;
+            const existingHistory = historyMgr.getHistory({ fecha: todayStr });
+            const existingRec = existingHistory.find(r => 
+              (r.loteria || '').toLowerCase().includes(lot.nombre.toLowerCase().slice(0, 5)) &&
+              (r.sorteo === hStr || r.horaSorteo === hStr)
+            );
+            const fijosPrevios = existingRec ? (existingRec.numFijos || []) : predictive.getFixedBlockNumbers(cfg, lot.id).map(f => f.numero);
+            const aleatPrevios = existingRec ? (existingRec.numAleatorios || []) : [];
+            const numerosParaBloquear = Array.from(new Set([...fijosPrevios, ...aleatPrevios, ...atrasados.map(a => a.numero)])).slice(0, maxBloqueosConfig);
 
             let t7Status = !cfg.general.triple7.enabled 
               ? 'Desactivado' 
@@ -1897,7 +1908,7 @@ setInterval(async () => {
             let t7Blocked = false;
 
             if (cfg.general.triple7.enabled && numerosParaBloquear.length > 0) {
-              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${numerosParaBloquear.length} números atrasados (Visual-FX) a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
+              log(`[AUTO-BLOQUEO TRIPLE 7] Enviando ${numerosParaBloquear.length} números acumulados (Fijos + Aleat + Visual-FX, máx ${maxBloqueosConfig}) a Triple 7 para ${lot.nombre} (${hStr})...`, 'log-info');
               try {
                 const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, hStr, numerosParaBloquear);
                 t7Blocked = t7Res.ok;
@@ -1915,7 +1926,8 @@ setInterval(async () => {
               totalAnimalesAnalizados: lot.totalAnimales || 38,
               rojos: numerosParaBloquear,
               predictivosVisualFx: atrasados,
-              numPredictivos: numerosParaBloquear,
+              numPredictivos: atrasados.map(a => a.numero),
+              maximoBloqueosConfigurado: maxBloqueosConfig,
               t7Status,
               t7Blocked
             });
@@ -2016,8 +2028,6 @@ setInterval(async () => {
               }
 
               // GESTIÓN DE MEMORIA PREMIER CUPO 0: Registrar persistencia en base de datos local
-              // (OJO: No se pre-bloquean a ciegas horas antes en Triple 7 para proteger las ventas;
-              // cada sorteo futuro aplicará sus números persistentes en su turno respetando la jerarquía de prioridad y el tope máximo)
               let siguientesSorteos = [];
               const rojosPremier = consolidated.rojosPremier || [];
               if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
@@ -2041,6 +2051,9 @@ setInterval(async () => {
                 montoSondeo: lot.montoSondeo || 3000,
                 totalAnimalesAnalizados: result.totalAnimalesAnalizados || lot.totalAnimales || 38,
                 rojos: consolidated.listaFinalNumeros,
+                esConsolidado: true,
+                maximoBloqueosConfigurado: consolidated.maximoBloqueosConfigurado,
+                bloqueosConsolidados: consolidated.listaFinalDetallada,
                 rojosPremier: consolidated.rojosPremier,
                 numFijos: consolidated.numFijos,
                 fijosSeleccionados: consolidated.fijosSeleccionados,

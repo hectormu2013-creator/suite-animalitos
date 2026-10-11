@@ -1,10 +1,10 @@
 {
-    "status":  "IDLE",
+    "status":  "RUNNING",
     "requestedAction":  "NONE",
-    "details":  "Sondeo completado con exito",
-    "loteria":  "GUACHARO MILLONARIO",
+    "details":  "Iniciando sondeo de LOTTO ACTIVO",
+    "loteria":  "LOTTO ACTIVO",
     "currentAnimal":  "",
     "progress":  "",
-    "pid":  5384,
-    "updatedAt":  "2026-10-10 19:23:14"
+    "pid":  36740,
+    "updatedAt":  "2026-10-11 16:44:49"
 }

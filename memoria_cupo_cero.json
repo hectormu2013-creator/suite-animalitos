@@ -1745,6 +1745,23 @@
       "ultimoSorteoDetectado": "18:30",
       "timestampActualizacion": "2026-10-08T22:02:02.055Z",
       "fechaExpiracion": "2026-10-08T23:31:25.775Z"
+    },
+    {
+      "id": "guacharo_activo_este_2026-10-11_1791751463550",
+      "loteriaId": "guacharo_activo",
+      "loteriaNombre": "GUACHARO ACTIVO",
+      "numero": "este",
+      "nombre": "Animal este",
+      "fechaOrigen": "2026-10-11",
+      "sorteoOrigen": "17:00",
+      "sorteosConfigurados": 1,
+      "sorteosRestantes": 1,
+      "sorteosPrebloqueados": [
+        "18:00"
+      ],
+      "sorteosProcesados": [],
+      "estado": "ACTIVO",
+      "timestamp": "2026-10-11T20:44:23.550Z"
     }
   ]
 }

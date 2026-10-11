@@ -38,16 +38,16 @@
       },
       {
         "id": "maquina_2",
-        "notas": "Túnel en vivo: 2:25:35 PM",
+        "notas": "Túnel en vivo: 4:46:52 PM",
         "activa": true,
-        "ipOUrl": "https://league-hour-potter-humanity.trycloudflare.com",
+        "ipOUrl": "https://architecture-tea-ideal-director.trycloudflare.com",
         "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
         "keepOpen": true,
         "prioridad": 3,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-11T15:22:03.331Z",
+        "ultimaConexion": "2026-10-11T20:41:24.555Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -160,10 +160,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
-      "maximoBloqueosPorSorteo": 6,
+      "maximoBloqueosPorSorteo": 7,
       "bloqueoPredictivosAtrasados": true,
-      "cantidadAleatoriosABloquear": 2,
-      "cantidadPredictivosABloquear": 2
+      "cantidadAleatoriosABloquear": 3,
+      "cantidadPredictivosABloquear": 3
     },
     {
       "id": "lotto_activo",
@@ -240,10 +240,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
-      "maximoBloqueosPorSorteo": 4,
+      "maximoBloqueosPorSorteo": 6,
       "bloqueoPredictivosAtrasados": true,
-      "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1
+      "cantidadAleatoriosABloquear": 2,
+      "cantidadPredictivosABloquear": 2
     },
     {
       "id": "la_granjita",
@@ -320,10 +320,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
-      "maximoBloqueosPorSorteo": 4,
+      "maximoBloqueosPorSorteo": 6,
       "bloqueoPredictivosAtrasados": true,
-      "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1
+      "cantidadAleatoriosABloquear": 2,
+      "cantidadPredictivosABloquear": 2
     },
     {
       "id": "guacharo_millonario",
@@ -401,10 +401,10 @@
       "bloqueoPremierAgotados": true,
       "minutosAntesAleatorios": 45,
       "bloqueoAleatorioSistema": true,
-      "maximoBloqueosPorSorteo": 7,
+      "maximoBloqueosPorSorteo": 9,
       "bloqueoPredictivosAtrasados": true,
-      "cantidadAleatoriosABloquear": 1,
-      "cantidadPredictivosABloquear": 1
+      "cantidadAleatoriosABloquear": 3,
+      "cantidadPredictivosABloquear": 3
     }
   ],
   "historial": []

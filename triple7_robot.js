@@ -316,9 +316,9 @@ function findOptionForNumber(targetDraw, numStr, animalDict) {
   const isGranjaMillonaria = normalizarTexto(targetDraw.loteria).includes('granja millonaria');
 
   if (isGranjaMillonaria) {
-    matchedOpt = targetDraw.options.find(o => o.value === numInt.toString() || o.nombre === numInt.toString());
+    matchedOpt = targetDraw.options.find(o => o.value === numInt.toString());
   } else {
-    const expectedVal = numRaw === '00' ? '1' : numRaw === '0' ? '2' : (numInt + 2).toString();
+    const expectedVal = (numRaw === '00') ? '1' : (numRaw === '0') ? '2' : (numInt + 2).toString();
     matchedOpt = targetDraw.options.find(o => o.value === expectedVal);
   }
 
@@ -329,10 +329,8 @@ function findOptionForNumber(targetDraw, numStr, animalDict) {
     });
   }
 
-  if (!matchedOpt) {
-    matchedOpt = targetDraw.options.find(o => o.nombre === numRaw || o.nombre === numInt.toString() || o.text === numRaw);
-  }
-
+  // NUNCA hacer fallback a o.nombre === numInt.toString() porque en Triple 7
+  // data-nombre es idani (ej: data-nombre="2" es Delfin/0, NO Toro/2)!
   return matchedOpt;
 }
 
@@ -352,6 +350,23 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
   const horaBuscada = normalizarHoraSorteo(sorteoHora);
   const loteriaBuscada = normalizarTexto(loteriaNombre);
 
+  // 1. Obtener límite máximo configurado para esta lotería
+  const lot = (config && config.loterias || []).find(l => {
+    const nl = normalizarTexto(l.nombre);
+    return nl.includes(loteriaBuscada) || loteriaBuscada.includes(nl);
+  });
+  let maxBloqueos = 6;
+  if (lot && lot.maximoBloqueosPorSorteo !== undefined) {
+    const val = parseInt(lot.maximoBloqueosPorSorteo, 10);
+    if (!isNaN(val)) maxBloqueos = Math.min(Math.max(val, 0), 10);
+  }
+
+  // Si vienen más números que el tope máximo permitido, cortar estrictamente
+  if (numerosParaBloquear.length > maxBloqueos) {
+    console.log(`[TRIPLE 7 LIMITE] ${loteriaNombre} (${sorteoHora}): Recibidos ${numerosParaBloquear.length} números, recortando al tope máximo configurado de ${maxBloqueos}: [${numerosParaBloquear.slice(0, maxBloqueos).join(', ')}]`);
+    numerosParaBloquear = numerosParaBloquear.slice(0, maxBloqueos);
+  }
+
   let cookie = await httpLoginTriple7(config);
   let listRes = await httpRequest(targetUrl, { headers: { 'Cookie': cookie } });
   if (listRes.status === 302 || listRes.body.includes('action="/index.php"')) {
@@ -359,11 +374,11 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     listRes = await httpRequest(targetUrl, { headers: { 'Cookie': cookie } });
   }
 
-  const blockedMap = await fetchTriple7BlockedMap(config, cookie);
-  const draws = parseDrawsFromHtml(listRes.body, blockedMap);
+  let blockedMap = await fetchTriple7BlockedMap(config, cookie);
+  let draws = parseDrawsFromHtml(listRes.body, blockedMap);
 
   // Localizar la fila correspondiente
-  const targetDraw = draws.find(d => {
+  let targetDraw = draws.find(d => {
     const rowLot = normalizarTexto(d.loteria);
     const rowTime = normalizarHoraSorteo(d.sorteo);
     const matchLot = rowLot.includes(loteriaBuscada) || loteriaBuscada.includes(rowLot);
@@ -385,51 +400,96 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     animalDict = {};
   }
 
-  // 1. Mapear cada número deseado a su opción correspondiente en Triple 7
-  const listaObjetivos = [];
-  const idsDeseados = new Set();
-  const fallidos = [];
-
+  // 2. Calcular los ID de animal (idani) deseados según la regla oficial de Triple 7
+  // (00 -> 1, 0 -> 2, N -> N + 2)
+  const idaniDeseados = new Set();
+  const numerosMap = [];
   for (const numStr of numerosParaBloquear) {
-    const opt = findOptionForNumber(targetDraw, numStr, animalDict);
-    if (opt && opt.url) {
-      listaObjetivos.push({ numStr: numStr.toString().trim(), opt });
-      idsDeseados.add(opt.value);
-    } else {
-      fallidos.push(numStr.toString().trim());
-    }
+    const raw = numStr.toString().trim();
+    const numInt = parseInt(raw, 10);
+    const idani = (raw === '00') ? '1' : (raw === '0') ? '2' : (numInt + 2).toString();
+    idaniDeseados.add(idani);
+    numerosMap.push({ raw, numInt, idani });
   }
 
-  // 2. Inyectar los bloqueos deseados
+  // 3. Inspeccionar el estado real actual en Triple 7 para este sorteo
+  let idsActualmenteBloqueados = (targetDraw.idsol && blockedMap.get(targetDraw.idsol)) || [];
+
+  // PURGA AUTOMÁTICA OBLIGATORIA:
+  // Si en Triple 7 ya hay animales bloqueados que NO pertenecen a los números deseados,
+  // O si la cantidad actualmente bloqueada en Triple 7 excede el tope configurado (maxBloqueos),
+  // se debe reincorporar TODO el sorteo de inmediato para garantizar que en Triple 7 queden
+  // ÚNICAMENTE los números exactos calculados, sin acumular residuos de alarmas pasadas ni superar el tope.
+  const haySobrantesOExtranjeros = idsActualmenteBloqueados.some(id => !idaniDeseados.has(id));
+  const excedeTope = idsActualmenteBloqueados.length > maxBloqueos;
+
+  if (targetDraw.idsol && (haySobrantesOExtranjeros || excedeTope)) {
+    console.log(`[TRIPLE 7 AUTO-PURGA] Sorteo ${targetDraw.loteria} (${targetDraw.sorteo}) contiene ${idsActualmenteBloqueados.length} números en Triple 7 (hay sobrantes: ${haySobrantesOExtranjeros}, excede tope ${maxBloqueos}: ${excedeTope}). Reincorporando para dejar lista limpia y exacta...`);
+    
+    await _reincorporarAnimalitosHttp(config, loteriaNombre, sorteoHora);
+
+    // Re-consultar la página oficial de Triple 7 para refrescar las opciones y URLs limpias
+    listRes = await httpRequest(targetUrl, { headers: { 'Cookie': cookie } });
+    if (listRes.status === 302 || listRes.body.includes('action="/index.php"')) {
+      cookie = await httpLoginTriple7(config, true);
+      listRes = await httpRequest(targetUrl, { headers: { 'Cookie': cookie } });
+    }
+    blockedMap = await fetchTriple7BlockedMap(config, cookie);
+    draws = parseDrawsFromHtml(listRes.body, blockedMap);
+    targetDraw = draws.find(d => {
+      const rowLot = normalizarTexto(d.loteria);
+      const rowTime = normalizarHoraSorteo(d.sorteo);
+      const matchLot = rowLot.includes(loteriaBuscada) || loteriaBuscada.includes(rowLot);
+      const matchTime = rowTime === horaBuscada || rowTime.replace(/^0/, '') === horaBuscada.replace(/^0/, '');
+      return matchLot && matchTime;
+    });
+
+    if (!targetDraw) {
+      return { ok: false, message: `Error recuperando sorteo tras auto-purga en Triple 7.` };
+    }
+    idsActualmenteBloqueados = (targetDraw.idsol && blockedMap.get(targetDraw.idsol)) || [];
+  }
+
+  // 4. Inyectar los bloqueos deseados respetando estrictamente maxBloqueos
   const bloqueadosExitosos = [];
+  const fallidos = [];
   const ajaxHeaders = {
     'Cookie': cookie,
     'X-Requested-With': 'XMLHttpRequest',
     'Referer': 'https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php',
     'Accept': 'application/json, text/javascript, */*; q=0.01'
   };
+  const today = new Date().toISOString().slice(0, 10);
 
-  const idsActualmenteBloqueados = (targetDraw.idsol && blockedMap.get(targetDraw.idsol)) || [];
+  for (const { raw, numInt, idani } of numerosMap) {
+    if (bloqueadosExitosos.length >= maxBloqueos) {
+      console.log(`[TRIPLE 7 TOPE MÁXIMO] Se alcanzó el tope de ${maxBloqueos} para ${loteriaNombre} (${sorteoHora}). Omitiendo restantes.`);
+      break;
+    }
 
-  for (const { numStr, opt } of listaObjetivos) {
-    if (idsActualmenteBloqueados.includes(opt.value)) {
-      // Ya estaba bloqueado y es legítimo de la lista actual
-      bloqueadosExitosos.push({ numero: numStr, animal: opt.text, yaEstabaBloqueado: true });
+    const animalName = animalDict[raw] || animalDict[raw.padStart(2, '0')] || animalDict[numInt.toString()] || `Animal ${raw}`;
+
+    if (idsActualmenteBloqueados.includes(idani)) {
+      // Ya está efectivamente bloqueado en Triple 7
+      bloqueadosExitosos.push({ numero: raw, animal: animalName, yaEstabaBloqueado: true });
       continue;
     }
 
-    // Ejecutar petición GET AJAX idéntica al navegador para registrar el bloqueo
-    const blockUrl = `https://ny7.undo.it/Venta_Animalitos/${opt.url}`;
+    let opt = findOptionForNumber(targetDraw, raw, animalDict);
+    const blockUrl = (opt && opt.url)
+      ? `https://ny7.undo.it/Venta_Animalitos/${opt.url}`
+      : `https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php?idsol=${targetDraw.idsol}&idani=${idani}&fecha=${today}`;
+
     try {
       const blockRes = await httpRequest(blockUrl, { headers: ajaxHeaders });
       if (blockRes.status >= 200 && blockRes.status < 400) {
-        bloqueadosExitosos.push({ numero: numStr, animal: opt.text });
-        idsActualmenteBloqueados.push(opt.value);
+        bloqueadosExitosos.push({ numero: raw, animal: (opt && opt.text) || animalName });
+        idsActualmenteBloqueados.push(idani);
       } else {
-        fallidos.push(numStr);
+        fallidos.push(raw);
       }
     } catch (eBlock) {
-      fallidos.push(numStr);
+      fallidos.push(raw);
     }
   }
 
@@ -437,8 +497,9 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
     ok: bloqueadosExitosos.length > 0,
     bloqueadosExitosos,
     fallidos,
+    maxBloqueos,
     message: bloqueadosExitosos.length > 0
-      ? `Bloqueados exitosamente ${bloqueadosExitosos.length} números en ${targetDraw.loteria} (${targetDraw.sorteo}): [${bloqueadosExitosos.map(b => b.numero).join(', ')}]`
+      ? `Bloqueados exitosamente ${bloqueadosExitosos.length}/${maxBloqueos} números en ${targetDraw.loteria} (${targetDraw.sorteo}): [${bloqueadosExitosos.map(b => b.numero).join(', ')}]`
       : `No se pudieron bloquear los números en Triple 7 (fallidos: [${fallidos.join(', ')}]).`
   };
 }

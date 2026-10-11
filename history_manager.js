@@ -283,7 +283,9 @@ function recordScan(scanData) {
       totalAnimales: scanData.totalAnimalesAnalizados || 38,
       
       // Categorías de Bloqueo (Solo Cupo 0 + Fijos + Predictivos + Aleatorios)
-      rojos: todosNumeros,
+      rojos: (Array.isArray(scanData.rojos) && scanData.rojos.length > 0 && scanData.esConsolidado)
+        ? scanData.rojos.slice(0, scanData.maximoBloqueosConfigurado || 6)
+        : todosNumeros.slice(0, scanData.maximoBloqueosConfigurado || 6),
       rojosPremier,
       detallePremier,
       numFijos,
@@ -294,8 +296,11 @@ function recordScan(scanData) {
       aleatoriosSistema: detalleAleatorios,
       numMemoriaCupoCero,
       memoriaCupoCero: detalleMemoria,
-      bloqueosConsolidados,
-      totalBloqueados: todosNumeros.length,
+      bloqueosConsolidados: (scanData.bloqueosConsolidados && Array.isArray(scanData.bloqueosConsolidados))
+        ? scanData.bloqueosConsolidados.slice(0, scanData.maximoBloqueosConfigurado || 6)
+        : bloqueosConsolidados.slice(0, scanData.maximoBloqueosConfigurado || 6),
+      totalBloqueados: Math.min((scanData.esConsolidado && scanData.rojos ? scanData.rojos.length : todosNumeros.length), (scanData.maximoBloqueosConfigurado || 6)),
+      maximoBloqueosConfigurado: scanData.maximoBloqueosConfigurado || 6,
 
       // Estado Triple 7
       t7Status: scanData.t7Status || 'Pendiente',
@@ -443,7 +448,6 @@ function recordScan(scanData) {
         };
       });
 
-      rec.rojos = allMergedNumbers;
       rec.rojosPremier = mergedPremier;
       rec.detallePremier = mergedPremierDetalle;
       rec.numFijos = mergedFijos;
@@ -454,8 +458,19 @@ function recordScan(scanData) {
       rec.aleatoriosSistema = mergedAleatDetalle;
       rec.numMemoriaCupoCero = mergedMemoria;
       rec.memoriaCupoCero = mergedMemoriaDetalle;
-      rec.bloqueosConsolidados = newConsolidados;
-      rec.totalBloqueados = allMergedNumbers.length;
+
+      // Respetar estrictamente el límite máximo de bloqueos configurado (maximoBloqueosPorSorteo)
+      const maxBloqueosConfig = scanData.maximoBloqueosConfigurado || rec.maximoBloqueosConfigurado || 6;
+      let finalRojos = (Array.isArray(scanData.rojos) && scanData.rojos.length > 0 && scanData.esConsolidado)
+        ? scanData.rojos.slice(0, maxBloqueosConfig)
+        : allMergedNumbers.slice(0, maxBloqueosConfig);
+
+      rec.rojos = finalRojos;
+      rec.maximoBloqueosConfigurado = maxBloqueosConfig;
+      rec.totalBloqueados = finalRojos.length;
+      rec.bloqueosConsolidados = (scanData.bloqueosConsolidados && Array.isArray(scanData.bloqueosConsolidados))
+        ? scanData.bloqueosConsolidados.slice(0, maxBloqueosConfig)
+        : newConsolidados.filter(c => finalRojos.includes(c.numero));
       rec.timestamp = now.toISOString();
       rec.hora = hora;
       if (scanData.t7Status) rec.t7Status = scanData.t7Status;
