@@ -1029,24 +1029,27 @@ Start-Sleep -Milliseconds 2600
 # Funcion interna de extraccion OCR + Color de la tabla
 function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
     # 1. Calculo de dimensiones segun resolucion real de pantalla (Soporta 1366x768, 1536x864 @ 125% DPI y 1080p)
-    # NOTA: En Premier Pluss (WPF), la rejilla izquierda mide 880-900px. La tabla inicia en X=885-895 segun resolucion.
+    # NOTA VISUAL CRITICA:
+    # - En 1366x768 (Pantalla compacta de taquilla): La rejilla de circulos es de 5 columnas.
+    #   La tabla "Jugadas del ticket" inicia exactamente en X=565 y tiene ~340px de ancho util (Num, Nombre, Monto).
+    # - En 1080p / 1536x864 (Laptops/Monitores grandes): La rejilla izquierda mide 890px. La tabla inicia en X=890-895.
     if ($bmpScreen.Width -le 1400) {
         # Resolucion 1366x768 (Pantallas compactas de taquilla)
-        $tableX = 885
+        $tableX = 565
         $tableY = 110
-        $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
+        $tableW = 340
         $tableH = [Math]::Min(620, ($bmpScreen.Height - $tableY - 35))
     } elseif ($bmpScreen.Width -le 1600) {
         # Resolucion 1536x864 (125% DPI en 1080p)
         $tableX = 895
         $tableY = 115
-        $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
+        $tableW = 340
         $tableH = [Math]::Min(660, ($bmpScreen.Height - $tableY))
     } else {
         # Resolucion 1920x1080 (100% DPI)
         $tableX = 890
         $tableY = 130
-        $tableW = 540
+        $tableW = 340
         $tableH = [Math]::Min(750, ($bmpScreen.Height - $tableY))
     }
 
@@ -1089,11 +1092,12 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
         $maxAnimal = 75
     }
 
+    $ignorarPalabras = @('Num', 'Nombre', 'Monto', 'Jugadas', 'ticket', 'Bs', 'Bolivares', 'Sorteo', 'GUACHARITO', 'MILLONARIO', 'CENTENA', 'ANIMALITOS', 'ACTIVO', 'GRANJITA', 'SELVA', 'Eliminar', 'Nuevo', 'Copia', 'Ticket')
     $allLines = @($ocrRes.Lines)
     foreach ($line in $allLines) {
         foreach ($word in $line.Words) {
             $txt = $word.Text.Trim()
-            if ($txt -in @('Num', 'Nombre', 'Monto', 'Jugadas', 'ticket', 'Bs', 'Bolivares')) { continue }
+            if ($txt -in $ignorarPalabras) { continue }
 
             $midY = $word.BoundingRect.Y + ($word.BoundingRect.Height / 2)
             $globalY = [int]($tableY + ($midY / 2))
@@ -1116,23 +1120,27 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
                 }
             }
 
-            # Asignacion por ratio horizontal relativo al ancho de la tabla (Universal para cualquier escala)
+            # Asignacion por ratio horizontal en recorte enfocado de 340px
             $midX_2x = $word.BoundingRect.X + ($word.BoundingRect.Width / 2)
             $ratioX = $midX_2x / $width2x
 
-            if ($ratioX -lt 0.20) {
+            if ($ratioX -lt 0.16) {
                 $groupedRows[$rowKey].Num = $txt
-            } elseif ($ratioX -lt 0.58) {
-                $groupedRows[$rowKey].Nombre = $txt
+            } elseif ($ratioX -lt 0.62) {
+                if ($groupedRows[$rowKey].Nombre) {
+                    $groupedRows[$rowKey].Nombre += " $txt"
+                } else {
+                    $groupedRows[$rowKey].Nombre = $txt
+                }
             } else {
                 $groupedRows[$rowKey].Monto = $txt
             }
         }
     }
 
-    # Rango horizontal para muestreo del color de celda (Cubre numero y nombre de manera amplia y adaptativa)
-    $colNameStart = [int]($tableX + ($tableW * 0.12))
-    $colNameEnd   = [int]($tableX + ($tableW * 0.58))
+    # Rango horizontal para muestreo del color de celda (Columna Nombre centrada)
+    $colNameStart = [int]($tableX + ($tableW * 0.20))
+    $colNameEnd   = [int]($tableX + ($tableW * 0.55))
 
     foreach ($k in ($groupedRows.Keys | Sort-Object)) {
         $rObj = $groupedRows[$k]
@@ -1147,19 +1155,24 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
                     $sampY = $yC + $dy
                     if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height -and $sx -lt $bmpScreen.Width) {
                         $px = $bmpScreen.GetPixel($sx, $sampY)
-                        # Rojo puro de cupo cero en Premier Pluss (#FF0000 o similar)
-                        # R predominante alto (>175), y notablemente mayor que G y B (diferencia > 60)
-                        # O rojo estandar de alta saturacion (R > 185, G < 80, B < 80)
-                        $esRojo = (($px.R -gt 175 -and ($px.R - $px.G) -gt 60 -and ($px.R - $px.B) -gt 60) -or ($px.R -gt 185 -and $px.G -lt 80 -and $px.B -lt 80))
-                        if ($esRojo) {
+                        # Rojo puro de cupo cero en Premier Pluss (#FF0000 / RGB 255, 0..50, 0..50)
+                        if ($px.R -gt 190 -and $px.G -lt 75 -and $px.B -lt 75) {
                             $redCount++
                         }
-                        # Naranja puro de cupo reducido (#FFA500: R alto > 180, G medio 105-215, B bajo < 85)
-                        elseif ($px.R -gt 180 -and $px.G -ge 105 -and $px.G -le 215 -and $px.B -lt 85) {
+                        # Naranja puro de cupo reducido (#FFA500: R alto > 180, G medio 100-210, B bajo < 80)
+                        elseif ($px.R -gt 180 -and $px.G -ge 100 -and $px.G -le 210 -and $px.B -lt 80) {
                             $orangeCount++
                         }
                     }
                 }
+            }
+
+            # Si Nombre empieza por digitos (ej: '1 Carnero', '00 Ballena'), extraer numero
+            if ($rObj.Nombre -match "^(\d{1,2})\s+(.+)$") {
+                if (-not $rObj.Num) {
+                    $rObj.Num = NormalizeNum $matches[1]
+                }
+                $rObj.Nombre = $matches[2].Trim()
             }
 
             # Normalizar numero si ya lo tenemos
@@ -1185,18 +1198,20 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
 
             # Resolver Num desde Nombre respetando el limite maximo de la loteria
             if (-not $rObj.Num -and $rObj.Nombre) {
-                $nomBuscado = $rObj.Nombre.ToLower()
+                $nomBuscado = $rObj.Nombre.ToLower().Trim()
+                if ($nomBuscado -match "(?i)(sorteo|07:|08:|09:|10:|11:|12:|01:|02:|03:|04:|05:|06:|07:|guacharito|millonario|ticket|copia|nuevo|eliminar)") {
+                    continue
+                }
                 foreach ($pair in $animalDict.GetEnumerator()) {
                     $candNum = $pair.Key
                     $intVal = 0
                     $esInt = [int]::TryParse($candNum, [ref]$intVal)
-                    # No permitir numeros superiores al maximo de la loteria (ej: evitar Leon 60 en loterias de 36)
                     if ($candNum -ne "00" -and $esInt -and $intVal -gt $maxAnimal) {
                         continue
                     }
 
                     $nomDict = $pair.Value.ToLower()
-                    if ($nomDict -like "*$nomBuscado*" -or $nomBuscado -like "*$nomDict*") {
+                    if ($nomDict -eq $nomBuscado -or $nomDict -like "$nomBuscado*" -or ($nomBuscado.Length -gt 3 -and $nomDict -like "*$nomBuscado*")) {
                         $rObj.Num = NormalizeNum $candNum
                         if (-not $rObj.Nombre) { $rObj.Nombre = $pair.Value }
                         break
@@ -1213,10 +1228,10 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
             $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
             $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
             
-            # Si el fondo de la celda es rojo (>= 4 muestras confirmadas) o el monto es 0, es ROJO 100% AGOTADO
-            if ($redCount -ge 4 -or $esMontoCero) {
+            # Si el fondo de la celda es rojo (>= 15 muestras confirmadas) o el monto es 0, es ROJO 100% AGOTADO
+            if ($redCount -ge 15 -or $esMontoCero) {
                 $rObj.Color = "ROJO"
-            } elseif ($orangeCount -ge 6) {
+            } elseif ($orangeCount -ge 15) {
                 $rObj.Color = "NARANJA"
             }
 
@@ -1249,7 +1264,7 @@ if ($animales.Count -gt 77) {
     $totalPasos = 1
 }
 
-$scrollTableX = if ($bounds.Width -le 1400) { 1100 } elseif ($bounds.Width -le 1600) { 1165 } else { 1160 }
+$scrollTableX = if ($bounds.Width -le 1400) { 700 } elseif ($bounds.Width -le 1600) { 1050 } else { 1050 }
 $scrollTableY = if ($bounds.Height -le 800) { 340 } elseif ($bounds.Height -le 900) { 380 } else { 450 }
 
 Write-Output "[7/7] Iniciando barrido continuo multi-pantalla ($totalPasos vistas para $($animales.Count) animales)..."

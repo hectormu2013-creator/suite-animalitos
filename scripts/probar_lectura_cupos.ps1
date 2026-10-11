@@ -248,29 +248,31 @@ if ($TestImagePath -and (Test-Path $TestImagePath)) {
 }
 
 # 5. Calcular rectangulo de la tabla segun resolucion
-# NOTA CRITICA: En Premier Pluss (WPF), la rejilla de logos de la izquierda mide 880-900px.
-# La tabla inicia en X=885-895 segun resolucion (1366x768, 1536x864 @ 125% DPI o 1920x1080).
+# NOTA VISUAL CRITICA:
+# - En 1366x768 (Pantalla compacta de taquilla): La rejilla de circulos es de 5 columnas.
+#   La tabla "Jugadas del ticket" inicia exactamente en X=565 y tiene ~340px de ancho util (Num, Nombre, Monto).
+# - En 1080p / 1536x864 (Laptops/Monitores grandes): La rejilla izquierda mide 890px. La tabla inicia en X=890-895.
 if ($bmpScreen.Width -le 1400) {
     # Resolucion 1366x768 (Pantallas compactas de taquilla)
-    $tableX = 885
+    $tableX = 565
     $tableY = 110
-    $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
+    $tableW = 340
     $tableH = [Math]::Min(620, ($bmpScreen.Height - $tableY - 35))
-    Write-Host " -> Perfil detectado: PANTALLA COMPACTA 1366x768" -ForegroundColor Yellow
+    Write-Host " -> Perfil detectado: PANTALLA COMPACTA 1366x768 (Tabla fijada en X=$tableX)" -ForegroundColor Yellow
 } elseif ($bmpScreen.Width -le 1600) {
     # Resolucion 1536x864 (125% DPI en 1080p)
     $tableX = 895
     $tableY = 115
-    $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
+    $tableW = 340
     $tableH = [Math]::Min(660, ($bmpScreen.Height - $tableY))
-    Write-Host " -> Perfil detectado: PANTALLA 1536x864 (125% DPI)" -ForegroundColor Yellow
+    Write-Host " -> Perfil detectado: PANTALLA 1536x864 (125% DPI) (Tabla fijada en X=$tableX)" -ForegroundColor Yellow
 } else {
     # Resolucion 1920x1080 (100% DPI)
     $tableX = 890
     $tableY = 130
-    $tableW = 540
+    $tableW = 340
     $tableH = [Math]::Min(750, ($bmpScreen.Height - $tableY))
-    Write-Host " -> Perfil detectado: FULL HD 1920x1080 (100% DPI)" -ForegroundColor Yellow
+    Write-Host " -> Perfil detectado: FULL HD 1920x1080 (100% DPI) (Tabla fijada en X=$tableX)" -ForegroundColor Yellow
 }
 
 Write-Host "`n[PASO 4] Recortando area de la tabla:" -ForegroundColor Cyan
@@ -312,7 +314,7 @@ Write-Host "[OK] OCR completado. Lineas reconocidas: $(@($ocrRes.Lines).Count)" 
 
 # 7. Agrupar palabras en filas
 $groupedRows = @{}
-$ignorarPalabras = @('Num', 'Nombre', 'Monto', 'Jugadas', 'ticket', 'Bs', 'Bolivares', 'Sorteo')
+$ignorarPalabras = @('Num', 'Nombre', 'Monto', 'Jugadas', 'ticket', 'Bs', 'Bolivares', 'Sorteo', 'GUACHARITO', 'MILLONARIO', 'CENTENA', 'ANIMALITOS', 'ACTIVO', 'GRANJITA', 'SELVA', 'Eliminar', 'Nuevo', 'Copia', 'Ticket')
 
 foreach ($line in $ocrRes.Lines) {
     foreach ($word in $line.Words) {
@@ -347,13 +349,13 @@ foreach ($line in $ocrRes.Lines) {
             }
         }
 
-        # Separacion por columna horizontal segun posicion X
+        # Separacion por columna horizontal segun posicion X (en recorte enfocado de 340px)
         $midX_2x = $word.BoundingRect.X + ($word.BoundingRect.Width / 2)
         $ratioX = $midX_2x / $width2x
 
-        if ($ratioX -lt 0.20) {
+        if ($ratioX -lt 0.16) {
             $groupedRows[$rowKey].Num = $txt
-        } elseif ($ratioX -lt 0.58) {
+        } elseif ($ratioX -lt 0.62) {
             if ($groupedRows[$rowKey].Nombre) {
                 $groupedRows[$rowKey].Nombre += " $txt"
             } else {
@@ -367,9 +369,9 @@ foreach ($line in $ocrRes.Lines) {
 
 Write-Host "`n[PASO 6] Analizando celdas y muestreando colores pixel por pixel..." -ForegroundColor Cyan
 
-# Definir franja horizontal de muestreo (Cubre numero y nombre de manera amplia y adaptativa)
-$colNameStart = [int]($tableX + ($tableW * 0.12))
-$colNameEnd   = [int]($tableX + ($tableW * 0.58))
+# Definir franja horizontal de muestreo (Columna Nombre, centrada de forma exacta)
+$colNameStart = [int]($tableX + ($tableW * 0.20))
+$colNameEnd   = [int]($tableX + ($tableW * 0.55))
 
 # Imagen para anotacion visual
 $bmpAnnotated = New-Object System.Drawing.Bitmap $bmpTable
@@ -386,6 +388,14 @@ $listaAlertaNaranjas = @()
 foreach ($k in ($groupedRows.Keys | Sort-Object)) {
     $rObj = $groupedRows[$k]
     $yC = [int]$rObj.Y
+
+    # Si Nombre empieza por digitos (ej: '1 Carnero', '00 Ballena'), extraer numero
+    if ($rObj.Nombre -match "^(\d{1,2})\s+(.+)$") {
+        if (-not $rObj.Num) {
+            $rObj.Num = NormalizeNum $matches[1]
+        }
+        $rObj.Nombre = $matches[2].Trim()
+    }
 
     # Normalizar numero
     if ($rObj.Num) {
@@ -407,8 +417,11 @@ foreach ($k in ($groupedRows.Keys | Sort-Object)) {
         }
     } elseif (-not $rObj.Num -and $rObj.Nombre) {
         $nomBuscado = $rObj.Nombre.ToLower().Trim()
+        if ($nomBuscado -match "(?i)(sorteo|07:|08:|09:|10:|11:|12:|01:|02:|03:|04:|05:|06:|07:|guacharito|millonario|ticket|copia|nuevo|eliminar)") {
+            continue
+        }
         foreach ($pair in $animalDict.GetEnumerator()) {
-            if ($pair.Value.ToLower() -like "*$nomBuscado*" -or $nomBuscado -like "*$($pair.Value.ToLower())*") {
+            if ($pair.Value.ToLower() -eq $nomBuscado -or $pair.Value.ToLower() -like "$nomBuscado*" -or ($nomBuscado.Length -gt 3 -and $pair.Value.ToLower() -like "*$nomBuscado*")) {
                 $rObj.Num = NormalizeNum $pair.Key
                 if (-not $rObj.Nombre) { $rObj.Nombre = $pair.Value }
                 break
@@ -434,16 +447,15 @@ foreach ($k in ($groupedRows.Keys | Sort-Object)) {
                 }
 
                 # Criterio Rojo Cupo Cero Premier Pluss:
-                # R predominante alto (>175), y notablemente mayor que G y B (diferencia > 60)
-                # O rojo estandar de alta saturacion (R > 185, G < 80, B < 80)
-                $esRojo = (($px.R -gt 175 -and ($px.R - $px.G) -gt 60 -and ($px.R - $px.B) -gt 60) -or ($px.R -gt 185 -and $px.G -lt 80 -and $px.B -lt 80))
+                # Fondo rojo puro: R muy alto (>190), G y B bajos (< 75)
+                $esRojo = ($px.R -gt 190 -and $px.G -lt 75 -and $px.B -lt 75)
                 if ($esRojo) {
                     $redPixels++
                 }
 
                 # Criterio Naranja Cupo Reducido:
-                # R alto (> 180), G medio (105 a 215), B bajo (< 85)
-                $esNaranja = ($px.R -gt 180 -and $px.G -ge 105 -and $px.G -le 215 -and $px.B -lt 85)
+                # Fondo naranja: R alto (>180), G medio (100 a 210), B bajo (< 80)
+                $esNaranja = ($px.R -gt 180 -and $px.G -ge 100 -and $px.G -le 210 -and $px.B -lt 80)
                 if ($esNaranja) {
                     $orangePixels++
                 }
@@ -465,12 +477,12 @@ foreach ($k in ($groupedRows.Keys | Sort-Object)) {
     $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
     $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
 
-    # Clasificacion final (>= 4 pixeles confirmados de rojo o monto 0)
-    if ($redPixels -ge 4 -or $esMontoCero) {
+    # Clasificacion final (>= 15 pixeles confirmados de fondo rojo o monto 0)
+    if ($redPixels -ge 15 -or $esMontoCero) {
         $rObj.Color = "ROJO"
         $rObj.EsCupoCero = $true
         if ($rObj.Num) { $listaAgotadosRojos += $rObj.Num }
-    } elseif ($orangePixels -ge 6) {
+    } elseif ($orangePixels -ge 15) {
         $rObj.Color = "NARANJA"
         if ($rObj.Num) { $listaAlertaNaranjas += $rObj.Num }
     } else {
