@@ -62,30 +62,53 @@ async function getMasterConfig() {
 }
 
 /**
- * Guardar la configuración maestra en Supabase (suite_config)
+ * Helper confiable de UPSERT para Supabase:
+ * Intenta PATCH primero (si la fila existe, actualiza data y updated_at garantizadamente).
+ * Si no existe, realiza un POST para crearla.
  */
-async function saveMasterConfig(cfg) {
-  if (!cfg) return false;
-  try {
-    const nowIso = new Date().toISOString();
-    const payload = {
-      key: 'suite_config',
-      data: cfg,
-      updated_at: nowIso
-    };
+async function upsertStoreKey(key, data) {
+  const nowIso = new Date().toISOString();
+  const payload = {
+    key,
+    data,
+    updated_at: nowIso
+  };
 
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
-    const res = await fetchWithTimeout(url, {
+  try {
+    const patchUrl = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.${encodeURIComponent(key)}`;
+    const patchRes = await fetchWithTimeout(patchUrl, {
+      method: 'PATCH',
+      headers: {
+        ...HEADERS,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (patchRes.ok) {
+      const rows = await patchRes.json();
+      if (Array.isArray(rows) && rows.length > 0) return true;
+    }
+  } catch (ePatch) {}
+
+  try {
+    const postUrl = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
+    const postRes = await fetchWithTimeout(postUrl, {
       method: 'POST',
       headers: HEADERS,
       body: JSON.stringify(payload)
     });
+    return postRes.ok || postRes.status === 201;
+  } catch (ePost) {}
 
-    return res.ok || res.status === 201;
-  } catch (e) {
-    console.warn(`[CLOUD_STORE] Error guardando config en Supabase: ${e.message}`);
-    return false;
-  }
+  return false;
+}
+
+/**
+ * Guardar la configuración maestra en Supabase (suite_config)
+ */
+async function saveMasterConfig(cfg) {
+  if (!cfg) return false;
+  return await upsertStoreKey('suite_config', cfg);
 }
 
 /**
@@ -120,26 +143,7 @@ async function getMasterHistory() {
  */
 async function saveMasterHistory(records) {
   if (!Array.isArray(records)) return false;
-  try {
-    const nowIso = new Date().toISOString();
-    const payload = {
-      key: 'suite_history',
-      data: records,
-      updated_at: nowIso
-    };
-
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
-    const res = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: HEADERS,
-      body: JSON.stringify(payload)
-    });
-
-    return res.ok || res.status === 201;
-  } catch (e) {
-    console.warn(`[CLOUD_STORE] Error guardando historial en Supabase: ${e.message}`);
-    return false;
-  }
+  return await upsertStoreKey('suite_history', records);
 }
 
 /**
@@ -174,26 +178,7 @@ async function getMasterMemory() {
  */
 async function saveMasterMemory(memoryObj) {
   if (!memoryObj) return false;
-  try {
-    const nowIso = new Date().toISOString();
-    const payload = {
-      key: 'suite_memory',
-      data: memoryObj,
-      updated_at: nowIso
-    };
-
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
-    const res = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: HEADERS,
-      body: JSON.stringify(payload)
-    });
-
-    return res.ok || res.status === 201;
-  } catch (e) {
-    console.warn(`[CLOUD_STORE] Error guardando memoria en Supabase: ${e.message}`);
-    return false;
-  }
+  return await upsertStoreKey('suite_memory', memoryObj);
 }
 
 /**
@@ -201,28 +186,11 @@ async function saveMasterMemory(memoryObj) {
  */
 async function saveAutomationStatus(statusObj) {
   if (!statusObj) return false;
-  try {
-    const nowIso = new Date().toISOString();
-    const payload = {
-      key: 'suite_automation_status',
-      data: {
-        ...statusObj,
-        syncedAt: nowIso
-      },
-      updated_at: nowIso
-    };
-
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
-    const res = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: HEADERS,
-      body: JSON.stringify(payload)
-    });
-
-    return res.ok || res.status === 201;
-  } catch (e) {
-    return false;
-  }
+  const nowIso = new Date().toISOString();
+  return await upsertStoreKey('suite_automation_status', {
+    ...statusObj,
+    syncedAt: nowIso
+  });
 }
 
 /**
