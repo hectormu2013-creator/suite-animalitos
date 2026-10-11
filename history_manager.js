@@ -612,13 +612,16 @@ async function syncResultsWithVisualFx(forceReverify = false, targetDate = null)
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Sin registros históricos', updatedCount: 0, trophiesCount: 0 };
     
-    // Si la nube (Supabase) tiene registros adicionales que no están en el disco local, sincronizarlos
+    // Si la nube (Supabase) tiene registros, sincronizarlos y adoptar mejoras de verificación
     try {
       const cloudStore = require('./cloud_store');
       const cloudRes = await cloudStore.getMasterHistory();
       if (cloudRes && Array.isArray(cloudRes.records) && cloudRes.records.length > 0) {
         const local = JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]');
-        if (cloudRes.records.length > local.length) {
+        const isCloudEnv = Boolean(process.env.RENDER || process.env.IS_CLOUD);
+        const cloudVerif = cloudRes.records.filter(r => r.ganador && r.ganador.verificado).length;
+        const localVerif = local.filter(r => r.ganador && r.ganador.verificado).length;
+        if (isCloudEnv || cloudRes.records.length > local.length || cloudVerif >= localVerif) {
           fs.writeFileSync(DB_PATH, JSON.stringify(cloudRes.records, null, 2), 'utf8');
           rewriteCSV(cloudRes.records);
         }
