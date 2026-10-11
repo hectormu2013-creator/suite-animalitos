@@ -75,6 +75,21 @@ async function upsertStoreKey(key, data) {
   };
 
   try {
+    const postUrl = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
+    const postRes = await fetchWithTimeout(postUrl, {
+      method: 'POST',
+      headers: {
+        ...HEADERS,
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (postRes.ok || postRes.status === 201 || postRes.status === 204) {
+      return true;
+    }
+  } catch (ePost) {}
+
+  try {
     const patchUrl = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.${encodeURIComponent(key)}`;
     const patchRes = await fetchWithTimeout(patchUrl, {
       method: 'PATCH',
@@ -89,16 +104,6 @@ async function upsertStoreKey(key, data) {
     }
   } catch (ePatch) {}
 
-  try {
-    const postUrl = `${SUPABASE_URL}/rest/v1/visual_fx_store?on_conflict=key`;
-    const postRes = await fetchWithTimeout(postUrl, {
-      method: 'POST',
-      headers: HEADERS,
-      body: JSON.stringify(payload)
-    });
-    return postRes.ok || postRes.status === 201;
-  } catch (ePost) {}
-
   return false;
 }
 
@@ -111,11 +116,11 @@ async function saveMasterConfig(cfg) {
 }
 
 /**
- * Obtener el historial maestro desde Supabase (suite_history)
+ * Obtener el historial maestro desde Supabase (suite_history_v2)
  */
 async function getMasterHistory() {
   try {
-    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.suite_history&select=data,updated_at`;
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.suite_history_v2&select=data,updated_at`;
     const res = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
@@ -138,26 +143,11 @@ async function getMasterHistory() {
 }
 
 /**
- * Guardar el historial maestro en Supabase (suite_history)
+ * Guardar el historial maestro en Supabase (suite_history_v2)
  */
 async function saveMasterHistory(records) {
   if (!Array.isArray(records)) return false;
-  try {
-    const existing = await getMasterHistory();
-    if (existing && Array.isArray(existing.records) && existing.records.length > 0) {
-      for (const ex of existing.records) {
-        if (ex.ganador && ex.ganador.verificado) {
-          const exSorteo = ex.sorteo || ex.horaSorteo;
-          const match = records.find(r => r.id === ex.id || (r.fecha === ex.fecha && r.loteria === ex.loteria && (r.sorteo || r.horaSorteo) === exSorteo));
-          if (match && (!match.ganador || !match.ganador.verificado)) {
-            match.ganador = ex.ganador;
-            match.revision = ex.revision;
-          }
-        }
-      }
-    }
-  } catch (e) {}
-  return await upsertStoreKey('suite_history', records);
+  return await upsertStoreKey('suite_history_v2', records);
 }
 
 /**
