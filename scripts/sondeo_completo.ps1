@@ -1028,9 +1028,15 @@ Start-Sleep -Milliseconds 2600
 
 # Funcion interna de extraccion OCR + Color de la tabla
 function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
-    # 1. Calculo de dimensiones segun resolucion real de pantalla (Soporta 1080p y 125% DPI 1536x864)
-    # NOTA: En Premier Pluss (WPF), la rejilla izquierda mide 900px fijos. La tabla SIEMPRE inicia en X=895-900 en ambas resoluciones.
-    if ($bmpScreen.Width -le 1600) {
+    # 1. Calculo de dimensiones segun resolucion real de pantalla (Soporta 1366x768, 1536x864 @ 125% DPI y 1080p)
+    # NOTA: En Premier Pluss (WPF), la rejilla izquierda mide 880-900px. La tabla inicia en X=885-895 segun resolucion.
+    if ($bmpScreen.Width -le 1400) {
+        # Resolucion 1366x768 (Pantallas compactas de taquilla)
+        $tableX = 885
+        $tableY = 110
+        $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
+        $tableH = [Math]::Min(620, ($bmpScreen.Height - $tableY - 35))
+    } elseif ($bmpScreen.Width -le 1600) {
         # Resolucion 1536x864 (125% DPI en 1080p)
         $tableX = 895
         $tableY = 115
@@ -1124,9 +1130,9 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
         }
     }
 
-    # Rango horizontal para muestreo del color de celda (Columna Nombre donde Premier pinta el fondo)
-    $colNameStart = [int]($tableX + ($tableW * 0.22))
-    $colNameEnd   = [int]($tableX + ($tableW * 0.52))
+    # Rango horizontal para muestreo del color de celda (Cubre numero y nombre de manera amplia y adaptativa)
+    $colNameStart = [int]($tableX + ($tableW * 0.12))
+    $colNameEnd   = [int]($tableX + ($tableW * 0.58))
 
     foreach ($k in ($groupedRows.Keys | Sort-Object)) {
         $rObj = $groupedRows[$k]
@@ -1141,12 +1147,15 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
                     $sampY = $yC + $dy
                     if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height -and $sx -lt $bmpScreen.Width) {
                         $px = $bmpScreen.GetPixel($sx, $sampY)
-                        # Rojo puro de cupo cero en Premier Pluss (#FF0000 / RGB 255,25,23: R muy alto > 190, G y B muy bajos < 70)
-                        if ($px.R -gt 190 -and $px.G -lt 70 -and $px.B -lt 70) {
+                        # Rojo puro de cupo cero en Premier Pluss (#FF0000 o similar)
+                        # R predominante alto (>175), y notablemente mayor que G y B (diferencia > 60)
+                        # O rojo estandar de alta saturacion (R > 185, G < 80, B < 80)
+                        $esRojo = (($px.R -gt 175 -and ($px.R - $px.G) -gt 60 -and ($px.R - $px.B) -gt 60) -or ($px.R -gt 185 -and $px.G -lt 80 -and $px.B -lt 80))
+                        if ($esRojo) {
                             $redCount++
                         }
-                        # Naranja puro de cupo reducido (#FFA500: R alto > 190, G medio 110-210, B bajo < 80)
-                        elseif ($px.R -gt 190 -and $px.G -ge 110 -and $px.G -le 210 -and $px.B -lt 80) {
+                        # Naranja puro de cupo reducido (#FFA500: R alto > 180, G medio 105-215, B bajo < 85)
+                        elseif ($px.R -gt 180 -and $px.G -ge 105 -and $px.G -le 215 -and $px.B -lt 85) {
                             $orangeCount++
                         }
                     }
@@ -1204,10 +1213,10 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
             $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
             $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
             
-            # Si el fondo de la celda es rojo (> 6 muestras) o el monto es 0, es ROJO 100% AGOTADO
-            if ($redCount -ge 6 -or $esMontoCero) {
+            # Si el fondo de la celda es rojo (>= 4 muestras confirmadas) o el monto es 0, es ROJO 100% AGOTADO
+            if ($redCount -ge 4 -or $esMontoCero) {
                 $rObj.Color = "ROJO"
-            } elseif ($orangeCount -ge 8) {
+            } elseif ($orangeCount -ge 6) {
                 $rObj.Color = "NARANJA"
             }
 
@@ -1240,8 +1249,8 @@ if ($animales.Count -gt 77) {
     $totalPasos = 1
 }
 
-$scrollTableX = if ($bounds.Width -le 1600) { 1165 } else { 1160 }
-$scrollTableY = if ($bounds.Height -le 900) { 380 } else { 450 }
+$scrollTableX = if ($bounds.Width -le 1400) { 1100 } elseif ($bounds.Width -le 1600) { 1165 } else { 1160 }
+$scrollTableY = if ($bounds.Height -le 800) { 340 } elseif ($bounds.Height -le 900) { 380 } else { 450 }
 
 Write-Output "[7/7] Iniciando barrido continuo multi-pantalla ($totalPasos vistas para $($animales.Count) animales)..."
 

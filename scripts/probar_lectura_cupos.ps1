@@ -248,20 +248,29 @@ if ($TestImagePath -and (Test-Path $TestImagePath)) {
 }
 
 # 5. Calcular rectangulo de la tabla segun resolucion
-# NOTA CRITICA: En Premier Pluss (WPF), la rejilla de logos de la izquierda mide 900px fijos.
-# Por lo tanto, la tabla SIEMPRE inicia en X=895 - 900 tanto en 1920x1080 como en 1536x864 (125% DPI).
-if ($bmpScreen.Width -le 1600) {
+# NOTA CRITICA: En Premier Pluss (WPF), la rejilla de logos de la izquierda mide 880-900px.
+# La tabla inicia en X=885-895 segun resolucion (1366x768, 1536x864 @ 125% DPI o 1920x1080).
+if ($bmpScreen.Width -le 1400) {
+    # Resolucion 1366x768 (Pantallas compactas de taquilla)
+    $tableX = 885
+    $tableY = 110
+    $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
+    $tableH = [Math]::Min(620, ($bmpScreen.Height - $tableY - 35))
+    Write-Host " -> Perfil detectado: PANTALLA COMPACTA 1366x768" -ForegroundColor Yellow
+} elseif ($bmpScreen.Width -le 1600) {
     # Resolucion 1536x864 (125% DPI en 1080p)
     $tableX = 895
     $tableY = 115
     $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
     $tableH = [Math]::Min(660, ($bmpScreen.Height - $tableY))
+    Write-Host " -> Perfil detectado: PANTALLA 1536x864 (125% DPI)" -ForegroundColor Yellow
 } else {
     # Resolucion 1920x1080 (100% DPI)
     $tableX = 890
     $tableY = 130
     $tableW = 540
     $tableH = [Math]::Min(750, ($bmpScreen.Height - $tableY))
+    Write-Host " -> Perfil detectado: FULL HD 1920x1080 (100% DPI)" -ForegroundColor Yellow
 }
 
 Write-Host "`n[PASO 4] Recortando area de la tabla:" -ForegroundColor Cyan
@@ -358,9 +367,9 @@ foreach ($line in $ocrRes.Lines) {
 
 Write-Host "`n[PASO 6] Analizando celdas y muestreando colores pixel por pixel..." -ForegroundColor Cyan
 
-# Definir franja horizontal de muestreo (Columna Nombre donde Premier pinta el fondo de alerta)
-$colNameStart = [int]($tableX + ($tableW * 0.22))
-$colNameEnd   = [int]($tableX + ($tableW * 0.52))
+# Definir franja horizontal de muestreo (Cubre numero y nombre de manera amplia y adaptativa)
+$colNameStart = [int]($tableX + ($tableW * 0.12))
+$colNameEnd   = [int]($tableX + ($tableW * 0.58))
 
 # Imagen para anotacion visual
 $bmpAnnotated = New-Object System.Drawing.Bitmap $bmpTable
@@ -425,15 +434,16 @@ foreach ($k in ($groupedRows.Keys | Sort-Object)) {
                 }
 
                 # Criterio Rojo Cupo Cero Premier Pluss:
-                # Fondo rojo vivo puro (#FF0000 o similar: R muy alto > 190, G y B muy bajos < 70)
-                $esRojo = ($px.R -gt 190 -and $px.G -lt 70 -and $px.B -lt 70)
+                # R predominante alto (>175), y notablemente mayor que G y B (diferencia > 60)
+                # O rojo estandar de alta saturacion (R > 185, G < 80, B < 80)
+                $esRojo = (($px.R -gt 175 -and ($px.R - $px.G) -gt 60 -and ($px.R - $px.B) -gt 60) -or ($px.R -gt 185 -and $px.G -lt 80 -and $px.B -lt 80))
                 if ($esRojo) {
                     $redPixels++
                 }
 
                 # Criterio Naranja Cupo Reducido:
-                # R alto (> 190), G medio (110 a 210), B bajo (< 80)
-                $esNaranja = ($px.R -gt 190 -and $px.G -ge 110 -and $px.G -le 210 -and $px.B -lt 80)
+                # R alto (> 180), G medio (105 a 215), B bajo (< 85)
+                $esNaranja = ($px.R -gt 180 -and $px.G -ge 105 -and $px.G -le 215 -and $px.B -lt 85)
                 if ($esNaranja) {
                     $orangePixels++
                 }
@@ -455,12 +465,12 @@ foreach ($k in ($groupedRows.Keys | Sort-Object)) {
     $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
     $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
 
-    # Clasificacion final
-    if ($redPixels -ge 6 -or $esMontoCero) {
+    # Clasificacion final (>= 4 pixeles confirmados de rojo o monto 0)
+    if ($redPixels -ge 4 -or $esMontoCero) {
         $rObj.Color = "ROJO"
         $rObj.EsCupoCero = $true
         if ($rObj.Num) { $listaAgotadosRojos += $rObj.Num }
-    } elseif ($orangePixels -ge 8) {
+    } elseif ($orangePixels -ge 6) {
         $rObj.Color = "NARANJA"
         if ($rObj.Num) { $listaAlertaNaranjas += $rObj.Num }
     } else {
