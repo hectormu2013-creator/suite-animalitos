@@ -1028,14 +1028,21 @@ Start-Sleep -Milliseconds 2600
 
 # Funcion interna de extraccion OCR + Color de la tabla
 function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
-    # 1. Calculo dinamico de dimensiones segun resolucion real de pantalla (Soporta 1080p, 864p, 768p y 125% DPI)
-    $scaleX = $bmpScreen.Width / 1920.0
-    $scaleY = $bmpScreen.Height / 1080.0
-
-    $tableX = [int](890 * $scaleX)
-    $tableY = [int](130 * $scaleY)
-    $tableW = [int](510 * $scaleX)
-    $tableH = [Math]::Min([int](720 * $scaleY), ($bmpScreen.Height - $tableY))
+    # 1. Calculo de dimensiones segun resolucion real de pantalla (Soporta 1080p y 125% DPI 1536x864)
+    # NOTA: En Premier Pluss (WPF), la rejilla izquierda mide 900px fijos. La tabla SIEMPRE inicia en X=895-900 en ambas resoluciones.
+    if ($bmpScreen.Width -le 1600) {
+        # Resolucion 1536x864 (125% DPI en 1080p)
+        $tableX = 895
+        $tableY = 115
+        $tableW = [Math]::Min(545, ($bmpScreen.Width - $tableX))
+        $tableH = [Math]::Min(660, ($bmpScreen.Height - $tableY))
+    } else {
+        # Resolucion 1920x1080 (100% DPI)
+        $tableX = 890
+        $tableY = 130
+        $tableW = 540
+        $tableH = [Math]::Min(750, ($bmpScreen.Height - $tableY))
+    }
 
     $rectTable = New-Object System.Drawing.Rectangle $tableX, $tableY, $tableW, $tableH
     $bmpTable = $bmpScreen.Clone($rectTable, $bmpScreen.PixelFormat)
@@ -1119,7 +1126,7 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
 
     # Rango horizontal para muestreo del color de celda (Columna Nombre donde Premier pinta el fondo)
     $colNameStart = [int]($tableX + ($tableW * 0.22))
-    $colNameEnd   = [int]($tableX + ($tableW * 0.54))
+    $colNameEnd   = [int]($tableX + ($tableW * 0.52))
 
     foreach ($k in ($groupedRows.Keys | Sort-Object)) {
         $rObj = $groupedRows[$k]
@@ -1129,32 +1136,21 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
             $redCount = 0
             $orangeCount = 0
 
-            for ($sx = $colNameStart; $sx -le $colNameEnd; $sx += 4) {
-                foreach ($dy in @(-3, -1, 0, 1, 3)) {
+            for ($sx = $colNameStart; $sx -le $colNameEnd; $sx += 3) {
+                foreach ($dy in @(-4, -2, 0, 2, 4)) {
                     $sampY = $yC + $dy
                     if ($sampY -ge 0 -and $sampY -lt $bmpScreen.Height -and $sx -lt $bmpScreen.Width) {
                         $px = $bmpScreen.GetPixel($sx, $sampY)
-                        # Rojo puro de cupo cero en Premier Pluss (#FF0000: R alto, G bajo, B bajo)
-                        if ($px.R -gt 200 -and $px.G -lt 60 -and $px.B -lt 60) {
+                        # Rojo puro de cupo cero en Premier Pluss (#FF0000 / RGB 255,25,23: R muy alto > 190, G y B muy bajos < 70)
+                        if ($px.R -gt 190 -and $px.G -lt 70 -and $px.B -lt 70) {
                             $redCount++
                         }
-                        # Naranja puro de cupo reducido (#FFA500: R alto, G medio ~165, B bajo)
-                        elseif ($px.R -gt 200 -and $px.G -ge 120 -and $px.G -le 210 -and $px.B -lt 60) {
+                        # Naranja puro de cupo reducido (#FFA500: R alto > 190, G medio 110-210, B bajo < 80)
+                        elseif ($px.R -gt 190 -and $px.G -ge 110 -and $px.G -le 210 -and $px.B -lt 80) {
                             $orangeCount++
                         }
                     }
                 }
-            }
-
-            # Evaluacion infalible de Cupo Cero: rojo visual o monto explicitamente 0
-            $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
-            $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
-            
-            # Si el fondo de la celda es rojo (> 6 muestras) o el monto es 0, es ROJO 100% AGOTADO
-            if ($redCount -ge 6 -or $esMontoCero) {
-                $rObj.Color = "ROJO"
-            } elseif ($orangeCount -ge 8) {
-                $rObj.Color = "NARANJA"
             }
 
             # Normalizar numero si ya lo tenemos
@@ -1165,13 +1161,16 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
                 }
             }
 
-            # Autocompletar Nombre usando Num
+            # Autocompletar Nombre usando Num con conversion segura TryParse
             if ($rObj.Num -and -not $rObj.Nombre) {
                 $kNum = $rObj.Num
                 if ($animalDict.ContainsKey($kNum)) {
                     $rObj.Nombre = $animalDict[$kNum]
-                } elseif ($animalDict.ContainsKey(([int]$kNum).ToString())) {
-                    $rObj.Nombre = $animalDict[([int]$kNum).ToString()]
+                } else {
+                    $nVal = 0
+                    if ([int]::TryParse($kNum, [ref]$nVal) -and $animalDict.ContainsKey($nVal.ToString())) {
+                        $rObj.Nombre = $animalDict[$nVal.ToString()]
+                    }
                 }
             }
 
@@ -1194,6 +1193,22 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
                         break
                     }
                 }
+            }
+
+            # Descartar filas espurias que no correspondan a ningun animal valido
+            if (-not $rObj.Num -and -not $rObj.Nombre) {
+                continue
+            }
+
+            # Evaluacion infalible de Cupo Cero: rojo visual o monto explicitamente 0
+            $montoLimpio = ($rObj.Monto -replace '[^\d,\.]', '').Trim()
+            $esMontoCero = ($rObj.Monto -in @('0', '0,0', '0,00', '0.00', '0 Bs', '0,0 Bs')) -or ($montoLimpio -in @('0', '00', '0,00', '0.00', '0,0', '0.0'))
+            
+            # Si el fondo de la celda es rojo (> 6 muestras) o el monto es 0, es ROJO 100% AGOTADO
+            if ($redCount -ge 6 -or $esMontoCero) {
+                $rObj.Color = "ROJO"
+            } elseif ($orangeCount -ge 8) {
+                $rObj.Color = "NARANJA"
             }
 
             if ($rObj.Num) {
@@ -1225,10 +1240,8 @@ if ($animales.Count -gt 77) {
     $totalPasos = 1
 }
 
-$scaleX = $bounds.Width / 1920.0
-$scaleY = $bounds.Height / 1080.0
-$scrollTableX = [int]((890 + 255) * $scaleX)
-$scrollTableY = [int]((130 + 360) * $scaleY)
+$scrollTableX = if ($bounds.Width -le 1600) { 1165 } else { 1160 }
+$scrollTableY = if ($bounds.Height -le 900) { 380 } else { 450 }
 
 Write-Output "[7/7] Iniciando barrido continuo multi-pantalla ($totalPasos vistas para $($animales.Count) animales)..."
 
