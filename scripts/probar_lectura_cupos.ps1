@@ -254,10 +254,11 @@ if ($TestImagePath -and (Test-Path $TestImagePath)) {
 # - En 1080p / 1536x864 (Laptops/Monitores grandes): La rejilla izquierda mide 890px. La tabla inicia en X=890-895.
 if ($bmpScreen.Width -le 1400) {
     # Resolucion 1366x768 (Pantallas compactas de taquilla)
-    $tableX = 565
+    # En 1366x768 la rejilla circular de animalitos va de X=300 a X=735. La tabla inicia exactamente en X=740.
+    $tableX = 740
     $tableY = 110
-    $tableW = 340
-    $tableH = [Math]::Min(620, ($bmpScreen.Height - $tableY - 35))
+    $tableW = 310
+    $tableH = [Math]::Min(600, ($bmpScreen.Height - $tableY - 35))
     Write-Host " -> Perfil detectado: PANTALLA COMPACTA 1366x768 (Tabla fijada en X=$tableX)" -ForegroundColor Yellow
 } elseif ($bmpScreen.Width -le 1600) {
     # Resolucion 1536x864 (125% DPI en 1080p)

@@ -1035,10 +1035,11 @@ function ExtraerFilasDePantalla($bmpScreen, $loteriaNombre = "LA GRANJITA") {
     # - En 1080p / 1536x864 (Laptops/Monitores grandes): La rejilla izquierda mide 890px. La tabla inicia en X=890-895.
     if ($bmpScreen.Width -le 1400) {
         # Resolucion 1366x768 (Pantallas compactas de taquilla)
-        $tableX = 565
+        # En 1366x768 la rejilla circular de animalitos va de X=300 a X=735. La tabla inicia exactamente en X=740.
+        $tableX = 740
         $tableY = 110
-        $tableW = 340
-        $tableH = [Math]::Min(620, ($bmpScreen.Height - $tableY - 35))
+        $tableW = 310
+        $tableH = [Math]::Min(600, ($bmpScreen.Height - $tableY - 35))
     } elseif ($bmpScreen.Width -le 1600) {
         # Resolucion 1536x864 (125% DPI en 1080p)
         $tableX = 895
@@ -1264,7 +1265,7 @@ if ($animales.Count -gt 77) {
     $totalPasos = 1
 }
 
-$scrollTableX = if ($bounds.Width -le 1400) { 700 } elseif ($bounds.Width -le 1600) { 1050 } else { 1050 }
+$scrollTableX = if ($bounds.Width -le 1400) { 880 } elseif ($bounds.Width -le 1600) { 1050 } else { 1050 }
 $scrollTableY = if ($bounds.Height -le 800) { 340 } elseif ($bounds.Height -le 900) { 380 } else { 450 }
 
 Write-Output "[7/7] Iniciando barrido continuo multi-pantalla ($totalPasos vistas para $($animales.Count) animales)..."
