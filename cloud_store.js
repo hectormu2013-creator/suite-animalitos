@@ -14,7 +14,7 @@ const HEADERS = {
   'Prefer': 'resolution=merge-duplicates'
 };
 
-const TIMEOUT_MS = 6000;
+const TIMEOUT_MS = 25000;
 
 /**
  * Helper con timeout para fetch nativo
@@ -80,13 +80,12 @@ async function upsertStoreKey(key, data) {
       method: 'PATCH',
       headers: {
         ...HEADERS,
-        'Prefer': 'return=representation'
+        'Prefer': 'return=minimal'
       },
       body: JSON.stringify(payload)
     });
-    if (patchRes.ok) {
-      const rows = await patchRes.json();
-      if (Array.isArray(rows) && rows.length > 0) return true;
+    if (patchRes.ok || patchRes.status === 204) {
+      return true;
     }
   } catch (ePatch) {}
 
