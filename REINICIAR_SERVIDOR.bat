@@ -4,8 +4,9 @@ cd /d "%~dp0"
 echo ======================================================================
 echo           REINICIANDO SERVIDOR LOCAL SUITE ANIMALITOS
 echo ======================================================================
-echo Cerrando instancias anteriores de node.exe...
+echo Cerrando instancias anteriores de node.exe y cloudflared...
 taskkill /F /IM node.exe >nul 2>&1
+taskkill /F /IM cloudflared.exe >nul 2>&1
 timeout /t 2 >nul
 echo Iniciando Suite con codigo actualizado y permisos de Administrador...
 powershell -Command "Start-Process '%~dp0INICIAR_SUITE.bat' -Verb RunAs"

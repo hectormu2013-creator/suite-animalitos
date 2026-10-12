@@ -1161,6 +1161,15 @@ function initTunnelManager() {
         if (badge) {
           badge.title = `Enlace Activo: ${data.url}\nHaz clic para copiar y abrir en tu teléfono celular.`;
         }
+      } else if (!data.enabled) {
+        currentTunnelUrl = null;
+        if (label) {
+          label.textContent = 'Modo Local (Taquilla)';
+          label.style.background = '#64748b';
+        }
+        if (badge) {
+          badge.title = 'Túnel remoto desactivado para garantizar máximo rendimiento y cero ventanas en taquilla.';
+        }
       } else {
         if (label) {
           label.textContent = 'Conectando...';

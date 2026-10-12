@@ -27,6 +27,9 @@ if %errorLevel% equ 0 (
     timeout /t 2 >nul
 )
 
+:: Cerrar cualquier proceso residual o ventana emergente de cloudflared
+taskkill /F /IM cloudflared.exe >nul 2>&1
+
 echo Iniciando servidor local en puerto 4500...
 start "" "http://localhost:4500"
 node server.js

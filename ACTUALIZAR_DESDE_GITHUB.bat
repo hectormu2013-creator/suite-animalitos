@@ -24,6 +24,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$u='https://github.com/h
 
 :FIN
 echo.
+echo Limpiando procesos residuales y cerrando ventanas de tunel previas...
+taskkill /F /IM cloudflared.exe >nul 2>&1
 echo ======================================================================
 echo   ¡Suite actualizada correctamente a la ultima version!
 echo ======================================================================

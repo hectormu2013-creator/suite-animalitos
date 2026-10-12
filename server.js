@@ -471,19 +471,52 @@ app.post('/api/nodes/report-scan', async (req, res) => {
 // --- GESTIÓN DE TÚNEL CLOUDFLARE PARA ACCESO REMOTO (MÓVIL / CUALQUIER LUGAR) ---
 let currentTunnelUrl = null;
 let tunnelProcess = null;
+let tunnelRetryTimer = null;
+let tunnelRetryCount = 0;
+let isStoppingTunnel = false;
 
-function startCloudflareTunnel() {
+function stopCloudflareTunnel() {
+  if (tunnelRetryTimer) {
+    clearTimeout(tunnelRetryTimer);
+    tunnelRetryTimer = null;
+  }
+  isStoppingTunnel = true;
+  if (tunnelProcess) {
+    try {
+      tunnelProcess.removeAllListeners('exit');
+      tunnelProcess.kill();
+    } catch (e) {}
+    tunnelProcess = null;
+  }
+  if (process.platform === 'win32') {
+    try {
+      const { exec } = require('child_process');
+      exec('taskkill /F /IM cloudflared.exe', () => {});
+    } catch (e) {}
+  }
+  currentTunnelUrl = null;
+  setTimeout(() => { isStoppingTunnel = false; }, 1000);
+}
+
+function startCloudflareTunnel(force = false) {
   if (process.env.RENDER) return; // En la nube (Render) no se ejecuta cloudflared local
+  const cfg = getConfig();
+  const habilitado = cfg && cfg.general && cfg.general.habilitarTunelRemoto === true;
+  
+  // Por defecto en nodos de taquilla el túnel está desactivado para no abrir ventanas ni consumir recursos
+  if (!habilitado && !force) {
+    stopCloudflareTunnel();
+    return;
+  }
+
   const exePath = path.join(__dirname, 'cloudflared.exe');
   if (!fs.existsSync(exePath)) return;
 
-  if (tunnelProcess) {
-    try { tunnelProcess.kill(); } catch (e) {}
-  }
+  stopCloudflareTunnel();
 
   log('🌐 [TÚNEL REMOTO] Conectando con red segura de Cloudflare...', 'log-info');
   try {
-    tunnelProcess = spawn(exePath, ['tunnel', '--url', 'http://127.0.0.1:4500'], {
+    tunnelProcess = spawn(exePath, ['tunnel', '--protocol', 'http2', '--url', 'http://127.0.0.1:4500'], {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -494,6 +527,7 @@ function startCloudflareTunnel() {
       const match = text.match(urlRegex);
       if (match && match[0]) {
         currentTunnelUrl = match[0];
+        tunnelRetryCount = 0; // Conexión exitosa, reiniciar contador
         try {
           fs.writeFileSync(path.join(__dirname, 'tunnel_url.txt'), currentTunnelUrl, 'utf8');
         } catch (e) {}
@@ -501,12 +535,11 @@ function startCloudflareTunnel() {
         if (!process.env.RENDER) {
           try {
             const https = require('https');
-            const cfg = getConfig();
             const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_1';
             const payload = JSON.stringify({
               machineId: localId,
               tunnelUrl: currentTunnelUrl,
-              nombre: localId === 'maquina_1' ? 'Nodo Taquilla Dedicado (Producción)' : 'Taquilla Local (Hector)'
+              nombre: localId === 'maquina_3' ? 'Máquina 3 (Taquilla Principal)' : (localId === 'maquina_1' ? 'Nodo Taquilla Dedicado (Producción)' : 'Taquilla Local (Hector)')
             });
             const rReq = https.request({
               hostname: 'suite-animalitos.onrender.com',
@@ -532,11 +565,25 @@ function startCloudflareTunnel() {
     tunnelProcess.stdout.on('data', handleOutput);
 
     tunnelProcess.on('exit', (code) => {
-      log(`🌐 [TÚNEL REMOTO] Desconectado (código ${code}). Reintentando en 15s...`, 'log-warn');
+      if (isStoppingTunnel) return;
       currentTunnelUrl = null;
-      setTimeout(() => {
+      tunnelRetryCount++;
+
+      // Si Cloudflare rechaza con Too Many Requests (429) o la red falla repetidamente, limitar reintentos
+      if (tunnelRetryCount > 5) {
+        log(`⚠️ [TÚNEL REMOTO] Límite de reintentos alcanzado (red inestable o rate-limit Cloudflare). Pausando reintentos por 10 min para no saturar.`, 'log-warn');
+        tunnelRetryTimer = setTimeout(() => {
+          tunnelRetryCount = 0;
+          if (!process.env.RENDER) startCloudflareTunnel();
+        }, 10 * 60 * 1000);
+        return;
+      }
+
+      const backoffSec = Math.min(30 * tunnelRetryCount, 120);
+      log(`🌐 [TÚNEL REMOTO] Desconectado (código ${code}). Reintentando en ${backoffSec}s (intento ${tunnelRetryCount}/5)...`, 'log-warn');
+      tunnelRetryTimer = setTimeout(() => {
         if (!process.env.RENDER) startCloudflareTunnel();
-      }, 15000);
+      }, backoffSec * 1000);
     });
   } catch (err) {
     log(`⚠️ Error iniciando Cloudflare Tunnel: ${err.message}`, 'log-warn');
@@ -544,16 +591,23 @@ function startCloudflareTunnel() {
 }
 
 app.get('/api/tunnel/info', (req, res) => {
+  const cfg = getConfig();
   res.json({
     ok: true,
     active: !!currentTunnelUrl,
-    url: currentTunnelUrl
+    url: currentTunnelUrl,
+    enabled: !!(cfg && cfg.general && cfg.general.habilitarTunelRemoto)
   });
 });
 
 app.post('/api/tunnel/restart', (req, res) => {
-  startCloudflareTunnel();
+  startCloudflareTunnel(true);
   res.json({ ok: true, message: 'Reiniciando túnel seguro...' });
+});
+
+app.post('/api/tunnel/stop', (req, res) => {
+  stopCloudflareTunnel();
+  res.json({ ok: true, message: 'Túnel detenido correctamente' });
 });
 
 // Helper de sincronización instantánea hacia Render
