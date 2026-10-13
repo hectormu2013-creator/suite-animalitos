@@ -1923,3 +1923,297 @@ body {
   color: #38bdf8;
   cursor: wait;
 }
+
+/* =========================================================================
+   SECCIÓN: TOP 5 FECHAS CON MAYOR CANTIDAD DE TROFEOS
+   ========================================================================= */
+.top-dates-section {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.top-dates-section::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.top-dates-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.top-dates-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.top-dates-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.6));
+}
+
+.top-dates-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.top-dates-subtitle {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 3px 0 0 0;
+}
+
+.top-dates-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* Tarjeta individual de fecha Top */
+.top-date-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.top-date-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.top-date-card.active-filter {
+  outline: 2px solid #10b981;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.45), inset 0 0 15px rgba(16, 185, 129, 0.1) !important;
+}
+
+/* Ranks Styles */
+.top-date-card.rank-1 {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.14) 0%, rgba(15, 23, 42, 0.85) 100%);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15);
+}
+
+.top-date-card.rank-2 {
+  border-color: rgba(203, 213, 225, 0.45);
+  background: linear-gradient(145deg, rgba(148, 163, 184, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+  box-shadow: 0 4px 16px rgba(148, 163, 184, 0.12);
+}
+
+.top-date-card.rank-3 {
+  border-color: rgba(217, 119, 6, 0.45);
+  background: linear-gradient(145deg, rgba(217, 119, 6, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+  box-shadow: 0 4px 16px rgba(217, 119, 6, 0.12);
+}
+
+.top-date-card.rank-4,
+.top-date-card.rank-5 {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%);
+}
+
+/* Card Header */
+.top-date-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.top-date-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.rank-1 .top-date-rank-badge {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.rank-2 .top-date-rank-badge {
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.rank-3 .top-date-rank-badge {
+  background: rgba(217, 119, 6, 0.2);
+  color: #fdba74;
+  border: 1px solid rgba(217, 119, 6, 0.4);
+}
+
+.rank-4 .top-date-rank-badge,
+.rank-5 .top-date-rank-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.top-date-trophy-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.top-date-main-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.top-date-text {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+.top-date-day-name {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Bloques de Coletillas */
+.top-date-coletilla-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.top-date-coletilla-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.top-date-pills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.top-date-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1.3;
+}
+
+.pill-lot {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.pill-via-sondeos {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.pill-via-fijos {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.pill-via-atrasados {
+  background: rgba(168, 85, 247, 0.15);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.pill-via-aleatorios {
+  background: rgba(6, 182, 212, 0.15);
+  color: #67e8f9;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.pill-via-memoria {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.top-date-action-hint {
+  font-size: 10.5px;
+  color: #38bdf8;
+  font-weight: 700;
+  text-align: right;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.top-date-card:hover .top-date-action-hint {
+  opacity: 1;
+  text-decoration: underline;
+}

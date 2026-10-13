@@ -1892,6 +1892,17 @@ function initTrophyModule() {
       renderTrophyCards(cachedTrophyRecords, currentTrophyFilter);
     });
   });
+
+  // Botón para limpiar filtro por fecha específica desde las tarjetas Top 5
+  const clearDateBtn = document.getElementById('btn-clear-date-filter');
+  if (clearDateBtn) {
+    clearDateBtn.addEventListener('click', () => {
+      currentTrophyDateFilter = null;
+      updateDateFilterUI();
+      renderTopTrophyDates(cachedTrophyRecords);
+      renderTrophyCards(cachedTrophyRecords, currentTrophyFilter);
+    });
+  }
 }
 
 // Cargar estadísticas y registros de Trofeos
@@ -1913,6 +1924,7 @@ async function loadTrophies() {
     if (recsData.ok && recsData.records) {
       cachedTrophyRecords = recsData.records;
       updateFilterCounts(recsData.records);
+      renderTopTrophyDates(recsData.records);
       renderTrophyCards(recsData.records, currentTrophyFilter);
     }
   } catch (err) {
@@ -1974,12 +1986,262 @@ function updateFilterCounts(records) {
   if (elPending) elPending.textContent = pendingCount;
 }
 
+// Variable global de filtro por fecha seleccionada desde el Top 5
+let currentTrophyDateFilter = null;
+
+// Actualizar indicador visual de filtro por fecha activa
+function updateDateFilterUI() {
+  const clearBtn = document.getElementById('btn-clear-date-filter');
+  const badge = document.getElementById('top-dates-badge');
+
+  if (currentTrophyDateFilter) {
+    if (clearBtn) clearBtn.style.display = 'inline-block';
+    if (badge) {
+      const parts = currentTrophyDateFilter.split('-');
+      const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : currentTrophyDateFilter;
+      badge.textContent = `🎯 Filtrando: ${formatted}`;
+      badge.className = 'badge badge-amber';
+    }
+  } else {
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (badge) {
+      badge.textContent = '⭐ Eficacia Máxima';
+      badge.className = 'badge badge-emerald';
+    }
+  }
+}
+
+// Renderizar sección de Top 5 fechas con mayor cantidad de trofeos
+function renderTopTrophyDates(records) {
+  const container = document.getElementById('top-dates-grid');
+  if (!container) return;
+
+  if (!records || !Array.isArray(records)) {
+    container.innerHTML = '<div style="grid-column:1/-1; color:#94a3b8; text-align:center; padding:15px;">No hay registros disponibles.</div>';
+    return;
+  }
+
+  // Filtrar solo los registros que son trofeos (ganador premiado que coincide con número bloqueado)
+  const trophies = records.filter(r => r.ganador && r.ganador.bloqueoAcertado === true);
+
+  if (trophies.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 25px 20px; color: #94a3b8; background: rgba(15,23,42,0.4); border-radius: 10px; border: 1px dashed rgba(255,255,255,0.1);">
+        <span style="font-size: 28px;">🏆</span>
+        <h4 style="margin: 8px 0 4px; color: #fff; font-size: 15px;">Aún no hay suficientes trofeos para armar el Top 5</h4>
+        <p style="margin: 0; font-size: 12px; color: var(--text-muted);">A medida que los sorteos premiados coincidan con números bloqueados, aquí aparecerán las fechas con más victorias de la banca.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Agrupar por fecha
+  const datesMap = {};
+
+  trophies.forEach(rec => {
+    const fecha = rec.fecha;
+    if (!fecha) return;
+
+    if (!datesMap[fecha]) {
+      datesMap[fecha] = {
+        fecha,
+        total: 0,
+        loterias: {}, // { [nombre]: count }
+        vias: {
+          sondeos: 0,
+          fijos: 0,
+          atrasados: 0,
+          aleatorios: 0,
+          memoria: 0
+        }
+      };
+    }
+
+    const item = datesMap[fecha];
+    item.total++;
+
+    // Lotería
+    const lotName = rec.loteria || rec.loteriaNombre || 'Lotería';
+    item.loterias[lotName] = (item.loterias[lotName] || 0) + 1;
+
+    // Vías de bloqueo
+    const winnerNum = rec.ganador ? String(rec.ganador.numero).padStart(2, '0') : null;
+    const winVal = winnerNum ? parseInt(winnerNum, 10) : null;
+
+    let isSondeos = false;
+    let isFijo = false;
+    let isAtrasados = false;
+    let isAleatorio = false;
+    let isMemoria = false;
+
+    // 1. Detección por listas de números
+    if ((rec.rojosPremier || []).some(n => String(n).padStart(2, '0') === winnerNum || parseInt(n, 10) === winVal)) isSondeos = true;
+    if ((rec.numFijos || (rec.fijosSeleccionados || []).map(f => typeof f === 'object' ? f.numero : f)).some(n => String(n).padStart(2, '0') === winnerNum || parseInt(n, 10) === winVal)) isFijo = true;
+    if ((rec.numPredictivos || (rec.predictivosVisualFx || []).map(p => typeof p === 'object' ? p.numero : p)).some(n => String(n).padStart(2, '0') === winnerNum || parseInt(n, 10) === winVal)) isAtrasados = true;
+    if ((rec.numAleatorios || (rec.aleatoriosSistema || []).map(a => typeof a === 'object' ? a.numero : a)).some(n => String(n).padStart(2, '0') === winnerNum || parseInt(n, 10) === winVal)) isAleatorio = true;
+    if ((rec.numMemoriaCupoCero || (rec.memoriaCupoCero || []).map(m => typeof m === 'object' ? m.numero : m)).some(n => String(n).padStart(2, '0') === winnerNum || parseInt(n, 10) === winVal)) isMemoria = true;
+
+    // 2. Detección por origenAcierto o metodosAcierto
+    const origen = rec.ganador ? rec.ganador.origenAcierto : null;
+    if (origen === 'PREMIER') isSondeos = true;
+    if (origen === 'FIJO') isFijo = true;
+    if (origen === 'PREDICTIVO') isAtrasados = true;
+    if (origen === 'ALEATORIO') isAleatorio = true;
+    if (origen === 'MEMORIA_CUPO_0') isMemoria = true;
+
+    if (rec.ganador && Array.isArray(rec.ganador.metodosAcierto)) {
+      rec.ganador.metodosAcierto.forEach(m => {
+        if (m.id === 'PREMIER') isSondeos = true;
+        if (m.id === 'FIJO') isFijo = true;
+        if (m.id === 'PREDICTIVO') isAtrasados = true;
+        if (m.id === 'ALEATORIO') isAleatorio = true;
+        if (m.id === 'MEMORIA_CUPO_0') isMemoria = true;
+      });
+    }
+
+    // Fallback si no coincidió ninguno
+    if (!isSondeos && !isFijo && !isAtrasados && !isAleatorio && !isMemoria) {
+      isAleatorio = true;
+    }
+
+    if (isSondeos) item.vias.sondeos++;
+    if (isFijo) item.vias.fijos++;
+    if (isAtrasados) item.vias.atrasados++;
+    if (isAleatorio) item.vias.aleatorios++;
+    if (isMemoria) item.vias.memoria++;
+  });
+
+  // Ordenar fechas por cantidad de trofeos descendente, y desempate por fecha más reciente
+  const sortedDates = Object.values(datesMap).sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total;
+    return b.fecha.localeCompare(a.fecha);
+  }).slice(0, 5);
+
+  const rankLabels = [
+    { title: 'Top 1 Oro', icon: '🥇' },
+    { title: 'Top 2 Plata', icon: '🥈' },
+    { title: 'Top 3 Bronce', icon: '🥉' },
+    { title: 'Top 4 Elite', icon: '💎' },
+    { title: 'Top 5 Mérito', icon: '🎖️' }
+  ];
+
+  const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+  container.innerHTML = '';
+
+  sortedDates.forEach((item, index) => {
+    const rankNum = index + 1;
+    const rankMeta = rankLabels[index] || { title: `Top ${rankNum}`, icon: '⭐' };
+
+    // Formato de fecha
+    const parts = item.fecha.split('-');
+    let formattedDate = item.fecha;
+    let dayName = '';
+    if (parts.length === 3) {
+      formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      dayName = daysOfWeek[dObj.getDay()] || '';
+    }
+
+    // Pills de loterías
+    const lotEntries = Object.entries(item.loterias).sort((a, b) => b[1] - a[1]);
+    const lotPillsHtml = lotEntries.map(([lotName, count]) => {
+      let lotDisplay = lotName;
+      if (lotName.toLowerCase().includes('lotto activo')) lotDisplay = 'Lotto Activo';
+      else if (lotName.toLowerCase().includes('la granjita')) lotDisplay = 'La Granjita';
+      else if (lotName.toLowerCase().includes('guacharo millonario')) lotDisplay = 'G. Millonario';
+      else if (lotName.toLowerCase().includes('guacharo activo')) lotDisplay = 'G. Activo';
+
+      return `<span class="top-date-pill pill-lot" title="${lotName}: ${count} trofeos">🎰 ${lotDisplay} (<b>${count}</b>)</span>`;
+    }).join('');
+
+    // Pills de vías de bloqueo (coletilla)
+    const viaPills = [];
+    if (item.vias.sondeos > 0) {
+      viaPills.push(`<span class="top-date-pill pill-via-sondeos" title="Sondeos de taquilla Premier con cupo 0 agotado">🔴 Sondeos (<b>${item.vias.sondeos}</b>)</span>`);
+    }
+    if (item.vias.fijos > 0) {
+      viaPills.push(`<span class="top-date-pill pill-via-fijos" title="Bloqueo fijo permanente configurado">📌 Fijo (<b>${item.vias.fijos}</b>)</span>`);
+    }
+    if (item.vias.atrasados > 0) {
+      viaPills.push(`<span class="top-date-pill pill-via-atrasados" title="Atrasados detectados con Visual-FX">🔮 Atrasados (<b>${item.vias.atrasados}</b>)</span>`);
+    }
+    if (item.vias.aleatorios > 0) {
+      viaPills.push(`<span class="top-date-pill pill-via-aleatorios" title="Cobertura de bloqueo aleatorio inteligente">🎲 Aleatorio (<b>${item.vias.aleatorios}</b>)</span>`);
+    }
+    if (item.vias.memoria > 0) {
+      viaPills.push(`<span class="top-date-pill pill-via-memoria" title="Arrastre preventivo por memoria histórica">🧠 Memoria (<b>${item.vias.memoria}</b>)</span>`);
+    }
+    const viaPillsHtml = viaPills.join('');
+
+    const isSelected = currentTrophyDateFilter === item.fecha;
+
+    const card = document.createElement('div');
+    card.className = `top-date-card rank-${rankNum} ${isSelected ? 'active-filter' : ''}`;
+    card.title = `Haz clic para filtrar la auditoría y ver los ${item.total} trofeos del ${formattedDate}`;
+
+    card.innerHTML = `
+      <div class="top-date-card-header">
+        <span class="top-date-rank-badge">
+          ${rankMeta.icon} ${rankMeta.title}
+        </span>
+        <span class="top-date-trophy-counter" title="Total de golpes de banca evitados en esta fecha">
+          🏆 <b>${item.total}</b> ${item.total === 1 ? 'Trofeo' : 'Trofeos'}
+        </span>
+      </div>
+
+      <div class="top-date-main-row">
+        <span class="top-date-text">📅 ${formattedDate}</span>
+        <span class="top-date-day-name">${dayName}</span>
+      </div>
+
+      <!-- Coletilla: Loterías -->
+      <div class="top-date-coletilla-block">
+        <span class="top-date-coletilla-title">🎰 Loterías Protegidas:</span>
+        <div class="top-date-pills-wrap">
+          ${lotPillsHtml}
+        </div>
+      </div>
+
+      <!-- Coletilla: Vías de Bloqueo -->
+      <div class="top-date-coletilla-block">
+        <span class="top-date-coletilla-title">🛡️ Vías de Bloqueo:</span>
+        <div class="top-date-pills-wrap">
+          ${viaPillsHtml}
+        </div>
+      </div>
+
+      <div class="top-date-action-hint">
+        ${isSelected ? '<span>✓ Filtrando esta fecha (clic para quitar)</span>' : '<span>Filtrar auditoría ➔</span>'}
+      </div>
+    `;
+
+    card.addEventListener('click', () => {
+      if (currentTrophyDateFilter === item.fecha) {
+        currentTrophyDateFilter = null;
+      } else {
+        currentTrophyDateFilter = item.fecha;
+      }
+      updateDateFilterUI();
+      renderTopTrophyDates(cachedTrophyRecords);
+      renderTrophyCards(cachedTrophyRecords, currentTrophyFilter);
+    });
+
+    container.appendChild(card);
+  });
+}
+
 // Renderizar tarjetas de auditoría de bloqueos y trofeos
 function renderTrophyCards(records, filter = 'all') {
   const container = document.getElementById('trophy-cards-container');
   if (!container) return;
 
   let filtered = sortRecordsDescending(records);
+
+  // Filtro por fecha específica si el usuario seleccionó una tarjeta del Top 5
+  if (currentTrophyDateFilter) {
+    filtered = filtered.filter(r => r.fecha === currentTrophyDateFilter);
+  }
 
   if (filter === 'trophies') {
     filtered = filtered.filter(r => r.ganador && r.ganador.bloqueoAcertado === true);
