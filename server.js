@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -9,14 +10,12 @@ const app = express();
 const PORT = process.env.PORT || 4500;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
+app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-  }
+  maxAge: '1h',
+  etag: true
 }));
 
 // Estado en memoria
@@ -63,6 +62,24 @@ const IS_CLOUD = !!(process.env.RENDER || process.env.IS_RENDER);
 // Token compartido para que solo la Web (Render) pueda empujar configuración a los nodos locales
 const SYNC_TOKEN = process.env.SUITE_SYNC_TOKEN || 'fenix-suite-sync-2026';
 
+// Comprobación de horario nocturno en Venezuela (UTC-4)
+// Entre 9:00 PM (21:00) y 7:00 AM (07:00), no hay sorteos ni actividad de loterías en Venezuela.
+function isHorarioNocturnoVET() {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Caracas',
+      hour: 'numeric',
+      hour12: false
+    });
+    const vetHour = parseInt(formatter.format(new Date()), 10) % 24;
+    return vetHour >= 21 || vetHour < 7;
+  } catch (e) {
+    const now = new Date();
+    const vetHour = (now.getUTCHours() - 4 + 24) % 24;
+    return vetHour >= 21 || vetHour < 7;
+  }
+}
+
 // Variable de control para saber cuándo se adoptó la última versión de la nube
 let lastAdoptedCloudUpdatedAt = null;
 
@@ -84,6 +101,7 @@ function adoptCloudConfigLocally(cloudCfg) {
 // se aplique en vivo a la automatización local sin necesidad de reiniciar el servidor.
 async function syncConfigFromCloudLive() {
   if (IS_CLOUD) return; // En Render no se requiere autodescarga desde Supabase
+  if (isHorarioNocturnoVET()) return; // Reposo total nocturno (9 PM a 7 AM VET)
   try {
     const cloudStore = require('./cloud_store');
     const cloudRes = await cloudStore.getMasterConfig();
@@ -106,9 +124,9 @@ async function syncConfigFromCloudLive() {
   }
 }
 
-// Polling continuo en nodo local cada 10 segundos
+// Polling de configuración en nodo local cada 60 segundos
 if (!IS_CLOUD) {
-  setInterval(syncConfigFromCloudLive, 10000);
+  setInterval(syncConfigFromCloudLive, 60000);
 }
 
 // En Render el disco es efímero: antes de modificar y re-guardar la config partimos de la copia
@@ -610,17 +628,28 @@ app.post('/api/tunnel/stop', (req, res) => {
   res.json({ ok: true, message: 'Túnel detenido correctamente' });
 });
 
-// Helper de sincronización instantánea hacia Render
-function syncToCloudImmediate(resetAll = false) {
+// Helper de sincronización hacia Render con guardia anti-redundancia
+let lastSyncedPayloadHash = null;
+
+function syncToCloudImmediate(resetAll = false, force = false) {
   if (process.env.RENDER || process.env.IS_RENDER) return;
+  if (!force && !resetAll && isHorarioNocturnoVET()) return; // Pausa total nocturna hacia Render
   try {
     const historyMgr = require('./history_manager');
     const cupoMem = require('./cupo_cero_memory');
     const cfg = getConfig();
-    // Enviar siempre todo el historial persistente para garantizar sincronización 100% libre de desfases de zona horaria (UTC vs Local)
     const records = historyMgr.getHistory();
     const memory = cupoMem.loadMemory();
     const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_2';
+
+    // Huella rápida para evitar enviar megabytes repetidos si los datos no cambiaron
+    const memLen = Array.isArray(memory) ? memory.length : (memory ? Object.keys(memory).length : 0);
+    const rec0 = records && records[0] ? records[0] : {};
+    const quickHash = `${records.length}_${memLen}_${resetAll ? '1' : '0'}_${rec0.id || ''}_${rec0.sorteo || ''}_${rec0.t7Status || ''}_${(rec0.ganador && rec0.ganador.numero) || ''}`;
+    
+    if (!force && !resetAll && lastSyncedPayloadHash === quickHash) {
+      return; // No hubo cambios reales, ahorrar ancho de banda completamente
+    }
 
     const payload = JSON.stringify({
       records,
@@ -646,9 +675,9 @@ function syncToCloudImmediate(resetAll = false) {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        // La configuración ya no viaja de vuelta en esta respuesta: Render la empuja
-        // directamente al nodo cuando se guarda en la Web (/api/config/push-from-cloud).
-        if (res.statusCode !== 200) {
+        if (res.statusCode === 200) {
+          lastSyncedPayloadHash = quickHash;
+        } else {
           console.warn(`[SYNC NUBE] HTTP ${res.statusCode}: ${res.statusMessage} - ${data.slice(0, 100)}`);
         }
       });
@@ -657,9 +686,6 @@ function syncToCloudImmediate(resetAll = false) {
     syncReq.on('timeout', () => syncReq.destroy());
     syncReq.write(payload);
     syncReq.end();
-
-    // El respaldo del historial en Supabase lo administra la instancia maestra en Render
-    // para evitar colisiones entre múltiples máquinas o degradación de resultados oficiales.
   } catch (e) {
     console.error(`[SYNC NUBE ERROR] ${e.message}`);
   }
@@ -798,15 +824,15 @@ app.post('/api/machines/report-tunnel', async (req, res) => {
 
 let lastFxSyncTime = 0;
 
-// API: Estado y Logs
+// API: Estado y Logs (Optimizado: No envía 1.6MB de historial a menos que se solicite con ?includeHistory=true)
 app.get('/api/status', async (req, res) => {
   const historyMgr = require('./history_manager');
   const cfg = getConfig() || {};
   const isVerifier = machinesMgr.isLocalMachineVerifier(cfg);
 
   // Sincronizar automáticamente resultados oficiales de Visual-FX en segundo plano
-  // REGLA ESTRICTA: Sólo la máquina designada como verificadora oficial consulta Visual-FX
-  if (isVerifier && (Date.now() - lastFxSyncTime > 30000)) {
+  // REGLA ESTRICTA: Sólo la máquina designada como verificadora oficial consulta Visual-FX (y solo de día)
+  if (isVerifier && !isHorarioNocturnoVET() && (Date.now() - lastFxSyncTime > 120000)) {
     lastFxSyncTime = Date.now();
     historyMgr.syncResultsWithVisualFx().then(syncRes => {
       if (syncRes && syncRes.updatedCount > 0) {
@@ -815,31 +841,41 @@ app.get('/api/status', async (req, res) => {
     }).catch(() => {});
   }
 
-  let persistentHistory = historyMgr.getHistory();
-  if (IS_CLOUD || process.env.RENDER) {
-    try {
-      const cloudStore = require('./cloud_store');
-      const cloudHist = await cloudStore.getMasterHistory();
-      if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
-        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cloudHist.records, null, 2), 'utf8');
-        historyMgr.rewriteCSV(cloudHist.records);
-        persistentHistory = cloudHist.records;
-      }
-    } catch (e) {}
+  const includeHistory = req.query.includeHistory === 'true';
+  let persistentHistory = null;
+
+  if (includeHistory) {
+    persistentHistory = historyMgr.getHistory();
+    if (IS_CLOUD || process.env.RENDER) {
+      try {
+        const cloudStore = require('./cloud_store');
+        const cloudHist = await cloudStore.getMasterHistory();
+        if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
+          fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cloudHist.records, null, 2), 'utf8');
+          historyMgr.rewriteCSV(cloudHist.records);
+          persistentHistory = cloudHist.records;
+        }
+      } catch (e) {}
+    }
   }
 
   const logsToSend = [...logsQueue];
   logsQueue = []; // Vaciar buffer para polling
-  res.json({
+  const responseData = {
     ok: true,
-    history: persistentHistory.length > 0 ? persistentHistory : executionHistory,
     logs: logsToSend,
     nodeInfo: {
       maquinaLocalId: (cfg.general && cfg.general.maquinaLocalId) || 'maquina_2',
       maquinaEncargadaVerificacionesId: (cfg.general && cfg.general.maquinaEncargadaVerificacionesId) || 'maquina_1',
       esVerificadora: isVerifier
     }
-  });
+  };
+
+  if (includeHistory) {
+    responseData.history = persistentHistory && persistentHistory.length > 0 ? persistentHistory : executionHistory;
+  }
+
+  res.json(responseData);
 });
 
 // API: Consulta Histórica Filtrada
@@ -1765,8 +1801,8 @@ setInterval(async () => {
   // Solo la máquina local (Windows) ejecuta Premier Pluss y Triple 7.
   if (process.env.RENDER || process.env.IS_RENDER) return;
 
-  // Sincronización continua en vivo con la Nube antes de evaluar cada minuto
-  await syncConfigFromCloudLive();
+  // Pausa total nocturna: de 9 PM a 7 AM VET no existen sorteos ni cambios de loterías
+  if (isHorarioNocturnoVET()) return;
 
   const cfg = getConfig();
   if (!cfg || !cfg.general.autoStartScheduler) return;
@@ -1774,9 +1810,6 @@ setInterval(async () => {
   const now = new Date();
   const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
   const todayStr = now.toISOString().slice(0, 10);
-
-  // Sincronización continua y automática con la nube (Render) desde el nodo local
-  syncToCloudImmediate(false);
 
   for (const lot of cfg.loterias) {
     if (!lot.activo) continue;
@@ -2314,13 +2347,14 @@ setInterval(async () => {
   }
 }, 30000);
 
-// Sincronización continua de fondo Nodo Local -> Render (cada 45 segundos)
+// Sincronización periódica de respaldo Nodo Local -> Render (cada 5 minutos, protegida por hash y horario diurno)
 if (!process.env.RENDER && !process.env.IS_RENDER) {
   setInterval(() => {
+    if (isHorarioNocturnoVET()) return;
     try {
       syncToCloudImmediate(false);
     } catch (e) {}
-  }, 45000);
+  }, 300000);
 }
 
 // Worker de recepción de órdenes remotas desde la Web (Render) vía Supabase
@@ -2331,16 +2365,23 @@ function startCloudCommandWorker() {
   const cloudStore = require('./cloud_store');
   const robot = require('./premier_robot');
 
-  // Broadcast periódico del estado de automatización local a Supabase (cada 2.5s)
+  // Broadcast del estado de automatización local a Supabase (cada 15s y solo si hay cambio y en horario diurno)
+  let lastCtrlStatusJson = null;
   setInterval(() => {
+    if (isHorarioNocturnoVET()) return;
     try {
       const ctrl = robot.getEstadoControl();
-      cloudStore.saveAutomationStatus(ctrl).catch(() => {});
+      const currentJson = JSON.stringify(ctrl);
+      if (currentJson !== lastCtrlStatusJson) {
+        lastCtrlStatusJson = currentJson;
+        cloudStore.saveAutomationStatus(ctrl).catch(() => {});
+      }
     } catch (e) {}
-  }, 2500);
+  }, 15000);
 
   setInterval(async () => {
     if (isProcessingCloudCommand) return;
+    if (isHorarioNocturnoVET()) return;
     try {
       const cmd = await cloudStore.getLatestCommand();
       if (cmd && cmd.status === 'PENDING') {
@@ -2401,7 +2442,7 @@ function startCloudCommandWorker() {
     } finally {
       isProcessingCloudCommand = false;
     }
-  }, 1800);
+  }, 5000);
 }
 
 app.listen(PORT, () => {

@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadTrophies();
   initTriple7Module();
   initMemoryManager();
+  refreshStatusAndHistory(); // Cargar historial completo una sola vez al iniciar la aplicación
   startStatusPolling();
   bindActionButtons();
   initTunnelManager();
@@ -39,6 +40,9 @@ function initTabs() {
       if (targetId === 'tab-triple7') {
         loadTriple7Draws();
       }
+      if (targetId === 'tab-historial') {
+        refreshStatusAndHistory();
+      }
     });
   });
 
@@ -51,12 +55,35 @@ function initTabs() {
   }
 }
 
+// Comprobación de horario nocturno en Venezuela (UTC-4)
+// Entre 9:00 PM (21:00) y 7:00 AM (07:00), no hay sorteos ni cambios en loterías
+function isHorarioNocturnoVET() {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Caracas',
+      hour: 'numeric',
+      hour12: false
+    });
+    const vetHour = parseInt(formatter.format(new Date()), 10) % 24;
+    return vetHour >= 21 || vetHour < 7;
+  } catch (e) {
+    const now = new Date();
+    const vetHour = (now.getUTCHours() - 4 + 24) % 24;
+    return vetHour >= 21 || vetHour < 7;
+  }
+}
+
 // Reloj y Cuenta Regresiva
 function initClock() {
   const clockEl = document.getElementById('clock-display');
   setInterval(() => {
     const now = new Date();
-    clockEl.textContent = now.toLocaleTimeString('es-VE', { hour12: true });
+    const timeStr = now.toLocaleTimeString('es-VE', { hour12: true });
+    if (isHorarioNocturnoVET()) {
+      clockEl.textContent = `🌙 ${timeStr} (Modo Nocturno)`;
+    } else {
+      clockEl.textContent = timeStr;
+    }
     updateCountdown();
   }, 1000);
 }
@@ -1180,7 +1207,10 @@ function initTunnelManager() {
   }
 
   checkTunnel();
-  setInterval(checkTunnel, 8000);
+  setInterval(() => {
+    if (document.hidden || isHorarioNocturnoVET()) return;
+    checkTunnel();
+  }, 60000);
 }
 
 // Formato legible 12 Horas (ej: "07:00" -> "07:00 AM")
@@ -1517,42 +1547,54 @@ function updateControlUIState(status, info = {}) {
   }
 }
 
-// Polling de estado, logs y control en tiempo real
+// Polling de estado, logs y control en tiempo real (Optimizado para ahorrar ancho de banda)
+async function pollStatusOnce() {
+  if (document.hidden) return; // Si la pestaña está minimizada o en segundo plano, 0 peticiones
+  if (isHorarioNocturnoVET()) return; // Pausa total nocturna de 9:00 PM a 7:00 AM (Hora Venezuela)
+  try {
+    // 1. Estado de Ejecución y Control (Ligero: pocos bytes)
+    const ctrlRes = await fetch('/api/control-status');
+    const ctrlData = await ctrlRes.json();
+    if (ctrlData && ctrlData.ok) {
+      updateControlUIState(ctrlData.status, ctrlData);
+    }
+
+    // 2. Logs y Estado del Nodo (Sin historial pesado de 1.6MB)
+    const res = await fetch('/api/status');
+    const data = await res.json();
+
+    if (data.history && data.history.length > 0) {
+      renderHistoryTable(data.history);
+    }
+
+    if (data.logs && data.logs.length > 0) {
+      data.logs.forEach(l => appendLog(l.msg, l.level));
+    }
+
+    // 3. Sincronizar trofeos cada 15 minutos (900,000 ms)
+    if (!window._lastTrophyPoll || Date.now() - window._lastTrophyPoll > 900000) {
+      window._lastTrophyPoll = Date.now();
+      loadTrophies();
+    }
+
+    // 4. Sincronizar números atrasados cada 45 minutos (2,700,000 ms)
+    if (!window._lastDelayedPoll || Date.now() - window._lastDelayedPoll > 2700000) {
+      window._lastDelayedPoll = Date.now();
+      actualizarTodosLosAtrasados();
+    }
+  } catch (e) {}
+}
+
 function startStatusPolling() {
-  statusInterval = setInterval(async () => {
-    try {
-      // 1. Estado de Ejecución y Control
-      const ctrlRes = await fetch('/api/control-status');
-      const ctrlData = await ctrlRes.json();
-      if (ctrlData && ctrlData.ok) {
-        updateControlUIState(ctrlData.status, ctrlData);
-      }
+  // Intervalo conservador de 20 segundos
+  statusInterval = setInterval(pollStatusOnce, 20000);
 
-      // 2. Historial y Logs
-      const res = await fetch('/api/status');
-      const data = await res.json();
-
-      if (data.history && data.history.length > 0) {
-        renderHistoryTable(data.history);
-      }
-
-      if (data.logs && data.logs.length > 0) {
-        data.logs.forEach(l => appendLog(l.msg, l.level));
-      }
-
-      // 3. Sincronizar contadores y tarjetas de trofeos periódicamente
-      if (!window._lastTrophyPoll || Date.now() - window._lastTrophyPoll > 3500) {
-        window._lastTrophyPoll = Date.now();
-        loadTrophies();
-      }
-
-      // 4. Sincronizar números atrasados con Visual-FX periódicamente (cada 5 minutos)
-      if (!window._lastDelayedPoll || Date.now() - window._lastDelayedPoll > 300000) {
-        window._lastDelayedPoll = Date.now();
-        actualizarTodosLosAtrasados();
-      }
-    } catch (e) {}
-  }, 1500);
+  // Al reactivar la pestaña, actualizar inmediatamente
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      pollStatusOnce();
+    }
+  });
 }
 
 // Formatear fecha para el historial (ej: "2026-10-03" -> "03/10/2026")
@@ -2173,10 +2215,10 @@ function renderTrophyCards(records, filter = 'all') {
 }
 
 // Bind de verificación manual dentro de cada tarjeta
-// Actualizar estado general e historial de sorteos
+// Actualizar estado general e historial de sorteos (con historial explícito)
 async function refreshStatusAndHistory() {
   try {
-    const res = await fetch('/api/status');
+    const res = await fetch('/api/status?includeHistory=true');
     const data = await res.json();
     if (data.history && data.history.length > 0) {
       renderHistoryTable(data.history);
@@ -2825,6 +2867,9 @@ function initMemoryManager() {
   }
 
   loadMemoryStatus();
-  setInterval(loadMemoryStatus, 8000);
+  setInterval(() => {
+    if (document.hidden || isHorarioNocturnoVET()) return;
+    loadMemoryStatus();
+  }, 60000);
 }
 
