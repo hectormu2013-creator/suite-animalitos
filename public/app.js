@@ -1559,7 +1559,7 @@ async function pollStatusOnce() {
       updateControlUIState(ctrlData.status, ctrlData);
     }
 
-    // 2. Logs y Estado del Nodo (Sin historial pesado de 1.6MB)
+    // 2. Logs y Estado del Nodo (Sin historial pesado de 1.6MB a menos que haya cambios)
     const res = await fetch('/api/status');
     const data = await res.json();
 
@@ -1569,6 +1569,20 @@ async function pollStatusOnce() {
 
     if (data.logs && data.logs.length > 0) {
       data.logs.forEach(l => appendLog(l.msg, l.level));
+    }
+
+    // Detección reactiva de nuevos sorteos o resultados verificados
+    if (data.historyVersion && data.historyVersion !== window._lastHistoryVersion) {
+      window._lastHistoryVersion = data.historyVersion;
+      refreshStatusAndHistory();
+      loadTrophies();
+    }
+
+    // Refresco de respaldo garantizado cada 60s
+    window._historyTickCount = (window._historyTickCount || 0) + 1;
+    if (window._historyTickCount >= 3) {
+      window._historyTickCount = 0;
+      refreshStatusAndHistory();
     }
 
     // 3. Sincronizar trofeos cada 15 minutos (900,000 ms)

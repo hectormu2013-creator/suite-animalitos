@@ -650,8 +650,9 @@ function syncToCloudImmediate(resetAll = false, force = false) {
 
     // Huella rápida para evitar enviar megabytes repetidos si los datos no cambiaron
     const memLen = Array.isArray(memory) ? memory.length : (memory ? Object.keys(memory).length : 0);
-    const rec0 = records && records[0] ? records[0] : {};
-    const quickHash = `${records.length}_${memLen}_${resetAll ? '1' : '0'}_${rec0.id || ''}_${rec0.sorteo || ''}_${rec0.t7Status || ''}_${(rec0.ganador && rec0.ganador.numero) || ''}`;
+    const verifiedCount = records.reduce((acc, r) => acc + (r.ganador && r.ganador.verificado ? 1 : 0), 0);
+    const last3 = records.slice(-3).map(r => `${r.id}_${(r.ganador && r.ganador.verificado ? r.ganador.numero : 'nov')}_${r.t7Status || ''}`).join('|');
+    const quickHash = `${records.length}_${verifiedCount}_${memLen}_${resetAll ? '1' : '0'}_${last3}`;
     
     if (!force && !resetAll && lastSyncedPayloadHash === quickHash) {
       return; // No hubo cambios reales, ahorrar ancho de banda completamente
@@ -865,10 +866,16 @@ app.get('/api/status', async (req, res) => {
     }
   }
 
+  const hist = persistentHistory || historyMgr.getHistory();
+  const verifiedCount = hist.reduce((acc, r) => acc + (r.ganador && r.ganador.verificado ? 1 : 0), 0);
+  const lastRec = hist[hist.length - 1] || {};
+  const historyVersion = `${hist.length}_${verifiedCount}_${lastRec.id || ''}_${(lastRec.ganador && lastRec.ganador.verificado ? lastRec.ganador.numero : 'nov')}`;
+
   const logsToSend = [...logsQueue];
   logsQueue = []; // Vaciar buffer para polling
   const responseData = {
     ok: true,
+    historyVersion,
     logs: logsToSend,
     nodeInfo: {
       maquinaLocalId: (cfg.general && cfg.general.maquinaLocalId) || 'maquina_2',
@@ -1005,10 +1012,15 @@ app.post('/api/sync/receive-history', async (req, res) => {
           return existing.id === rec.id || (existing.fecha === rec.fecha && existing.loteria === rec.loteria && exSorteo === recSorteo);
         });
         if (idx >= 0) {
-          // El ganador oficial SOLO es determinado por 1000Resultados en la suite.
-          // Los nodos de sondeo locales NUNCA deben sobreescribir ni dictar ganadores.
-          const officialWinner = currentDb[idx].ganador || { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
-          const officialRev = currentDb[idx].revision || null;
+          // Adoptar ganador verificado del nodo local si Render aún no lo tenía verificado
+          let officialWinner = currentDb[idx].ganador;
+          if (rec.ganador && rec.ganador.verificado && (!officialWinner || !officialWinner.verificado)) {
+            officialWinner = rec.ganador;
+          }
+          if (!officialWinner) {
+            officialWinner = { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
+          }
+          const officialRev = rec.revision || currentDb[idx].revision || null;
           currentDb[idx] = { 
             ...rec, 
             ganador: officialWinner, 
