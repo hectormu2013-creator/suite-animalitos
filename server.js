@@ -1,5 +1,4 @@
 const express = require('express');
-const compression = require('compression');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -10,7 +9,14 @@ const app = express();
 const PORT = process.env.PORT || 4500;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
-app.use(compression());
+// Compresión opcional: activa en Render (nube) o si el paquete está instalado,
+// sin romper las máquinas locales secundarias que no han ejecutado npm install.
+try {
+  const compression = require('compression');
+  app.use(compression());
+} catch (e) {
+  // En máquinas locales opera normalmente sin compresión
+}
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
