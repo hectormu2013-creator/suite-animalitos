@@ -839,18 +839,27 @@ app.get('/api/status', async (req, res) => {
   let persistentHistory = null;
 
   if (includeHistory) {
-    persistentHistory = historyMgr.getHistory();
+    let localHist = historyMgr.getHistory();
     if (IS_CLOUD || process.env.RENDER) {
       try {
         const cloudStore = require('./cloud_store');
         const cloudHist = await cloudStore.getMasterHistory();
         if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
-          fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cloudHist.records, null, 2), 'utf8');
-          historyMgr.rewriteCSV(cloudHist.records);
-          persistentHistory = cloudHist.records;
+          const merged = historyMgr.mergeHistories(localHist, cloudHist.records);
+          fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+          historyMgr.rewriteCSV(merged);
+          localHist = merged;
+
+          // Si merged tiene más ganadores verificados que Supabase, respaldar en Supabase
+          const mergedVerif = merged.filter(r => r.ganador && r.ganador.verificado).length;
+          const cloudVerif = cloudHist.records.filter(r => r.ganador && r.ganador.verificado).length;
+          if (mergedVerif > cloudVerif) {
+            cloudStore.saveMasterHistory(merged).catch(() => {});
+          }
         }
       } catch (e) {}
     }
+    persistentHistory = localHist;
   }
 
   const hist = persistentHistory || historyMgr.getHistory();
@@ -990,45 +999,16 @@ app.post('/api/sync/receive-history', async (req, res) => {
 
       // Eliminar registros fantasmas generados accidentalmente en Render por Playwright ausente
       currentDb = currentDb.filter(r => !r.t7Status || !r.t7Status.includes('Playwright no está'));
+      const cleanIncoming = records.filter(r => !r.t7Status || !r.t7Status.includes('Playwright no está'));
 
-      for (const rec of records) {
-        if (rec.t7Status && rec.t7Status.includes('Playwright no está')) continue;
-        const recSorteo = rec.sorteo || rec.horaSorteo;
-        const idx = currentDb.findIndex(existing => {
-          const exSorteo = existing.sorteo || existing.horaSorteo;
-          return existing.id === rec.id || (existing.fecha === rec.fecha && existing.loteria === rec.loteria && exSorteo === recSorteo);
-        });
-        if (idx >= 0) {
-          // Adoptar ganador verificado del nodo local si Render aún no lo tenía verificado
-          let officialWinner = currentDb[idx].ganador;
-          if (rec.ganador && rec.ganador.verificado && (!officialWinner || !officialWinner.verificado)) {
-            officialWinner = rec.ganador;
-          }
-          if (!officialWinner) {
-            officialWinner = { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
-          }
-          const officialRev = rec.revision || currentDb[idx].revision || null;
-          currentDb[idx] = { 
-            ...rec, 
-            ganador: officialWinner, 
-            revision: officialRev 
-          };
-        } else {
-          if (!rec.ganador || !rec.ganador.verificado) {
-            rec.ganador = { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
-          }
-          currentDb.push(rec);
-        }
-      }
-
-      currentDb.sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
-      fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(currentDb, null, 2), 'utf8');
-      historyMgr.rewriteCSV(currentDb);
+      const merged = historyMgr.mergeHistories(currentDb, cleanIncoming);
+      fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+      historyMgr.rewriteCSV(merged);
 
       if (IS_CLOUD) {
         try {
           const cloudStore = require('./cloud_store');
-          cloudStore.saveMasterHistory(currentDb);
+          cloudStore.saveMasterHistory(merged);
         } catch (e) {}
       }
     }
@@ -1163,6 +1143,14 @@ app.post('/api/trophies/verify', async (req, res) => {
     log(`Aviso en auto-liberación de memoria: ${eAutoLib.message}`, 'log-warn');
   }
 
+  // Persistir de inmediato en Supabase y notificar a la nube
+  try {
+    const cloudStore = require('./cloud_store');
+    const freshHist = historyMgr.getHistory();
+    await cloudStore.saveMasterHistory(freshHist);
+  } catch (eC) {}
+  syncToCloudImmediate(false, true);
+
   res.json(result);
 });
 
@@ -1183,7 +1171,12 @@ app.post('/api/trophies/lookup-single-result', async (req, res) => {
   const result = await historyMgr.lookupAndUpdateRecord(recordId);
   if (result.ok && result.found) {
     log(`🎯 [RESULTADO EN VIVO ACTUALIZADO] N° ${result.winnerNumber} (${result.winnerName}) verificado para sorteo ${recordId} [${result.source || 'Scraper'}].`, result.bloqueoAcertado ? 'log-success' : 'log-info');
-    syncToCloudImmediate(false);
+    try {
+      const cloudStore = require('./cloud_store');
+      const freshHist = historyMgr.getHistory();
+      await cloudStore.saveMasterHistory(freshHist);
+    } catch (eC) {}
+    syncToCloudImmediate(false, true);
   }
   res.json(result);
 });

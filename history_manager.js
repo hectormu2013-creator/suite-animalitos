@@ -624,6 +624,12 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
     fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
     rewriteCSV(history);
 
+    // Persistir de inmediato en Supabase para que ningún refresco o sync pueda revertir el ganador
+    try {
+      const cloudStore = require('./cloud_store');
+      cloudStore.saveMasterHistory(history).catch(() => {});
+    } catch (eCloud) {}
+
     return {
       ok: true,
       bloqueoAcertado: salioBloqueado,
@@ -647,19 +653,15 @@ async function syncResultsWithVisualFx(forceReverify = false, targetDate = null)
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Sin registros históricos', updatedCount: 0, trophiesCount: 0 };
     
-    // Si la nube (Supabase) tiene registros, sincronizarlos y adoptar mejoras de verificación
+    // Si la nube (Supabase) tiene registros, fusionar de forma inteligente sin perder ningún ganador verificado
     try {
       const cloudStore = require('./cloud_store');
       const cloudRes = await cloudStore.getMasterHistory();
       if (cloudRes && Array.isArray(cloudRes.records) && cloudRes.records.length > 0) {
         const local = JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]');
-        const isCloudEnv = Boolean(process.env.RENDER || process.env.IS_CLOUD);
-        const cloudVerif = cloudRes.records.filter(r => r.ganador && r.ganador.verificado).length;
-        const localVerif = local.filter(r => r.ganador && r.ganador.verificado).length;
-        if (isCloudEnv || cloudRes.records.length > local.length || cloudVerif >= localVerif) {
-          fs.writeFileSync(DB_PATH, JSON.stringify(cloudRes.records, null, 2), 'utf8');
-          rewriteCSV(cloudRes.records);
-        }
+        const merged = mergeHistories(local, cloudRes.records);
+        fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+        rewriteCSV(merged);
       }
     } catch (eCloudMerge) {}
 
@@ -993,10 +995,77 @@ function updateT7Status(recordId, t7Status, t7Blocked) {
   return false;
 }
 
+/**
+ * Fusión Monotónica de Historiales:
+ * Garantiza de forma estricta que NINGÚN resultado o ganador verificado sea revertido jamás.
+ * Si un sorteo está verificado en A o en B, el resultado final SIEMPRE mantiene la verificación.
+ */
+function mergeHistories(baseRecords, incomingRecords) {
+  if (!Array.isArray(baseRecords)) baseRecords = [];
+  if (!Array.isArray(incomingRecords)) incomingRecords = [];
+
+  const map = new Map();
+  const normTimeStr = t => (t || '').trim().replace(/^0/, '');
+  const makeKey = r => {
+    const d = r.fecha || '';
+    const l = (r.loteria || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const s = normTimeStr(r.sorteo || r.horaSorteo || '');
+    return `${d}_${l}_${s}`;
+  };
+
+  for (const r of baseRecords) {
+    if (!r) continue;
+    const key = makeKey(r) || r.id;
+    map.set(key, { ...r });
+  }
+
+  for (const inc of incomingRecords) {
+    if (!inc) continue;
+    const key = makeKey(inc) || inc.id;
+    if (map.has(key)) {
+      const existing = map.get(key);
+      let winnerToKeep = existing.ganador;
+
+      // REGLA DE ORO DE INMUTABILIDAD DE GANADORES:
+      // Si existing está verificado y incoming NO, prevalece existing.
+      // Si incoming está verificado y existing NO, prevalece incoming.
+      // Si ambos están verificados, prevalece el que tenga mayor detalle o el existing.
+      if (existing.ganador && existing.ganador.verificado) {
+        winnerToKeep = existing.ganador;
+      } else if (inc.ganador && inc.ganador.verificado) {
+        winnerToKeep = inc.ganador;
+      } else {
+        winnerToKeep = inc.ganador || existing.ganador || { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
+      }
+
+      const revToKeep = (existing.revision && existing.revision.estado === 'RESUELTO')
+        ? existing.revision
+        : (inc.revision || existing.revision || null);
+
+      map.set(key, {
+        ...existing,
+        ...inc,
+        id: existing.id || inc.id,
+        ganador: winnerToKeep,
+        revision: revToKeep,
+        rojosPremier: Array.from(new Set([...(existing.rojosPremier || []), ...(inc.rojosPremier || [])])),
+        rojos: Array.from(new Set([...(existing.rojos || []), ...(inc.rojos || [])]))
+      });
+    } else {
+      map.set(key, { ...inc });
+    }
+  }
+
+  const result = Array.from(map.values());
+  result.sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
+  return result;
+}
+
 module.exports = {
   getHistory,
   recordScan,
   verifyRecordWinner,
+  mergeHistories,
   syncResultsWithVisualFx,
   syncScheduledDrawResult,
   lookupAndUpdateRecord,
