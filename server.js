@@ -829,24 +829,11 @@ app.post('/api/machines/report-tunnel', async (req, res) => {
   res.json({ ok: true, message: 'Túnel registrado con éxito' });
 });
 
-let lastFxSyncTime = 0;
-
 // API: Estado y Logs (Optimizado: No envía 1.6MB de historial a menos que se solicite con ?includeHistory=true)
 app.get('/api/status', async (req, res) => {
   const historyMgr = require('./history_manager');
   const cfg = getConfig() || {};
   const isVerifier = machinesMgr.isLocalMachineVerifier(cfg);
-
-  // Sincronizar automáticamente resultados oficiales de Visual-FX en segundo plano
-  // REGLA ESTRICTA: Sólo la máquina designada como verificadora oficial consulta Visual-FX (y solo de día)
-  if (isVerifier && !isHorarioNocturnoVET() && (Date.now() - lastFxSyncTime > 120000)) {
-    lastFxSyncTime = Date.now();
-    historyMgr.syncResultsWithVisualFx().then(syncRes => {
-      if (syncRes && syncRes.updatedCount > 0) {
-        syncToCloudImmediate(false);
-      }
-    }).catch(() => {});
-  }
 
   const includeHistory = req.query.includeHistory === 'true';
   let persistentHistory = null;
