@@ -1571,18 +1571,11 @@ async function pollStatusOnce() {
       data.logs.forEach(l => appendLog(l.msg, l.level));
     }
 
-    // Detección reactiva de nuevos sorteos o resultados verificados
+    // Detección reactiva pura: SOLO descarga el historial si historyVersion cambió en el servidor
     if (data.historyVersion && data.historyVersion !== window._lastHistoryVersion) {
       window._lastHistoryVersion = data.historyVersion;
       refreshStatusAndHistory();
       loadTrophies();
-    }
-
-    // Refresco de respaldo garantizado cada 60s
-    window._historyTickCount = (window._historyTickCount || 0) + 1;
-    if (window._historyTickCount >= 3) {
-      window._historyTickCount = 0;
-      refreshStatusAndHistory();
     }
 
     // 3. Sincronizar trofeos cada 15 minutos (900,000 ms)
