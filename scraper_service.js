@@ -180,10 +180,24 @@ async function scrapeTuAzarAnimalitos() {
   }
 }
 
+function normalizeDateToYYYYMMDD(dateStr) {
+  if (!dateStr) return null;
+  const s = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    const day = m[1].padStart(2, '0');
+    const month = m[2].padStart(2, '0');
+    const year = m[3];
+    return `${year}-${month}-${day}`;
+  }
+  return null;
+}
+
 /**
  * Scraper 1000Resultados
  */
-async function scrape1000Resultados(gameSlug) {
+async function scrape1000Resultados(gameSlug, targetDate = null) {
   if (!gameSlug) return [];
   try {
     const slugMap = {
@@ -195,7 +209,12 @@ async function scrape1000Resultados(gameSlug) {
       'ruleta-activa': 'ruleta-activa'
     };
     const s = slugMap[gameSlug] || gameSlug.replace(/_/g, '-');
-    const { status, html } = await fetchUrl(`https://1000resultados.com/resultados/${s}`);
+    let url = `https://1000resultados.com/resultados/${s}`;
+    const dateFormatted = normalizeDateToYYYYMMDD(targetDate);
+    if (dateFormatted) {
+      url += `?date=${dateFormatted}`;
+    }
+    const { status, html } = await fetchUrl(url);
     if (status !== 200 || !html) return [];
 
     // Salvaguarda anti-fallback: Si 1000Resultados redirige internamente a 'zoologico-activo' al fallar un slug
@@ -248,7 +267,8 @@ async function scrape1000Resultados(gameSlug) {
  * - Lotto Activo: 00, 0..36
  * - La Granjita: 00, 0..36
  * - Guácharo Activo: 00, 0..77
- * - Guacharito Millonario: 00, 0..77
+ * - Guacharito Millonario: 00, 0..99 (Ruleta extendida de 100 números)
+ * - Selva Plus / Ruleta Activa: 00, 0..99
  */
 function isValidLotteryNumber(normKey, numStr) {
   if (!numStr) return false;
@@ -258,10 +278,11 @@ function isValidLotteryNumber(normKey, numStr) {
   if (normKey === 'lotto-activo' || normKey === 'la-granjita') {
     return val >= 0 && val <= 36;
   }
-  if (normKey === 'guacharo-activo' || normKey === 'guacharito-millonario') {
+  if (normKey === 'guacharo-activo') {
     return val >= 0 && val <= 77;
   }
-  return val >= 0 && val <= 100;
+  // Guacharito Millonario y demás ruletas extendidas van de 00 al 99
+  return val >= 0 && val <= 99;
 }
 
 /**
@@ -277,7 +298,7 @@ async function lookupDrawResult(loteriaNameOrId, targetDrawTime, targetDate) {
 
   // 1. Scraping en vivo DIRECTO desde 1000Resultados (Fuente Oficial Primaria)
   try {
-    const res1000Draws = await scrape1000Resultados(normKey);
+    const res1000Draws = await scrape1000Resultados(normKey, targetDate);
     if (res1000Draws.length > 0) {
       const match = res1000Draws.find(d => {
         const dMins = parseTimeToMinutes(d.time);
