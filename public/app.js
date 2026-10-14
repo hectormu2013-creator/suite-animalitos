@@ -1636,18 +1636,65 @@ function sortRecordsDescending(list) {
   });
 }
 
+// Clave canónica de sorteo para deduplicación en el cliente
+function makeCanonicalKeyForClient(item) {
+  if (!item) return '';
+  const d = item.fecha || (item.timestamp && item.timestamp.slice(0, 10)) || '';
+  const l = (item.loteria || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let lotKey = l;
+  if (l.includes('guacharo') && l.includes('millonario')) lotKey = 'guacharomillonario';
+  else if (l.includes('guacharo')) lotKey = 'guacharoactivo';
+  else if (l.includes('granjita')) lotKey = 'lagranjita';
+  else if (l.includes('lotto')) lotKey = 'lottoactivo';
+  
+  const rawTime = (item.horaSorteo || item.sorteo || '').trim().toUpperCase();
+  const m = rawTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+  let timeKey = rawTime.replace(/^0/, '');
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    const ampm = m[3];
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    timeKey = `${String(h).padStart(2, '0')}:${min}`;
+  }
+  return `${d}_${lotKey}_${timeKey}`;
+}
+
 // Renderizar tabla de historial
 function renderHistoryTable(history) {
   const tbody = document.getElementById('history-table-body');
-  document.getElementById('total-checked-badge').textContent = `${history.length} sorteos revisados`;
-  
-  tbody.innerHTML = '';
   const sorted = sortRecordsDescending(history);
+
+  // Deduplicación resiliente: un único renglón por cada sorteo canónico,
+  // priorizando SIEMPRE la versión que ya tenga ganador verificado
+  const verifiedMap = new Map();
   sorted.forEach(item => {
+    const k = makeCanonicalKeyForClient(item);
+    const isVerif = item.ganador && item.ganador.verificado && item.ganador.numero !== null && item.ganador.numero !== undefined && item.ganador.numero !== '';
+    if (isVerif && !verifiedMap.has(k)) {
+      verifiedMap.set(k, item);
+    }
+  });
+
+  const deduplicated = [];
+  const seenKeys = new Set();
+  sorted.forEach(item => {
+    const k = makeCanonicalKeyForClient(item);
+    if (seenKeys.has(k)) return;
+    seenKeys.add(k);
+    const toRender = verifiedMap.get(k) || item;
+    deduplicated.push(toRender);
+  });
+
+  document.getElementById('total-checked-badge').textContent = `${deduplicated.length} sorteos revisados`;
+  tbody.innerHTML = '';
+
+  deduplicated.forEach(item => {
     const tr = document.createElement('tr');
     
     // Verificación de Ganador y Aciertos
-    const hasWinner = item.ganador && item.ganador.verificado && item.ganador.numero;
+    const hasWinner = item.ganador && item.ganador.verificado && item.ganador.numero !== null && item.ganador.numero !== undefined && item.ganador.numero !== '';
     const winNum = hasWinner ? String(item.ganador.numero).padStart(2, '0') : null;
     const winInt = hasWinner ? parseInt(item.ganador.numero, 10) : null;
     const isHit = hasWinner && item.ganador.bloqueoAcertado === true;

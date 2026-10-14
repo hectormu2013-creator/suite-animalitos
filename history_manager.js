@@ -47,6 +47,48 @@ function mapLoteriaToVisualFx(loteriaStr) {
 }
 
 /**
+ * Normalizar formato de hora de sorteo a HH:mm estándar militar de 24h
+ */
+function normalizeDrawTime(t) {
+  if (!t) return '';
+  const s = String(t).trim().toUpperCase();
+  const m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    const ampm = m[3];
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${min}`;
+  }
+  return s.replace(/^0/, '');
+}
+
+/**
+ * Normalizar nombre de lotería para clave canónica
+ */
+function canonicalLotteryKey(lot) {
+  const c = String(lot || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (c.includes('guacharo') && c.includes('millonario')) return 'guacharomillonario';
+  if (c.includes('guacharo')) return 'guacharoactivo';
+  if (c.includes('granjita')) return 'lagranjita';
+  if (c.includes('lotto')) return 'lottoactivo';
+  if (c.includes('selva')) return 'laselvita';
+  return c;
+}
+
+/**
+ * Generar clave canónica única e inequívoca para un sorteo (fecha_loteria_hora)
+ */
+function makeCanonicalDrawKey(r) {
+  if (!r) return '';
+  const d = r.fecha || (r.timestamp && r.timestamp.slice(0, 10)) || '';
+  const l = canonicalLotteryKey(r.loteria);
+  const s = normalizeDrawTime(r.sorteo || r.horaSorteo || '');
+  return `${d}_${l}_${s}`;
+}
+
+/**
  * Convertir cadena de tiempo (ej: "04:00 PM", "16:00", "09:00 AM") a minutos del día
  */
 function parseTimeToMinutes(timeStr) {
@@ -540,7 +582,10 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Base de datos no encontrada' };
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    const rec = history.find(r => r.id === recordId);
+    let rec = history.find(r => r.id === recordId);
+    if (!rec) {
+      rec = history.find(r => makeCanonicalDrawKey(r) === recordId || (r.id && r.id.includes(recordId)));
+    }
     if (!rec) return { ok: false, message: 'Registro no encontrado' };
 
     const normWinner = String(winnerNumber).padStart(2, '0');
@@ -609,7 +654,7 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
       cupoMem.verificarYAutoLiberarPorGanador(gameKey, normWinner, resolvedName, rec.sorteo || rec.horaSorteo, rec.fecha);
     } catch (e) {}
 
-    rec.ganador = {
+    const ganadorObj = {
       verificado: true,
       numero: normWinner,
       nombre: resolvedName,
@@ -620,6 +665,19 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
       mensaje,
       fechaVerificacion: new Date().toISOString()
     };
+
+    // Actualizar este registro y cualquier duplicado existente para el mismo sorteo canónico
+    const targetCanonical = makeCanonicalDrawKey(rec);
+    history.forEach(r => {
+      if (r.id === rec.id || (targetCanonical && makeCanonicalDrawKey(r) === targetCanonical)) {
+        r.ganador = { ...ganadorObj };
+        r.revision = {
+          estado: 'RESUELTO',
+          intentos: ((r.revision && r.revision.intentos) || 0) + 1,
+          fechaResolucion: new Date().toISOString()
+        };
+      }
+    });
 
     fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
     rewriteCSV(history);
@@ -767,7 +825,10 @@ async function lookupAndUpdateRecord(recordId) {
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Base de datos no encontrada' };
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    const rec = history.find(r => r.id === recordId);
+    let rec = history.find(r => r.id === recordId);
+    if (!rec) {
+      rec = history.find(r => makeCanonicalDrawKey(r) === recordId || (r.id && r.id.includes(recordId)));
+    }
     if (!rec) return { ok: false, message: 'Registro no encontrado' };
 
     const scraper = require('./scraper_service');
@@ -1005,23 +1066,17 @@ function mergeHistories(baseRecords, incomingRecords) {
   if (!Array.isArray(incomingRecords)) incomingRecords = [];
 
   const map = new Map();
-  const normTimeStr = t => (t || '').trim().replace(/^0/, '');
-  const makeKey = r => {
-    const d = r.fecha || '';
-    const l = (r.loteria || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const s = normTimeStr(r.sorteo || r.horaSorteo || '');
-    return `${d}_${l}_${s}`;
-  };
+  const makeKey = r => makeCanonicalDrawKey(r) || r.id;
 
   for (const r of baseRecords) {
     if (!r) continue;
-    const key = makeKey(r) || r.id;
+    const key = makeKey(r);
     map.set(key, { ...r });
   }
 
   for (const inc of incomingRecords) {
     if (!inc) continue;
-    const key = makeKey(inc) || inc.id;
+    const key = makeKey(inc);
     if (map.has(key)) {
       const existing = map.get(key);
       let winnerToKeep = existing.ganador;
@@ -1029,22 +1084,24 @@ function mergeHistories(baseRecords, incomingRecords) {
       // REGLA DE ORO DE INMUTABILIDAD DE GANADORES:
       // Si existing está verificado y incoming NO, prevalece existing.
       // Si incoming está verificado y existing NO, prevalece incoming.
-      // Si ambos están verificados, prevalece el que tenga mayor detalle o el existing.
-      if (existing.ganador && existing.ganador.verificado) {
+      // Si ambos están verificados, prevalece el que tenga mayor detalle o acierto.
+      if (existing.ganador && existing.ganador.verificado && (!inc.ganador || !inc.ganador.verificado)) {
         winnerToKeep = existing.ganador;
-      } else if (inc.ganador && inc.ganador.verificado) {
+      } else if (inc.ganador && inc.ganador.verificado && (!existing.ganador || !existing.ganador.verificado)) {
         winnerToKeep = inc.ganador;
+      } else if (existing.ganador && existing.ganador.verificado && inc.ganador && inc.ganador.verificado) {
+        winnerToKeep = existing.ganador.bloqueoAcertado ? existing.ganador : inc.ganador;
       } else {
-        winnerToKeep = inc.ganador || existing.ganador || { verificado: false, numero: null, nombre: null, bloqueoAcertado: false };
+        winnerToKeep = (existing.ganador && existing.ganador.numero) ? existing.ganador : ((inc.ganador && inc.ganador.numero) ? inc.ganador : (existing.ganador || inc.ganador || null));
       }
 
       const revToKeep = (existing.revision && existing.revision.estado === 'RESUELTO')
         ? existing.revision
-        : (inc.revision || existing.revision || null);
+        : ((inc.revision && inc.revision.estado === 'RESUELTO') ? inc.revision : (existing.revision || inc.revision || null));
 
       map.set(key, {
-        ...existing,
         ...inc,
+        ...existing,
         id: existing.id || inc.id,
         ganador: winnerToKeep,
         revision: revToKeep,
@@ -1074,6 +1131,8 @@ module.exports = {
   rewriteCSV,
   getAnimalName,
   parseTimeToMinutes,
+  normalizeDrawTime,
+  makeCanonicalDrawKey,
   CSV_PATH,
   DB_PATH
 };

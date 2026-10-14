@@ -84,6 +84,10 @@ function getVerificationMachine(config) {
  * Comprobar si la computadora local es la encargada de ejecutar verificaciones en Visual-FX
  */
 function isLocalMachineVerifier(config) {
+  // En la nube (Render) SIEMPRE tiene conectividad y scraper web activo para verificar resultados
+  if (process.env.RENDER || process.env.IS_RENDER) {
+    return true;
+  }
   const fxHistoryPath = path.join('C:', 'Users', 'Hector', 'Fenix_2026_1', 'PROYECTO_VISUAL_FX', 'data', 'lottery_history.json');
   if (fs.existsSync(fxHistoryPath)) {
     return true;
@@ -91,7 +95,17 @@ function isLocalMachineVerifier(config) {
   const local = getLocalMachine(config);
   const verifier = getVerificationMachine(config);
   if (!local || !verifier) return true; // Por defecto permitir si no está configurado
-  return local.id === verifier.id;
+  if (local.id === verifier.id) return true;
+
+  // Fallback de resiliencia: Si la máquina verificadora designada no está activa o no reporta conexión reciente,
+  // la máquina local asume la verificación para no dejar sorteos huérfanos sin publicar
+  const lastSeen = verifier.ultimaConexion ? new Date(verifier.ultimaConexion).getTime() : 0;
+  const isVerifierOffline = !verifier.activa || (Date.now() - lastSeen) > 10 * 60 * 1000;
+  if (isVerifierOffline && local.activa) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

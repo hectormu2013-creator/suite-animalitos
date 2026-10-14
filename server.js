@@ -189,6 +189,37 @@ async function getConfigFresh() {
         log(`☁️ [MEMORIA MAESTRA NUBE] Memoria de persistencia restaurada desde Supabase.`, 'log-success');
       }
     }
+
+    // Reconciliación automática inmediata de sorteos de hoy pendientes de publicación al arrancar
+    if (IS_CLOUD || !process.env.RENDER) {
+      setTimeout(async () => {
+        try {
+          const historyMgr = require('./history_manager');
+          const now = new Date();
+          const todayStr = now.toISOString().slice(0, 10);
+          const curMins = getMinutosActualesVET();
+          const hist = historyMgr.getHistory();
+          const pendingToday = hist.filter(r => {
+            if (r.fecha !== todayStr) return false;
+            if (r.ganador && r.ganador.verificado) return false;
+            const drawMins = historyMgr.parseTimeToMinutes(r.sorteo || r.horaSorteo);
+            return drawMins !== null && (curMins - drawMins) >= 5;
+          });
+
+          if (pendingToday.length > 0) {
+            log(`🔄 [ARRANQUE] Reconciliando ${pendingToday.length} sorteos de hoy pendientes de verificación oficial...`, 'log-info');
+            for (const rec of pendingToday) {
+              try {
+                const res = await historyMgr.lookupAndUpdateRecord(rec.id);
+                if (res.ok && res.found) {
+                  log(`✅ [AUTO-PUBLICADO] ${rec.loteria} (${rec.sorteo || rec.horaSorteo}): Ganador ${res.winnerNumber} (${res.winnerName}). ${res.bloqueoAcertado ? '🏆 ¡TROFEO!' : ''}`, res.bloqueoAcertado ? 'log-success' : 'log-info');
+                }
+              } catch (eR) {}
+            }
+          }
+        } catch (eBootRec) {}
+      }, 4000);
+    }
   } catch (e) {
     console.warn(`[STARTUP CLOUD SYNC] Error: ${e.message}`);
   }
@@ -2256,7 +2287,7 @@ setInterval(async () => {
         }
       }
 
-      const isVerifierNode = machinesMgr.isLocalMachineVerifier(cfg);
+      const isVerifierNode = IS_CLOUD || machinesMgr.isLocalMachineVerifier(cfg);
       const keyNoVerifierLog = `${todayStr}_${lot.id}_${hStr}_noverifier`;
 
       if (!isVerifierNode) {
@@ -2305,7 +2336,8 @@ setInterval(async () => {
         }
 
         // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ)
-        if (diffMinutes >= 10 && diffMinutes < 60 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
+        // Permite verificar sorteos de hoy que hayan superado los 10 minutos sin haberse resuelto
+        if (diffMinutes >= 10 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
           revisionesRealizadas.add(keyIntento2);
           log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con 1000Resultados...`, 'log-info');
           
