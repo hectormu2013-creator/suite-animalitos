@@ -65824,10 +65824,15 @@
     ],
     "sorteo": "08:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "39",
+      "nombre": "Lechuza",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 39 (Lechuza) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:26.513Z"
     },
     "loteria": "GUACHARO ACTIVO",
     "numFijos": [
@@ -65835,8 +65840,8 @@
     ],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T12:05:15.180Z"
+      "intentos": 3,
+      "fechaResolucion": "2026-10-14T14:15:26.515Z"
     },
     "t7Status": "Bloqueados (5) en Triple 7",
     "t7Blocked": true,
@@ -65967,17 +65972,22 @@
     ],
     "sorteo": "08:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "28",
+      "nombre": "Zamuro",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 28 (Zamuro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:26.935Z"
     },
     "loteria": "LA GRANJITA",
     "numFijos": [],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T12:05:20.587Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:26.935Z"
     },
     "t7Status": "Bloqueados (3) en Triple 7",
     "t7Blocked": true,
@@ -66080,22 +66090,22 @@
     ],
     "sorteo": "08:00",
     "ganador": {
-      "nombre": "Elefante",
-      "numero": "29",
-      "mensaje": "El número 29 (Elefante) salió premiado, pero no estaba en la lista de bloqueos.",
       "verificado": true,
-      "origenTexto": "No bloqueado",
-      "origenAcierto": "NO_BLOQUEADO",
-      "metodosAcierto": [],
+      "numero": "29",
+      "nombre": "Elefante",
       "bloqueoAcertado": false,
-      "fechaVerificacion": "2026-10-14T14:05:31.982Z"
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 29 (Elefante) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:27.351Z"
     },
     "loteria": "LOTTO ACTIVO",
     "numFijos": [],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T12:05:18.576Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:27.351Z"
     },
     "t7Status": "Bloqueados (4) en Triple 7",
     "t7Blocked": true,
@@ -66212,10 +66222,15 @@
     ],
     "sorteo": "08:30",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "66",
+      "nombre": "Lobo",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 66 (Lobo) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:27.749Z"
     },
     "loteria": "GUACHARO MILLONARIO",
     "numFijos": [
@@ -66223,8 +66238,8 @@
     ],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:24.427Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:27.749Z"
     },
     "t7Status": "Bloqueados (7) en Triple 7",
     "t7Blocked": true,
@@ -66373,10 +66388,15 @@
     ],
     "sorteo": "09:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "43",
+      "nombre": "Mariposa",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 43 (Mariposa) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:28.177Z"
     },
     "loteria": "GUACHARO ACTIVO",
     "numFijos": [
@@ -66384,8 +66404,8 @@
     ],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:24.549Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:28.177Z"
     },
     "t7Status": "Bloqueados (5) en Triple 7",
     "t7Blocked": true,
@@ -66517,17 +66537,22 @@
     ],
     "sorteo": "09:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "02",
+      "nombre": "Toro",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 02 (Toro) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:28.581Z"
     },
     "loteria": "LA GRANJITA",
     "numFijos": [],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:24.669Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:28.582Z"
     },
     "t7Status": "Bloqueados (4) en Triple 7",
     "t7Blocked": true,
@@ -66639,17 +66664,22 @@
     ],
     "sorteo": "09:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "10",
+      "nombre": "Tigre",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 10 (Tigre) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:29.009Z"
     },
     "loteria": "LOTTO ACTIVO",
     "numFijos": [],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:24.786Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:29.010Z"
     },
     "t7Status": "Bloqueados (4) en Triple 7",
     "t7Blocked": true,
@@ -66763,10 +66793,15 @@
     ],
     "sorteo": "09:30",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "36",
+      "nombre": "Culebra",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 36 (Culebra) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:29.422Z"
     },
     "loteria": "GUACHARO MILLONARIO",
     "numFijos": [
@@ -66774,8 +66809,8 @@
     ],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:24.907Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:29.422Z"
     },
     "t7Status": "Bloqueados (7) en Triple 7",
     "t7Blocked": true,
@@ -66940,10 +66975,15 @@
     ],
     "sorteo": "10:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "30",
+      "nombre": "Caimán",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 30 (Caimán) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:29.878Z"
     },
     "loteria": "GUACHARO ACTIVO",
     "numFijos": [
@@ -66951,8 +66991,8 @@
     ],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:25.024Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:29.878Z"
     },
     "t7Status": "Bloqueados (5) en Triple 7",
     "t7Blocked": true,
@@ -67082,17 +67122,22 @@
     ],
     "sorteo": "10:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "25",
+      "nombre": "Gallina",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 25 (Gallina) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:30.281Z"
     },
     "loteria": "LA GRANJITA",
     "numFijos": [],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:25.142Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:30.282Z"
     },
     "t7Status": "Bloqueados (4) en Triple 7",
     "t7Blocked": true,
@@ -67203,17 +67248,22 @@
     ],
     "sorteo": "10:00",
     "ganador": {
-      "nombre": null,
-      "numero": null,
-      "verificado": false,
-      "bloqueoAcertado": false
+      "verificado": true,
+      "numero": "04",
+      "nombre": "Alacrán",
+      "bloqueoAcertado": false,
+      "origenAcierto": "NO_BLOQUEADO",
+      "origenTexto": "No bloqueado",
+      "metodosAcierto": [],
+      "mensaje": "El número 04 (Alacrán) salió premiado, pero no estaba en la lista de bloqueos.",
+      "fechaVerificacion": "2026-10-14T14:15:30.680Z"
     },
     "loteria": "LOTTO ACTIVO",
     "numFijos": [],
     "revision": {
       "estado": "RESUELTO",
-      "intentos": 1,
-      "fechaResolucion": "2026-10-14T14:11:25.261Z"
+      "intentos": 2,
+      "fechaResolucion": "2026-10-14T14:15:30.681Z"
     },
     "t7Status": "Bloqueados (4) en Triple 7",
     "t7Blocked": true,
