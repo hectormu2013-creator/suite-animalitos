@@ -69135,7 +69135,7 @@
   },
   {
     "id": "2026-10-14_1791995704110",
-    "hora": "12:50:02",
+    "hora": "13:01:37",
     "fecha": "2026-10-14",
     "rojos": [
       "99",
@@ -69154,7 +69154,7 @@
     ],
     "t7Status": "Bloqueados (7) en Triple 7",
     "t7Blocked": true,
-    "timestamp": "2026-10-14T16:50:02.459Z",
+    "timestamp": "2026-10-14T17:01:37.569Z",
     "horaSorteo": "13:30",
     "captureFile": "premier_tabla_sondeo.png",
     "montoSondeo": 5000,
@@ -69238,52 +69238,510 @@
         "nombre": "Guacharito",
         "origen": "FIJO",
         "origenTexto": "Número Fijo (Siempre Bloqueado)",
-        "detalle": "Configuración fija del usuario (máx 3)"
+        "detalle": "Configuración fija del usuario (máx 3)",
+        "prioridadNivel": 4,
+        "prioridadNombre": "4. Número Fijo Configurado"
       },
       {
         "numero": "11",
         "nombre": "Gato",
+        "sorteosAtraso": 435,
+        "diasAtraso": 37,
         "origen": "PREDICTIVO",
-        "origenTexto": "Modelo Predictivo Visual-FX",
-        "detalle": "435 sorteos sin salir"
+        "origenTexto": "Visual-FX (Atrasado: 435 sorteos)",
+        "prioridadNivel": 4,
+        "prioridadNombre": "4. Más Tiempo Sin Salir (Visual-FX)"
       },
       {
         "numero": "10",
         "nombre": "Tigre",
+        "sorteosAtraso": 187,
+        "diasAtraso": 16,
         "origen": "PREDICTIVO",
-        "origenTexto": "Modelo Predictivo Visual-FX",
-        "detalle": "187 sorteos sin salir"
+        "origenTexto": "Visual-FX (Atrasado: 187 sorteos)",
+        "prioridadNivel": 4,
+        "prioridadNombre": "4. Más Tiempo Sin Salir (Visual-FX)"
       },
       {
         "numero": "03",
         "nombre": "Ciempie",
+        "sorteosAtraso": 131,
+        "diasAtraso": 11,
         "origen": "PREDICTIVO",
-        "origenTexto": "Modelo Predictivo Visual-FX",
-        "detalle": "131 sorteos sin salir"
+        "origenTexto": "Visual-FX (Atrasado: 131 sorteos)",
+        "prioridadNivel": 4,
+        "prioridadNombre": "4. Más Tiempo Sin Salir (Visual-FX)"
       },
       {
         "numero": "15",
         "nombre": "Zorro",
         "origen": "ALEATORIO",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
-        "detalle": "Selección de riesgo del sistema (máx 3)"
+        "detalle": "Selección algorítmica del sistema",
+        "prioridadNivel": 5,
+        "prioridadNombre": "5. Cobertura Aleatoria"
       },
       {
         "numero": "39",
         "nombre": "Lechuza",
         "origen": "ALEATORIO",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
-        "detalle": "Selección de riesgo del sistema (máx 3)"
+        "detalle": "Selección algorítmica del sistema",
+        "prioridadNivel": 5,
+        "prioridadNombre": "5. Cobertura Aleatoria"
       },
       {
         "numero": "00",
         "nombre": "Ballena",
         "origen": "ALEATORIO",
         "origenTexto": "Sistema Autónomo (Cobertura Aleatoria)",
-        "detalle": "Selección de riesgo del sistema (máx 3)"
+        "detalle": "Selección algorítmica del sistema",
+        "prioridadNivel": 5,
+        "prioridadNombre": "5. Cobertura Aleatoria"
       }
     ],
     "maximoBloqueosConfigurado": 9,
     "revision": null
+  },
+  {
+    "id": "2026-10-14_1792005992411",
+    "timestamp": "2026-10-14T19:26:32.399Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:32",
+    "horaSorteo": "04:00 PM",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "04:00 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005992842",
+    "timestamp": "2026-10-14T19:26:32.842Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:32",
+    "horaSorteo": "05:00 PM",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "05:00 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005993319",
+    "timestamp": "2026-10-14T19:26:33.318Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:33",
+    "horaSorteo": "06:00 PM",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "06:00 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005993796",
+    "timestamp": "2026-10-14T19:26:33.796Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:33",
+    "horaSorteo": "07:00 PM",
+    "loteria": "GUACHARO ACTIVO",
+    "sorteo": "07:00 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 77,
+    "rojos": [
+      "75"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "75"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "75",
+        "nombre": "Guacharo",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005994387",
+    "timestamp": "2026-10-14T19:26:34.387Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:34",
+    "horaSorteo": "03:30 PM",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "03:30 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 101,
+    "rojos": [
+      "99"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005994893",
+    "timestamp": "2026-10-14T19:26:34.892Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:34",
+    "horaSorteo": "04:30 PM",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "04:30 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 101,
+    "rojos": [
+      "99"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005995421",
+    "timestamp": "2026-10-14T19:26:35.421Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:35",
+    "horaSorteo": "05:30 PM",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "05:30 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 101,
+    "rojos": [
+      "99"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005995984",
+    "timestamp": "2026-10-14T19:26:35.983Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:35",
+    "horaSorteo": "06:30 PM",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "06:30 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 101,
+    "rojos": [
+      "99"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
+  },
+  {
+    "id": "2026-10-14_1792005996581",
+    "timestamp": "2026-10-14T19:26:36.581Z",
+    "fecha": "2026-10-14",
+    "hora": "15:26:36",
+    "horaSorteo": "07:30 PM",
+    "loteria": "GUACHARO MILLONARIO",
+    "sorteo": "07:30 PM",
+    "montoSondeo": 5000,
+    "totalAnimales": 101,
+    "rojos": [
+      "99"
+    ],
+    "rojosPremier": [],
+    "detallePremier": [],
+    "numFijos": [
+      "99"
+    ],
+    "fijosSeleccionados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "numPredictivos": [],
+    "predictivosVisualFx": [],
+    "numAleatorios": [],
+    "aleatoriosSistema": [],
+    "numMemoriaCupoCero": [],
+    "memoriaCupoCero": [],
+    "bloqueosConsolidados": [
+      {
+        "numero": "99",
+        "nombre": "Guacharito",
+        "origen": "FIJO",
+        "origenTexto": "Número Fijo (Siempre Bloqueado)",
+        "detalle": "Configuración fija del usuario (máx 3)"
+      }
+    ],
+    "totalBloqueados": 1,
+    "maximoBloqueosConfigurado": 6,
+    "t7Status": "Bloqueados (1) en Triple 7",
+    "t7Blocked": true,
+    "captureFile": "premier_tabla_sondeo.png",
+    "ganador": null
   }
 ]

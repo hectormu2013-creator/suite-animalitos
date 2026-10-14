@@ -280,6 +280,23 @@ app.post('/api/config/push-from-cloud', async (req, res) => {
         if (t && t.ok) log(`⏰ [TAREA PROGRAMADA] ${t.message}`, 'log-info');
       });
     }
+
+    // Bloqueo Inmediato y Preventivo de Números Fijos en TODOS los sorteos del día en Triple 7
+    const tieneFijosActivos = Array.isArray(merged.loterias) && merged.loterias.some(l => 
+      l.activo !== false && l.bloqueoFijos !== false && Array.isArray(l.numerosFijos) && l.numerosFijos.length > 0
+    );
+    if (tieneFijosActivos && (!merged.general || !merged.general.triple7 || merged.general.triple7.enabled !== false)) {
+      try {
+        delete require.cache[require.resolve('./triple7_robot')];
+        const t7 = require('./triple7_robot');
+        t7.bloquearFijosEnTodosLosSorteos(merged).then(resFijos => {
+          if (resFijos.ok && resFijos.totalSorteosProcesados > 0) {
+            log(`📌 [PUSH WEB - FIJOS DIARIOS] ${resFijos.totalSorteosProcesados} sorteos blindados con números fijos (${resFijos.totalBloqueosExitosos} bloqueos confirmados).`, 'log-success');
+          }
+        }).catch(() => {});
+      } catch (eF) {}
+    }
+
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
@@ -360,9 +377,44 @@ app.post('/api/config', async (req, res) => {
     // Desde la Web: notificar de inmediato a las computadoras con la automatización instalada
     const pushResults = await pushConfigToMachines(newCfg);
 
-    res.json({ ok: true, message: 'Guardado correctamente en la nube y persistencia', pushResults });
+    // Bloqueo Inmediato y Preventivo de Números Fijos en TODOS los sorteos del día en Triple 7
+    // Evita que los apostadores compren tickets por adelantado antes del sondeo.
+    const tieneFijosActivos = Array.isArray(newCfg.loterias) && newCfg.loterias.some(l => 
+      l.activo !== false && l.bloqueoFijos !== false && Array.isArray(l.numerosFijos) && l.numerosFijos.length > 0
+    );
+
+    if (tieneFijosActivos && (!newCfg.general || !newCfg.general.triple7 || newCfg.general.triple7.enabled !== false)) {
+      try {
+        delete require.cache[require.resolve('./triple7_robot')];
+        const t7 = require('./triple7_robot');
+        t7.bloquearFijosEnTodosLosSorteos(newCfg).then(resFijos => {
+          if (resFijos.ok && resFijos.totalSorteosProcesados > 0) {
+            log(`📌 [TRIPLE 7 FIJOS DIARIOS] ${resFijos.totalSorteosProcesados} sorteos blindados con números fijos (${resFijos.totalBloqueosExitosos} bloqueos confirmados).`, 'log-success');
+          }
+        }).catch(errF => {
+          log(`Aviso al aplicar fijos en sorteos del día: ${errF.message}`, 'log-warn');
+        });
+      } catch (eF) {}
+    }
+
+    res.json({ ok: true, message: 'Guardado correctamente en la nube y persistencia', pushResults, fijosTriggered: tieneFijosActivos });
   } else {
     res.status(500).json({ ok: false, message: 'Error al guardar archivo config.json' });
+  }
+});
+
+// API: Bloquear Números Fijos en Todos los Sorteos del Día en Triple 7 (Manual / On-demand)
+app.post('/api/triple7/block-fixed-all-draws', async (req, res) => {
+  try {
+    const cfg = getConfig();
+    if (!cfg) return res.status(500).json({ ok: false, message: 'Configuración no disponible' });
+    const loteriaId = req.body && req.body.loteriaId;
+    delete require.cache[require.resolve('./triple7_robot')];
+    const t7 = require('./triple7_robot');
+    const result = await t7.bloquearFijosEnTodosLosSorteos(cfg, loteriaId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
   }
 });
 
@@ -2479,4 +2531,20 @@ app.listen(PORT, () => {
   log(`🚀 Servidor de la Suite activo en http://localhost:${PORT}`, 'log-success');
   startCloudflareTunnel();
   startCloudCommandWorker();
+
+  // Asegurar números fijos en Triple 7 para todos los sorteos del día al arrancar
+  setTimeout(() => {
+    try {
+      const cfg = getConfig();
+      if (cfg && (!cfg.general || !cfg.general.triple7 || cfg.general.triple7.enabled !== false)) {
+        delete require.cache[require.resolve('./triple7_robot')];
+        const t7 = require('./triple7_robot');
+        t7.bloquearFijosEnTodosLosSorteos(cfg).then(res => {
+          if (res.ok && res.totalSorteosProcesados > 0) {
+            log(`📌 [INICIO SERVIDOR] ${res.totalSorteosProcesados} sorteos asegurados con números fijos en Triple 7 (${res.totalBloqueosExitosos} bloqueos confirmados).`, 'log-success');
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  }, 4000);
 });

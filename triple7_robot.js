@@ -340,11 +340,12 @@ function findOptionForNumber(targetDraw, numStr, animalDict) {
  * anteriores que no pertenecen a la lista actual, reincorpora primero el sorteo para asegurar que
  * en Triple 7 queden ÚNICAMENTE los números exactos calculados para hoy, sin acumular ni unir números pasados.
  */
-async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosParaBloquear) {
+async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosParaBloquear, options = {}) {
   if (!numerosParaBloquear || numerosParaBloquear.length === 0) {
     return { ok: true, message: 'No hay números para bloquear' };
   }
 
+  const preserveExisting = !!(options && options.preserveExisting);
   const t7Config = (config && config.general && config.general.triple7) || {};
   const targetUrl = t7Config.url || 'https://ny7.undo.it/Venta_Animalitos/lista_sor_ag.php';
   const horaBuscada = normalizarHoraSorteo(sorteoHora);
@@ -420,10 +421,12 @@ async function _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosPa
   // O si la cantidad actualmente bloqueada en Triple 7 excede el tope configurado (maxBloqueos),
   // se debe reincorporar TODO el sorteo de inmediato para garantizar que en Triple 7 queden
   // ÚNICAMENTE los números exactos calculados, sin acumular residuos de alarmas pasadas ni superar el tope.
+  // NOTA: Si preserveExisting es true (ej: bloqueo preventivo de fijos en sorteos del día),
+  // no se purgan números que ya estuviesen bloqueados en el sorteo.
   const haySobrantesOExtranjeros = idsActualmenteBloqueados.some(id => !idaniDeseados.has(id));
   const excedeTope = idsActualmenteBloqueados.length > maxBloqueos;
 
-  if (targetDraw.idsol && (haySobrantesOExtranjeros || excedeTope)) {
+  if (!preserveExisting && targetDraw.idsol && (haySobrantesOExtranjeros || excedeTope)) {
     console.log(`[TRIPLE 7 AUTO-PURGA] Sorteo ${targetDraw.loteria} (${targetDraw.sorteo}) contiene ${idsActualmenteBloqueados.length} números en Triple 7 (hay sobrantes: ${haySobrantesOExtranjeros}, excede tope ${maxBloqueos}: ${excedeTope}). Reincorporando para dejar lista limpia y exacta...`);
     
     await _reincorporarAnimalitosHttp(config, loteriaNombre, sorteoHora);
@@ -586,16 +589,140 @@ async function obtenerEstadoBloqueos(config) {
   });
 }
 
-async function bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBloquear) {
+async function bloquearNumeros(config, loteriaNombre, sorteoHora, numerosParaBloquear, options = {}) {
   return enqueueT7Operation(async () => {
     try {
-      return await _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosParaBloquear);
+      return await _bloquearNumerosHttp(config, loteriaNombre, sorteoHora, numerosParaBloquear, options);
     } catch (httpErr) {
       console.warn(`[TRIPLE 7 HTTP AVISO] Falló bloqueo HTTP: ${httpErr.message}.`);
       if (playwright) {
         return await _bloquearNumerosPlaywright(config, loteriaNombre, sorteoHora, numerosParaBloquear);
       }
       return { ok: false, message: `Error bloqueando en Triple 7: ${httpErr.message}` };
+    }
+  });
+}
+
+/**
+ * Bloquea inmediatamente los números fijos configurados en TODOS los sorteos del día
+ * de las loterías que tengan números fijos activos.
+ * Evita que los apostadores compren tickets por adelantado antes de que se ejecute el sondeo.
+ */
+async function bloquearFijosEnTodosLosSorteos(config, targetLoteriaId = null) {
+  return enqueueT7Operation(async () => {
+    try {
+      const cfg = config || {};
+      const t7Config = (cfg.general && cfg.general.triple7) || {};
+      if (t7Config.enabled === false) {
+        return { ok: false, message: 'Triple 7 está desactivado en la configuración general.' };
+      }
+
+      const loterias = Array.isArray(cfg.loterias) ? cfg.loterias : [];
+      const loteriasConFijos = loterias.filter(l => {
+        if (l.activo === false || l.bloqueoFijos === false) return false;
+        if (targetLoteriaId && l.id !== targetLoteriaId) return false;
+        const fijos = Array.isArray(l.numerosFijos) ? l.numerosFijos.filter(Boolean) : [];
+        return fijos.length > 0;
+      });
+
+      if (loteriasConFijos.length === 0) {
+        return { ok: true, message: 'No hay loterías con números fijos activos para procesar.', totalSorteosProcesados: 0, totalBloqueosExitosos: 0 };
+      }
+
+      console.log(`📌 [TRIPLE 7 FIJOS DIARIOS] Iniciando bloqueo anticipado de números fijos para ${loteriasConFijos.length} lotería(s)...`);
+
+      // 1. Obtener estado actual de sorteos abiertos en Triple 7
+      const estado = await _obtenerEstadoBloqueosHttp(cfg);
+      const openDraws = estado.draws || [];
+      if (openDraws.length === 0) {
+        return { ok: false, message: 'No se encontraron sorteos abiertos en Triple 7.' };
+      }
+
+      let predictive = null;
+      let historyMgr = null;
+      try { predictive = require('./predictive_service'); } catch (e) {}
+      try { historyMgr = require('./history_manager'); } catch (e) {}
+
+      const resultados = [];
+      let totalSorteos = 0;
+      let totalBloqueados = 0;
+
+      for (const lot of loteriasConFijos) {
+        const lotBuscada = normalizarTexto(lot.nombre);
+        let fijosObjs = [];
+        if (predictive) {
+          fijosObjs = predictive.getFixedBlockNumbers(cfg, lot.id);
+        } else {
+          fijosObjs = (lot.numerosFijos || []).map(num => ({ numero: String(num).padStart(2, '0'), nombre: `Animal ${num}`, origen: 'FIJO' }));
+        }
+        const numerosFijos = fijosObjs.map(f => f.numero);
+
+        if (numerosFijos.length === 0) continue;
+
+        // Encontrar todos los sorteos en Triple 7 que pertenezcan a esta lotería
+        const sorteosLoteria = openDraws.filter(d => {
+          const rowLot = normalizarTexto(d.loteria);
+          return rowLot.includes(lotBuscada) || lotBuscada.includes(rowLot);
+        });
+
+        console.log(`📌 [TRIPLE 7 FIJOS] Lotería ${lot.nombre}: ${sorteosLoteria.length} sorteo(s) en Triple 7. Fijos a blindar: [${numerosFijos.join(', ')}]`);
+
+        for (const draw of sorteosLoteria) {
+          totalSorteos++;
+          try {
+            // Aplicar bloqueo aditivo preservando cualquier número que ya esté bloqueado
+            const t7Res = await _bloquearNumerosHttp(cfg, draw.loteria, draw.sorteo, numerosFijos, { preserveExisting: true });
+            
+            const exitosos = (t7Res.bloqueadosExitosos || []).map(b => b.numero || b);
+            if (exitosos.length > 0) totalBloqueados += exitosos.length;
+
+            if (historyMgr) {
+              try {
+                historyMgr.recordScan({
+                  loteria: lot.nombre,
+                  sorteo: draw.sorteo,
+                  montoSondeo: lot.montoSondeo || 3000,
+                  totalAnimalesAnalizados: lot.totalAnimales || 77,
+                  rojos: numerosFijos,
+                  numFijos: numerosFijos,
+                  fijosSeleccionados: fijosObjs,
+                  t7Status: t7Res.ok ? `Bloqueados (${exitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`,
+                  t7Blocked: t7Res.ok
+                });
+              } catch (eHist) {}
+            }
+
+            resultados.push({
+              loteria: lot.nombre,
+              sorteo: draw.sorteo,
+              ok: t7Res.ok,
+              fijos: numerosFijos,
+              bloqueados: exitosos,
+              message: t7Res.message
+            });
+          } catch (eDraw) {
+            resultados.push({
+              loteria: lot.nombre,
+              sorteo: draw.sorteo,
+              ok: false,
+              fijos: numerosFijos,
+              error: eDraw.message
+            });
+          }
+        }
+      }
+
+      console.log(`✅ [TRIPLE 7 FIJOS DIARIOS COMPLETADOS] Procesados ${totalSorteos} sorteo(s), ${totalBloqueados} bloqueo(s) confirmado(s).`);
+
+      return {
+        ok: true,
+        totalSorteosProcesados: totalSorteos,
+        totalBloqueosExitosos: totalBloqueados,
+        detalles: resultados
+      };
+    } catch (err) {
+      console.error(`[ERROR TRIPLE 7 FIJOS DIARIOS] ${err.message}`);
+      return { ok: false, message: err.message };
     }
   });
 }
@@ -682,6 +809,7 @@ async function limpiarTodosLosBloqueos(config) {
 
 module.exports = {
   bloquearNumeros,
+  bloquearFijosEnTodosLosSorteos,
   reincorporarAnimalitos,
   limpiarTodosLosBloqueos,
   obtenerEstadoBloqueos,

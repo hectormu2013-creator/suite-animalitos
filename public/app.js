@@ -1473,9 +1473,14 @@ async function persistConfig() {
     if (result.ok) {
       const push = Array.isArray(result.pushResults) ? result.pushResults : [];
       const okCount = push.filter(p => p.ok).length;
-      showToast(push.length
-        ? `Configuración guardada · enviada a ${okCount}/${push.length} equipo(s)`
-        : 'Configuración guardada exitosamente');
+      if (result.fijosTriggered) {
+        showToast('Configuración guardada · Fijos blindados en todos los sorteos del día en Triple 7 📌');
+        appendLog('[TRIPLE 7] 📌 Blindaje anticipado de números fijos ejecutado para todos los sorteos del día (evitando jugadas adelantadas).', 'log-success');
+      } else {
+        showToast(push.length
+          ? `Configuración guardada · enviada a ${okCount}/${push.length} equipo(s)`
+          : 'Configuración guardada exitosamente');
+      }
       appendLog('[CONFIG] Parámetros guardados y actualizados en memoria.', 'log-success');
       push.forEach(p => appendLog(
         p.ok

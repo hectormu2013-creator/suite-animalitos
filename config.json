@@ -38,16 +38,16 @@
       },
       {
         "id": "maquina_2",
-        "notas": "Túnel en vivo: 10:22:49 AM",
+        "notas": "Túnel en vivo: 11:00:19 AM",
         "activa": true,
-        "ipOUrl": "https://americas-interstate-salem-applies.trycloudflare.com",
+        "ipOUrl": "https://intervals-prince-sticker-structured.trycloudflare.com",
         "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
         "keepOpen": true,
         "prioridad": 3,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-12T11:00:00.380Z",
+        "ultimaConexion": "2026-10-12T11:36:15.331Z",
         "usuarioPremier": "TCOP102",
         "esEncargadaVerificaciones": true
       }
@@ -79,7 +79,6 @@
     },
     "horaActivacionDiaria": "07:00",
     "activacionDiariaActiva": true,
-    "habilitarTunelRemoto": false,
     "maquinaEncargadaSondeoId": "maquina_3",
     "maquinaEncargadaVerificacionesId": "maquina_2"
   },
