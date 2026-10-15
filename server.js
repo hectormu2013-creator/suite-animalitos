@@ -170,16 +170,27 @@ async function getConfigFresh() {
       }
     }
 
-    // Hidratar historial y memoria en Render o si están vacíos
-    if (IS_CLOUD || !fs.existsSync(path.join(__dirname, 'history_db.json'))) {
-      const histRes = await cloudStore.getMasterHistory();
-      if (histRes && Array.isArray(histRes.records) && histRes.records.length > 0) {
-        const historyMgr = require('./history_manager');
-        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(histRes.records, null, 2), 'utf8');
-        historyMgr.rewriteCSV(histRes.records);
-        log(`☁️ [HISTORIAL MAESTRO NUBE] ${histRes.records.length} registros restaurados desde Supabase.`, 'log-success');
+    // Hidratar Bóveda Inmutable de Resultados y el Historial Maestro al arrancar
+    try {
+      const historyMgr = require('./history_manager');
+      const [histRes, vaultRes] = await Promise.all([
+        cloudStore.getMasterHistory(true),
+        cloudStore.getMasterWinnersVault(true)
+      ]);
+      if (vaultRes && typeof vaultRes === 'object' && Object.keys(vaultRes).length > 0) {
+        historyMgr.saveWinnersVault(vaultRes, false);
+        log(`🔒 [BÓVEDA DE RESULTADOS] ${Object.keys(vaultRes).length} ganadores oficiales inmutables cargados desde Supabase.`, 'log-success');
       }
-    }
+      if (histRes && Array.isArray(histRes.records) && histRes.records.length > 0) {
+        const localRecords = fs.existsSync(historyMgr.DB_PATH)
+          ? JSON.parse(fs.readFileSync(historyMgr.DB_PATH, 'utf8') || '[]')
+          : [];
+        const merged = historyMgr.mergeHistories(localRecords, histRes.records, vaultRes || {});
+        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+        historyMgr.rewriteCSV(merged);
+        log(`☁️ [HISTORIAL MAESTRO NUBE] ${merged.length} registros sincronizados y blindados con la Bóveda desde Supabase.`, 'log-success');
+      }
+    } catch (eHistInit) {}
 
     if (IS_CLOUD || !fs.existsSync(path.join(__dirname, 'memoria_cupo_cero.json'))) {
       const memRes = await cloudStore.getMasterMemory();
@@ -188,37 +199,6 @@ async function getConfigFresh() {
         cupoMem.saveMemory(memRes.memory);
         log(`☁️ [MEMORIA MAESTRA NUBE] Memoria de persistencia restaurada desde Supabase.`, 'log-success');
       }
-    }
-
-    // Reconciliación automática inmediata de sorteos de hoy pendientes de publicación al arrancar
-    if (IS_CLOUD || !process.env.RENDER) {
-      setTimeout(async () => {
-        try {
-          const historyMgr = require('./history_manager');
-          const now = new Date();
-          const todayStr = now.toISOString().slice(0, 10);
-          const curMins = getMinutosActualesVET();
-          const hist = historyMgr.getHistory();
-          const pendingToday = hist.filter(r => {
-            if (r.fecha !== todayStr) return false;
-            if (r.ganador && r.ganador.verificado) return false;
-            const drawMins = historyMgr.parseTimeToMinutes(r.sorteo || r.horaSorteo);
-            return drawMins !== null && (curMins - drawMins) >= 5;
-          });
-
-          if (pendingToday.length > 0) {
-            log(`🔄 [ARRANQUE] Reconciliando ${pendingToday.length} sorteos de hoy pendientes de verificación oficial...`, 'log-info');
-            for (const rec of pendingToday) {
-              try {
-                const res = await historyMgr.lookupAndUpdateRecord(rec.id);
-                if (res.ok && res.found) {
-                  log(`✅ [AUTO-PUBLICADO] ${rec.loteria} (${rec.sorteo || rec.horaSorteo}): Ganador ${res.winnerNumber} (${res.winnerName}). ${res.bloqueoAcertado ? '🏆 ¡TROFEO!' : ''}`, res.bloqueoAcertado ? 'log-success' : 'log-info');
-                }
-              } catch (eR) {}
-            }
-          }
-        } catch (eBootRec) {}
-      }, 4000);
     }
   } catch (e) {
     console.warn(`[STARTUP CLOUD SYNC] Error: ${e.message}`);
@@ -912,6 +892,37 @@ app.post('/api/machines/report-tunnel', async (req, res) => {
   res.json({ ok: true, message: 'Túnel registrado con éxito' });
 });
 
+// Helper unificado para sincronizar e hidratar historial con la Bóveda Inmutable (usa caché de 30s en cloud_store)
+async function syncAndHydrateHistoryFromCloud(forceRefresh = false) {
+  const historyMgr = require('./history_manager');
+  let localHist = historyMgr.getHistory();
+  try {
+    const cloudStore = require('./cloud_store');
+    const [cloudHist, cloudVault] = await Promise.all([
+      cloudStore.getMasterHistory(forceRefresh),
+      cloudStore.getMasterWinnersVault(forceRefresh)
+    ]);
+    const cloudRecs = (cloudHist && Array.isArray(cloudHist.records)) ? cloudHist.records : [];
+    const vaultObj = (cloudVault && typeof cloudVault === 'object') ? cloudVault : {};
+    if (cloudRecs.length > 0 || Object.keys(vaultObj).length > 0) {
+      const merged = historyMgr.mergeHistories(localHist, cloudRecs, vaultObj);
+      const localVerif = localHist.filter(r => r.ganador && r.ganador.verificado).length;
+      const mergedVerif = merged.filter(r => r.ganador && r.ganador.verificado).length;
+      if (merged.length !== localHist.length || mergedVerif !== localVerif || IS_CLOUD) {
+        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+        historyMgr.rewriteCSV(merged);
+      }
+      localHist = merged;
+
+      const cloudVerif = cloudRecs.filter(r => r.ganador && r.ganador.verificado).length;
+      if (mergedVerif > cloudVerif) {
+        cloudStore.saveMasterHistory(merged).catch(() => {});
+      }
+    }
+  } catch (e) {}
+  return localHist;
+}
+
 // API: Estado y Logs (Optimizado: No envía 1.6MB de historial a menos que se solicite con ?includeHistory=true)
 app.get('/api/status', async (req, res) => {
   const historyMgr = require('./history_manager');
@@ -922,27 +933,7 @@ app.get('/api/status', async (req, res) => {
   let persistentHistory = null;
 
   if (includeHistory) {
-    let localHist = historyMgr.getHistory();
-    if (IS_CLOUD || process.env.RENDER) {
-      try {
-        const cloudStore = require('./cloud_store');
-        const cloudHist = await cloudStore.getMasterHistory();
-        if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
-          const merged = historyMgr.mergeHistories(localHist, cloudHist.records);
-          fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
-          historyMgr.rewriteCSV(merged);
-          localHist = merged;
-
-          // Si merged tiene más ganadores verificados que Supabase, respaldar en Supabase
-          const mergedVerif = merged.filter(r => r.ganador && r.ganador.verificado).length;
-          const cloudVerif = cloudHist.records.filter(r => r.ganador && r.ganador.verificado).length;
-          if (mergedVerif > cloudVerif) {
-            cloudStore.saveMasterHistory(merged).catch(() => {});
-          }
-        }
-      } catch (e) {}
-    }
-    persistentHistory = localHist;
+    persistentHistory = await syncAndHydrateHistoryFromCloud(false);
   }
 
   const hist = persistentHistory || historyMgr.getHistory();
@@ -974,16 +965,7 @@ app.get('/api/status', async (req, res) => {
 app.get('/api/history', async (req, res) => {
   const historyMgr = require('./history_manager');
   const { loteria, fecha } = req.query;
-  if (IS_CLOUD) {
-    try {
-      const cloudStore = require('./cloud_store');
-      const cloudHist = await cloudStore.getMasterHistory();
-      if (cloudHist && Array.isArray(cloudHist.records) && cloudHist.records.length > 0) {
-        fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cloudHist.records, null, 2), 'utf8');
-        historyMgr.rewriteCSV(cloudHist.records);
-      }
-    } catch (e) {}
-  }
+  await syncAndHydrateHistoryFromCloud(false);
   const records = historyMgr.getHistory({ loteria, fecha });
   res.json({ ok: true, count: records.length, records });
 });
@@ -1067,9 +1049,16 @@ app.post('/api/sync/receive-history', async (req, res) => {
     const { records, memory, resetAll, machineId, tunnelUrl, machineName } = req.body;
     const historyMgr = require('./history_manager');
     const cupoMem = require('./cupo_cero_memory');
+    const cloudStore = require('./cloud_store');
+
+    let cloudVault = {};
+    try {
+      cloudVault = await cloudStore.getMasterWinnersVault(false);
+    } catch (eV) {}
 
     if (resetAll && Array.isArray(records)) {
       const cleanRecords = records.filter(r => !r.t7Status || !r.t7Status.includes('Playwright no está'));
+      historyMgr.hydrateRecordsWithWinnersVault(cleanRecords, cloudVault);
       fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(cleanRecords, null, 2), 'utf8');
       historyMgr.rewriteCSV(cleanRecords);
     } else if (Array.isArray(records)) {
@@ -1084,14 +1073,13 @@ app.post('/api/sync/receive-history', async (req, res) => {
       currentDb = currentDb.filter(r => !r.t7Status || !r.t7Status.includes('Playwright no está'));
       const cleanIncoming = records.filter(r => !r.t7Status || !r.t7Status.includes('Playwright no está'));
 
-      const merged = historyMgr.mergeHistories(currentDb, cleanIncoming);
+      const merged = historyMgr.mergeHistories(currentDb, cleanIncoming, cloudVault);
       fs.writeFileSync(historyMgr.DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
       historyMgr.rewriteCSV(merged);
 
       if (IS_CLOUD) {
         try {
-          const cloudStore = require('./cloud_store');
-          cloudStore.saveMasterHistory(merged);
+          cloudStore.saveMasterHistory(merged).catch(() => {});
         } catch (e) {}
       }
     }
@@ -1136,7 +1124,6 @@ app.post('/api/sync/receive-history', async (req, res) => {
     }
 
     log(`☁️ [SYNC NUBE] Recibidos y sincronizados ${Array.isArray(records) ? records.length : 0} registros desde el nodo local.`, 'log-success');
-    // Nota: el respaldo del historial en Supabase lo hace el nodo local en syncToCloudImmediate().
 
     res.json({ ok: true, count: Array.isArray(records) ? records.length : 0 });
   } catch (err) {
@@ -1162,16 +1149,18 @@ app.get('/api/predictive/delayed', (req, res) => {
 });
 
 // API: Estadísticas de Trofeos (Golpes de Banca Evitados)
-app.get('/api/trophies/stats', (req, res) => {
+app.get('/api/trophies/stats', async (req, res) => {
   const historyMgr = require('./history_manager');
+  await syncAndHydrateHistoryFromCloud(false);
   const stats = historyMgr.getTrophyStats();
   res.json({ ok: true, stats });
 });
 
 // API: Obtener Registros de Auditoría y Trofeos
-app.get('/api/trophies/records', (req, res) => {
+app.get('/api/trophies/records', async (req, res) => {
   const historyMgr = require('./history_manager');
   const { soloTrofeos, loteria, fecha } = req.query;
+  await syncAndHydrateHistoryFromCloud(false);
   const records = historyMgr.getHistory({
     soloTrofeos: soloTrofeos === 'true',
     loteria,
@@ -1188,6 +1177,7 @@ app.post('/api/trophies/verify', async (req, res) => {
     return res.status(400).json({ ok: false, message: 'Falta recordId o número ganador' });
   }
 
+  await syncAndHydrateHistoryFromCloud(false);
   const result = historyMgr.verifyRecordWinner(recordId, winnerNumber, winnerName);
   if (result.ok && result.bloqueoAcertado) {
     log(`🏆 [TROFEO CONFIRMADO] ${result.mensaje}`, 'log-success');
@@ -1199,7 +1189,7 @@ app.post('/api/trophies/verify', async (req, res) => {
   try {
     const cupoMem = require('./cupo_cero_memory');
     const rec = result.record || {};
-    const normWinner = String(winnerNumber).padStart(2, '0');
+    const normWinner = String(winnerNumber).trim() === '0' ? '0' : (String(winnerNumber).trim() === '00' ? '00' : String(winnerNumber).padStart(2, '0'));
     const liberados = cupoMem.verificarYAutoLiberarPorGanador(rec.loteria, normWinner, winnerName, rec.sorteo, rec.fecha);
 
     if (liberados && liberados.length > 0) {
@@ -1226,11 +1216,14 @@ app.post('/api/trophies/verify', async (req, res) => {
     log(`Aviso en auto-liberación de memoria: ${eAutoLib.message}`, 'log-warn');
   }
 
-  // Persistir de inmediato en Supabase y notificar a la nube
+  // Persistir de inmediato en Supabase (Historial + Bóveda Inmutable) y notificar a la nube
   try {
     const cloudStore = require('./cloud_store');
     const freshHist = historyMgr.getHistory();
-    await cloudStore.saveMasterHistory(freshHist);
+    await Promise.all([
+      cloudStore.saveMasterHistory(freshHist),
+      cloudStore.saveMasterWinnersVault(historyMgr.loadWinnersVault())
+    ]);
   } catch (eC) {}
   syncToCloudImmediate(false, true);
 
@@ -1242,7 +1235,7 @@ app.post('/api/trophies/sync', async (req, res) => {
   const historyMgr = require('./history_manager');
   const syncRes = await historyMgr.syncResultsWithVisualFx();
   log(`[SINCRONIZACIÓN] ${syncRes.message}`, syncRes.trophiesCount > 0 ? 'log-success' : 'log-info');
-  if (syncRes.updatedCount > 0) syncToCloudImmediate(false);
+  if (syncRes.updatedCount > 0) syncToCloudImmediate(false, true);
   res.json(syncRes);
 });
 
@@ -1251,14 +1244,10 @@ app.post('/api/trophies/lookup-single-result', async (req, res) => {
   const { recordId } = req.body;
   if (!recordId) return res.status(400).json({ ok: false, message: 'Falta recordId' });
   const historyMgr = require('./history_manager');
+  await syncAndHydrateHistoryFromCloud(false);
   const result = await historyMgr.lookupAndUpdateRecord(recordId);
   if (result.ok && result.found) {
     log(`🎯 [RESULTADO EN VIVO ACTUALIZADO] N° ${result.winnerNumber} (${result.winnerName}) verificado para sorteo ${recordId} [${result.source || 'Scraper'}].`, result.bloqueoAcertado ? 'log-success' : 'log-info');
-    try {
-      const cloudStore = require('./cloud_store');
-      const freshHist = historyMgr.getHistory();
-      await cloudStore.saveMasterHistory(freshHist);
-    } catch (eC) {}
     syncToCloudImmediate(false, true);
   }
   res.json(result);
@@ -1877,20 +1866,16 @@ const tareasEjecutadas = new Set();
 const revisionesRealizadas = new Set();
 
 setInterval(async () => {
-  // CRÍTICO: Si estamos en la nube (Render), NO ejecutar tareas de escaneo ni bloqueos.
-  // Render corre en Linux sin GUI/Playwright y su reloj es UTC (+4h respecto a Venezuela).
-  // Solo la máquina local (Windows) ejecuta Premier Pluss y Triple 7.
-  if (process.env.RENDER || process.env.IS_RENDER) return;
-
   // Pausa total nocturna: de 9 PM a 7 AM VET no existen sorteos ni cambios de loterías
   if (isHorarioNocturnoVET()) return;
 
   const cfg = getConfig();
   if (!cfg || !cfg.general.autoStartScheduler) return;
 
-  const now = new Date();
-  const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
-  const todayStr = now.toISOString().slice(0, 10);
+  const historyMgr = require('./history_manager');
+  const currentTotalMinutes = historyMgr.getVenezuelaCurrentMinutes();
+  const todayStr = historyMgr.getVenezuelaDateString();
+  const isCloudRender = !!(process.env.RENDER || process.env.IS_RENDER);
 
   for (const lot of cfg.loterias) {
     if (!lot.activo) continue;
@@ -1899,6 +1884,9 @@ setInterval(async () => {
       const [h, m] = hStr.split(':').map(Number);
       const drawMinutes = h * 60 + m;
 
+      // CRÍTICO: Si estamos en la nube (Render), NO ejecutar tareas de escaneo de escritorio (Pasos 1 al 5).
+      // Render corre en Linux sin GUI/Playwright de escritorio; solo ejecuta el Paso 6 (+5m y +10m) de resultados oficiales.
+      if (!isCloudRender) {
       // =========================================================================
       // 1. DISPARO DE BLOQUEO DE NÚMEROS FIJOS (100% Independiente)
       // =========================================================================
@@ -2129,122 +2117,119 @@ setInterval(async () => {
           ? lot.sorteosSondeoActivos.map(normH) 
           : (lot.horarios || []).map(normH);
 
-        if (!sorteosPermitidosSondeo.includes(normH(hStr))) {
-          // Sorteo excluido de sondeo por el usuario según estadísticas o ajustes en la web
-          continue;
-        }
+        if (sorteosPermitidosSondeo.includes(normH(hStr))) {
+          let sondeosActivos = [];
+          if (Array.isArray(lot.sondeosMultiples) && lot.sondeosMultiples.length > 0) {
+            sondeosActivos = lot.sondeosMultiples
+              .filter(s => s && s.activo !== false && parseInt(s.minutosAntes, 10) > 0)
+              .sort((a, b) => parseInt(b.minutosAntes, 10) - parseInt(a.minutosAntes, 10));
+          }
 
-        let sondeosActivos = [];
-        if (Array.isArray(lot.sondeosMultiples) && lot.sondeosMultiples.length > 0) {
-          sondeosActivos = lot.sondeosMultiples
-            .filter(s => s && s.activo !== false && parseInt(s.minutosAntes, 10) > 0)
-            .sort((a, b) => parseInt(b.minutosAntes, 10) - parseInt(a.minutosAntes, 10));
-        }
+          if (sondeosActivos.length === 0) {
+            const minDef = parseInt(lot.minutosAntesPremier || lot.minutosAntes || 35, 10);
+            sondeosActivos = [ { id: 1, activo: true, minutosAntes: minDef } ];
+          }
 
-        if (sondeosActivos.length === 0) {
-          const minDef = parseInt(lot.minutosAntesPremier || lot.minutosAntes || 35, 10);
-          sondeosActivos = [ { id: 1, activo: true, minutosAntes: minDef } ];
-        }
+          for (const sondeoCfg of sondeosActivos) {
+            const premierMinutesBefore = parseInt(sondeoCfg.minutosAntes, 10);
+            const targetPremMinutes = drawMinutes - premierMinutesBefore;
+            const diffPrem = currentTotalMinutes - targetPremMinutes;
+            const sNum = sondeoCfg.id || (sondeosActivos.indexOf(sondeoCfg) + 1);
+            const keyPrem = `${todayStr}_${lot.id}_${hStr}_premier_s${sNum}_${premierMinutesBefore}m`;
 
-        for (const sondeoCfg of sondeosActivos) {
-          const premierMinutesBefore = parseInt(sondeoCfg.minutosAntes, 10);
-          const targetPremMinutes = drawMinutes - premierMinutesBefore;
-          const diffPrem = currentTotalMinutes - targetPremMinutes;
-          const sNum = sondeoCfg.id || (sondeosActivos.indexOf(sondeoCfg) + 1);
-          const keyPrem = `${todayStr}_${lot.id}_${hStr}_premier_s${sNum}_${premierMinutesBefore}m`;
+            if (diffPrem >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyPrem)) {
+              tareasEjecutadas.add(keyPrem);
+              log(`🔴 [ALARMA PREMIER PLUSS: SONDEO ${sNum}/${sondeosActivos.length}] Activando sondeo (${premierMinutesBefore}m antes) para ${lot.nombre} (Sorteo ${hStr})...`, 'log-warn');
 
-          if (diffPrem >= 0 && currentTotalMinutes < drawMinutes && !tareasEjecutadas.has(keyPrem)) {
-            tareasEjecutadas.add(keyPrem);
-            log(`🔴 [ALARMA PREMIER PLUSS: SONDEO ${sNum}/${sondeosActivos.length}] Activando sondeo (${premierMinutesBefore}m antes) para ${lot.nombre} (Sorteo ${hStr})...`, 'log-warn');
+              try {
+                const machinesMgr = require('./machines_manager');
+                const historyMgr = require('./history_manager');
+                delete require.cache[require.resolve('./cupo_cero_memory')];
+                delete require.cache[require.resolve('./predictive_service')];
+                const predictive = require('./predictive_service');
+                delete require.cache[require.resolve('./triple7_robot')];
+                const t7 = require('./triple7_robot');
 
-            try {
-              const machinesMgr = require('./machines_manager');
-              const historyMgr = require('./history_manager');
-              delete require.cache[require.resolve('./cupo_cero_memory')];
-              delete require.cache[require.resolve('./predictive_service')];
-              const predictive = require('./predictive_service');
-              delete require.cache[require.resolve('./triple7_robot')];
-              const t7 = require('./triple7_robot');
+                const esUltimo = esUltimoSorteoDelDia(cfg, currentTotalMinutes);
+                const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log, hStr, esUltimo);
 
-              const esUltimo = esUltimoSorteoDelDia(cfg, currentTotalMinutes);
-              const result = await machinesMgr.ejecutarPescaEnCascada(cfg, lot.id, log, hStr, esUltimo);
+                // Consolidar lista completa de las 5 vías de protección:
+                // 1. Premier Cupo 0 + 2. Fijos + 3. Visual-FX Atrasados + 4. Cobertura Aleatoria + 5. Memoria Persistente
+                const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
+                const consolidated = predictive.buildConsolidatedBlockList(cfg, lot.id, result, targetDrawTime);
 
-              // Consolidar lista completa de las 5 vías de protección:
-              // 1. Premier Cupo 0 + 2. Fijos + 3. Visual-FX Atrasados + 4. Cobertura Aleatoria + 5. Memoria Persistente
-              const targetDrawTime = (result && result.sorteo && /\d{1,2}:\d{2}/.test(result.sorteo)) ? result.sorteo : hStr;
-              const consolidated = predictive.buildConsolidatedBlockList(cfg, lot.id, result, targetDrawTime);
+                const numerosParaTriple7 = consolidated.listaFinalNumeros || [];
+                let t7Status = !cfg.general.triple7.enabled 
+                  ? 'Desactivado' 
+                  : (numerosParaTriple7.length === 0 ? 'Sin números para bloquear' : 'Procesando Triple 7');
+                let t7Blocked = false;
 
-              const numerosParaTriple7 = consolidated.listaFinalNumeros || [];
-              let t7Status = !cfg.general.triple7.enabled 
-                ? 'Desactivado' 
-                : (numerosParaTriple7.length === 0 ? 'Sin números para bloquear' : 'Procesando Triple 7');
-              let t7Blocked = false;
+                log(`🎯 [ESTRATEGIA 5-VÍAS | MÁX ${consolidated.maximoBloqueosConfigurado}] ${lot.nombre} (${targetDrawTime}) -> 1. Sorteo Actual: [${consolidated.detallePrioridades.p1_sondeoActual.join(', ') || 'Ninguno'}] | 2. Persistente Anterior: [${consolidated.detallePrioridades.p2_persistenteAnterior.join(', ') || 'Ninguno'}] | 3. 2do Anterior: [${consolidated.detallePrioridades.p3_persistente2doAnterior.join(', ') || 'Ninguno'}] | 4. Atrasados/Fijos: [${consolidated.detallePrioridades.p4_masTiempoSinSalirYFijos.join(', ') || 'Ninguno'}] | 5. Aleatorios: [${consolidated.detallePrioridades.p5_aleatorios.join(', ') || 'Ninguno'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}/${consolidated.maximoBloqueosConfigurado}`, 'log-info');
 
-              log(`🎯 [ESTRATEGIA 5-VÍAS | MÁX ${consolidated.maximoBloqueosConfigurado}] ${lot.nombre} (${targetDrawTime}) -> 1. Sorteo Actual: [${consolidated.detallePrioridades.p1_sondeoActual.join(', ') || 'Ninguno'}] | 2. Persistente Anterior: [${consolidated.detallePrioridades.p2_persistenteAnterior.join(', ') || 'Ninguno'}] | 3. 2do Anterior: [${consolidated.detallePrioridades.p3_persistente2doAnterior.join(', ') || 'Ninguno'}] | 4. Atrasados/Fijos: [${consolidated.detallePrioridades.p4_masTiempoSinSalirYFijos.join(', ') || 'Ninguno'}] | 5. Aleatorios: [${consolidated.detallePrioridades.p5_aleatorios.join(', ') || 'Ninguno'}] -> Total Bloqueo: ${consolidated.totalNumerosABloquear}/${consolidated.maximoBloqueosConfigurado}`, 'log-info');
-
-              // Bloqueo total consolidado en Triple 7 para el sorteo objetivo (respetando límite máximo de 0 a 10)
-              if (cfg.general.triple7.enabled && numerosParaTriple7.length > 0) {
-                log(`[AUTO-BLOQUEO TRIPLE 7 (SONDEO ${sNum})] Enviando ${numerosParaTriple7.length} números consolidados a Triple 7 para ${lot.nombre} (${targetDrawTime}, Tope máx ${consolidated.maximoBloqueosConfigurado}): [${numerosParaTriple7.join(', ')}]...`, 'log-info');
-                try {
-                  const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, numerosParaTriple7);
-                  t7Blocked = t7Res.ok;
-                  t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
-                } catch (t7Err) {
-                  t7Status = `Error T7: ${t7Err.message}`;
-                  log(`Error en auto-bloqueo Triple 7 (Premier Sondeo ${sNum}): ${t7Err.message}`, 'log-danger');
-                }
-              }
-
-              // GESTIÓN DE MEMORIA PREMIER CUPO 0: Registrar persistencia en base de datos local
-              let siguientesSorteos = [];
-              const rojosPremier = consolidated.rojosPremier || [];
-              if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
-                try {
-                  const cupoMem = require('./cupo_cero_memory');
-                  const persistencia = Math.min(Math.max(parseInt(lot.memoriaCupoCero.sorteosPersistencia, 10) || 3, 1), 5);
-                  siguientesSorteos = cupoMem.obtenerSiguientesSorteos(lot.horarios || [], result.sorteo || hStr, persistencia);
-
-                  if (siguientesSorteos.length > 0) {
-                    log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia activa (${persistencia} sorteos). Registrados [${rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}. Ventas preservadas abiertas hasta su turno.`, 'log-info');
-                    cupoMem.registrarAgotadosPremier(lot.id, lot.nombre, result.sorteo || hStr, todayStr, rojosPremier, persistencia, siguientesSorteos);
+                // Bloqueo total consolidado en Triple 7 para el sorteo objetivo (respetando límite máximo de 0 a 10)
+                if (cfg.general.triple7.enabled && numerosParaTriple7.length > 0) {
+                  log(`[AUTO-BLOQUEO TRIPLE 7 (SONDEO ${sNum})] Enviando ${numerosParaTriple7.length} números consolidados a Triple 7 para ${lot.nombre} (${targetDrawTime}, Tope máx ${consolidated.maximoBloqueosConfigurado}): [${numerosParaTriple7.join(', ')}]...`, 'log-info');
+                  try {
+                    const t7Res = await t7.bloquearNumeros(cfg, lot.nombre, targetDrawTime, numerosParaTriple7);
+                    t7Blocked = t7Res.ok;
+                    t7Status = t7Res.ok ? `Bloqueados (${t7Res.bloqueadosExitosos.length}) en Triple 7` : `Error T7: ${t7Res.message}`;
+                  } catch (t7Err) {
+                    t7Status = `Error T7: ${t7Err.message}`;
+                    log(`Error en auto-bloqueo Triple 7 (Premier Sondeo ${sNum}): ${t7Err.message}`, 'log-danger');
                   }
-                } catch (errMem) {
-                  log(`Aviso en registro de memoria: ${errMem.message}`, 'log-warn');
                 }
+
+                // GESTIÓN DE MEMORIA PREMIER CUPO 0: Registrar persistencia en base de datos local
+                let siguientesSorteos = [];
+                const rojosPremier = consolidated.rojosPremier || [];
+                if (lot.memoriaCupoCero && lot.memoriaCupoCero.activo !== false && rojosPremier.length > 0) {
+                  try {
+                    const cupoMem = require('./cupo_cero_memory');
+                    const persistencia = Math.min(Math.max(parseInt(lot.memoriaCupoCero.sorteosPersistencia, 10) || 3, 1), 5);
+                    siguientesSorteos = cupoMem.obtenerSiguientesSorteos(lot.horarios || [], result.sorteo || hStr, persistencia);
+
+                    if (siguientesSorteos.length > 0) {
+                      log(`🧠 [MEMORIA PREMIER CUPO 0] Persistencia activa (${persistencia} sorteos). Registrados [${rojosPremier.join(', ')}] para los siguientes sorteos: ${siguientesSorteos.join(', ')}. Ventas preservadas abiertas hasta su turno.`, 'log-info');
+                      cupoMem.registrarAgotadosPremier(lot.id, lot.nombre, result.sorteo || hStr, todayStr, rojosPremier, persistencia, siguientesSorteos);
+                    }
+                  } catch (errMem) {
+                    log(`Aviso en registro de memoria: ${errMem.message}`, 'log-warn');
+                  }
+                }
+
+                const rec = historyMgr.recordScan({
+                  loteria: lot.nombre,
+                  sorteo: targetDrawTime,
+                  montoSondeo: lot.montoSondeo || 3000,
+                  totalAnimalesAnalizados: result.totalAnimalesAnalizados || lot.totalAnimales || 38,
+                  rojos: consolidated.listaFinalNumeros,
+                  esConsolidado: true,
+                  maximoBloqueosConfigurado: consolidated.maximoBloqueosConfigurado,
+                  bloqueosConsolidados: consolidated.listaFinalDetallada,
+                  rojosPremier: consolidated.rojosPremier,
+                  numFijos: consolidated.numFijos,
+                  fijosSeleccionados: consolidated.fijosSeleccionados,
+                  predictivosVisualFx: consolidated.predictivosSeleccionados,
+                  cantidadPredictivosConfigurada: parseInt(lot.cantidadPredictivosABloquear, 10) || 0,
+                  aleatoriosSistema: consolidated.aleatoriosSeleccionados,
+                  cantidadAleatoriosConfigurada: parseInt(lot.cantidadAleatoriosABloquear, 10) || 0,
+                  memoriaCupoCero: consolidated.memoriaSeleccionados,
+                  numMemoriaCupoCero: consolidated.numMemoria,
+                  t7Status,
+                  t7Blocked
+                });
+
+                syncToCloudImmediate(false);
+
+                log(`✅ [PREMIER PLUSS SONDEO ${sNum}/${sondeosActivos.length} COMPLETADO] ${lot.nombre} (${hStr} a -${premierMinutesBefore}m): Total bloqueados: ${consolidated.totalNumerosABloquear} (Premier: [${rojosPremier.join(', ') || 'Ninguno'}]) -> Triple 7: ${t7Status}`, 'log-success');
+
+                if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
+                  const memMsg = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';
+                  enviarTelegram(cfg, `🔴 *SONDEO PREMIER PLUSS REALIZADO (Sondeo ${sNum}/${sondeosActivos.length})*\n*${lot.nombre} - Sorteo ${hStr} (${premierMinutesBefore}m antes)*\n❌ Agotados (Cupo 0): ${rojosPremier.join(', ') || 'Ninguno'}${memMsg}\nTriple 7: ${t7Status}`);
+                }
+              } catch (e) {
+                log(`Error en sondeo independiente Premier Pluss (Sondeo ${sNum}): ${e.message}`, 'log-danger');
               }
-
-              const rec = historyMgr.recordScan({
-                loteria: lot.nombre,
-                sorteo: targetDrawTime,
-                montoSondeo: lot.montoSondeo || 3000,
-                totalAnimalesAnalizados: result.totalAnimalesAnalizados || lot.totalAnimales || 38,
-                rojos: consolidated.listaFinalNumeros,
-                esConsolidado: true,
-                maximoBloqueosConfigurado: consolidated.maximoBloqueosConfigurado,
-                bloqueosConsolidados: consolidated.listaFinalDetallada,
-                rojosPremier: consolidated.rojosPremier,
-                numFijos: consolidated.numFijos,
-                fijosSeleccionados: consolidated.fijosSeleccionados,
-                predictivosVisualFx: consolidated.predictivosSeleccionados,
-                cantidadPredictivosConfigurada: parseInt(lot.cantidadPredictivosABloquear, 10) || 0,
-                aleatoriosSistema: consolidated.aleatoriosSeleccionados,
-                cantidadAleatoriosConfigurada: parseInt(lot.cantidadAleatoriosABloquear, 10) || 0,
-                memoriaCupoCero: consolidated.memoriaSeleccionados,
-                numMemoriaCupoCero: consolidated.numMemoria,
-                t7Status,
-                t7Blocked
-              });
-
-              syncToCloudImmediate(false);
-
-              log(`✅ [PREMIER PLUSS SONDEO ${sNum}/${sondeosActivos.length} COMPLETADO] ${lot.nombre} (${hStr} a -${premierMinutesBefore}m): Total bloqueados: ${consolidated.totalNumerosABloquear} (Premier: [${rojosPremier.join(', ') || 'Ninguno'}]) -> Triple 7: ${t7Status}`, 'log-success');
-
-              if (cfg.general.telegram.enabled && cfg.general.telegram.botToken && cfg.general.telegram.chatId) {
-                const memMsg = siguientesSorteos.length > 0 ? `\n🧠 *Pre-bloqueo Siguientes Sorteos:* ${siguientesSorteos.join(', ')}` : '';
-                enviarTelegram(cfg, `🔴 *SONDEO PREMIER PLUSS REALIZADO (Sondeo ${sNum}/${sondeosActivos.length})*\n*${lot.nombre} - Sorteo ${hStr} (${premierMinutesBefore}m antes)*\n❌ Agotados (Cupo 0): ${rojosPremier.join(', ') || 'Ninguno'}${memMsg}\nTriple 7: ${t7Status}`);
-              }
-            } catch (e) {
-              log(`Error en sondeo independiente Premier Pluss (Sondeo ${sNum}): ${e.message}`, 'log-danger');
             }
           }
         }
@@ -2295,11 +2280,14 @@ setInterval(async () => {
           }
         } catch (eDesc) {}
       }
+      } // Fin de bloque exclusivo de escritorio (!isCloudRender)
+
+      const diffMinutes = currentTotalMinutes - drawMinutes;
 
       // =========================================================================
       // 6. REGLA ESTRICTA DE REVISIÓN DE RESULTADOS EN VISUAL-FX:
-      // - Intento 1: A los 5 minutos después del sorteo (+5 min)
-      // - Intento 2: A los 10 minutos después del sorteo (+10 min, si el 1 no lo consiguió)
+      // - Intento 1: Exactamente a los 5 minutos después del sorteo (+5 min)
+      // - Intento 2: Exactamente a los 10 minutos después del sorteo (+10 min, si el 1 no lo consiguió)
       // - Si no lo consigue tras el 2do intento, PARA por completo (máx 2 intentos por sorteo horario)
       // =========================================================================
       const keyIntento1 = `${todayStr}_${lot.id}_${hStr}_intento1`;
@@ -2307,8 +2295,17 @@ setInterval(async () => {
       const keyResuelto = `${todayStr}_${lot.id}_${hStr}_resuelto`;
       const keyParado = `${todayStr}_${lot.id}_${hStr}_parado`;
 
+      // Si el sorteo ya está verificado en la Bóveda Inmutable, marcar como resuelto sin hacer peticiones HTTP
+      if (!revisionesRealizadas.has(keyResuelto)) {
+        const alreadyInVault = historyMgr.getWinnerFromVault(lot.id, todayStr, hStr);
+        if (alreadyInVault && alreadyInVault.numero) {
+          revisionesRealizadas.add(keyResuelto);
+        }
+      }
+
       // Helper para manejar auto-liberación en Triple 7 cuando un número sale premiado
       async function procesarAutoLiberacionGanador(loteriaId, loteriaNombre, sorteo, ganadorNum, ganadorNom) {
+        if (isCloudRender) return; // Solo el nodo local con escritorio libera en Triple 7
         try {
           const cupoMem = require('./cupo_cero_memory');
           const liberados = cupoMem.verificarYAutoLiberarPorGanador(loteriaId, ganadorNum, ganadorNom, sorteo, todayStr);
@@ -2343,7 +2340,7 @@ setInterval(async () => {
       const keyNoVerifierLog = `${todayStr}_${lot.id}_${hStr}_noverifier`;
 
       if (!isVerifierNode) {
-        if (diffMinutes >= 5 && !revisionesRealizadas.has(keyNoVerifierLog)) {
+        if (diffMinutes >= 5 && diffMinutes <= 15 && !revisionesRealizadas.has(keyNoVerifierLog)) {
           revisionesRealizadas.add(keyNoVerifierLog);
           const vMachine = machinesMgr.getVerificationMachine(cfg);
           const vNombre = vMachine ? vMachine.nombre : (cfg.general.maquinaEncargadaVerificacionesId || 'Máquina 1');
@@ -2357,13 +2354,10 @@ setInterval(async () => {
           
           try {
             const predictive = require('./predictive_service');
-            // Consultar y sincronizar dinámicamente con Visual-FX (1000Resultados / TuAzar) 5 minutos después del sorteo
-            await predictive.syncVisualFxDraws(lot.id);
-
-            const historyMgr = require('./history_manager');
             const syncRes = await historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 1);
             if (syncRes.found) {
               revisionesRealizadas.add(keyResuelto);
+              await predictive.syncVisualFxDraws(lot.id);
               log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
               
               // Auto-liberar sorteos futuros si estaba en memoria
@@ -2374,7 +2368,7 @@ setInterval(async () => {
               const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
               log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
 
-              syncToCloudImmediate(false);
+              syncToCloudImmediate(true);
 
               if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
                 enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 1er intento (+5 min)!`);
@@ -2387,20 +2381,17 @@ setInterval(async () => {
           }
         }
 
-        // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ)
-        // Permite verificar sorteos de hoy que hayan superado los 10 minutos sin haberse resuelto
-        if (diffMinutes >= 10 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
+        // INTENTO 2 (+10 MINUTOS TRAS EL SORTEO - SÓLO SI EL INTENTO 1 NO LO CONSIGUIÓ, ventana +10 a +25 min)
+        if (diffMinutes >= 10 && diffMinutes <= 25 && !revisionesRealizadas.has(keyIntento2) && !revisionesRealizadas.has(keyResuelto) && !revisionesRealizadas.has(keyParado)) {
           revisionesRealizadas.add(keyIntento2);
           log(`🔍 [REVISIÓN RESULTADOS] Intento 2 y FINAL (+10 min) para ${lot.nombre} (Sorteo ${hStr}). Consultando y sincronizando con 1000Resultados...`, 'log-info');
           
           try {
             const predictive = require('./predictive_service');
-            await predictive.syncVisualFxDraws(lot.id);
-
-            const historyMgr = require('./history_manager');
             const syncRes = await historyMgr.syncScheduledDrawResult(lot.id, hStr, todayStr, 2);
             if (syncRes.found) {
               revisionesRealizadas.add(keyResuelto);
+              await predictive.syncVisualFxDraws(lot.id);
               log(`✅ [RESULTADO CONFIRMADO] ${lot.nombre} (${hStr}): Animal ganador ${syncRes.winnerNumber} (${syncRes.winnerName}). ${syncRes.trophiesWon > 0 ? '🏆 ¡TROFEO OBTENIDO! Golpe de banca evitado.' : 'No estaba en la lista de bloqueos.'}`, syncRes.trophiesWon > 0 ? 'log-success' : 'log-info');
               
               // Auto-liberar sorteos futuros si estaba en memoria
@@ -2411,7 +2402,7 @@ setInterval(async () => {
               const atrasadosStr = updatedAtrasados.map(d => `${d.numero} (${d.nombre}: ${d.diasAtraso}d)`).join(', ');
               log(`🔮 [MODELO PREDICTIVO ACTUALIZADO] ${lot.nombre} tras sorteo ${hStr}: Top atrasados ahora son: ${atrasadosStr}`, 'log-info');
 
-              syncToCloudImmediate(false);
+              syncToCloudImmediate(true);
 
               if (syncRes.trophiesWon > 0 && cfg.general.telegram.enabled) {
                 enviarTelegram(cfg, `🏆 *¡GOLPE DE BANCA EVITADO!*\n*${lot.nombre} - Sorteo ${hStr}*\nSalió el animal *${syncRes.winnerNumber} (${syncRes.winnerName})* y estaba bloqueado. ¡Trofeo obtenido en el 2do intento (+10 min)!`);

@@ -115,10 +115,60 @@ async function saveMasterConfig(cfg) {
   return await upsertStoreKey('suite_config', cfg);
 }
 
+// Caché en memoria (30s) para evitar descargas repetitivas de 2MB en ráfagas de peticiones UI
+let cachedMasterHistory = null;
+let cachedMasterHistoryTs = 0;
+let cachedWinnersVault = null;
+let cachedWinnersVaultTs = 0;
+const CLOUD_CACHE_TTL_MS = 30000;
+
+/**
+ * Obtener la bóveda inmutable de ganadores oficiales desde Supabase (suite_verified_winners)
+ */
+async function getMasterWinnersVault(forceRefresh = false) {
+  if (!forceRefresh && cachedWinnersVault && (Date.now() - cachedWinnersVaultTs < CLOUD_CACHE_TTL_MS)) {
+    return cachedWinnersVault;
+  }
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.suite_verified_winners&select=data,updated_at`;
+    const res = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].data && typeof rows[0].data === 'object') {
+        cachedWinnersVault = rows[0].data;
+        cachedWinnersVaultTs = Date.now();
+        return cachedWinnersVault;
+      }
+    }
+  } catch (e) {}
+  return cachedWinnersVault || {};
+}
+
+/**
+ * Guardar/fusionar en la bóveda inmutable de ganadores oficiales en Supabase (suite_verified_winners)
+ */
+async function saveMasterWinnersVault(vaultObj) {
+  if (!vaultObj || typeof vaultObj !== 'object') return false;
+  const merged = { ...(cachedWinnersVault || {}), ...vaultObj };
+  cachedWinnersVault = merged;
+  cachedWinnersVaultTs = Date.now();
+  return await upsertStoreKey('suite_verified_winners', merged);
+}
+
 /**
  * Obtener el historial maestro desde Supabase (suite_history_v2)
  */
-async function getMasterHistory() {
+async function getMasterHistory(forceRefresh = false) {
+  if (!forceRefresh && cachedMasterHistory && (Date.now() - cachedMasterHistoryTs < CLOUD_CACHE_TTL_MS)) {
+    return cachedMasterHistory;
+  }
   try {
     const url = `${SUPABASE_URL}/rest/v1/visual_fx_store?key=eq.suite_history_v2&select=data,updated_at`;
     const res = await fetchWithTimeout(url, {
@@ -132,14 +182,16 @@ async function getMasterHistory() {
     if (res.ok) {
       const rows = await res.json();
       if (Array.isArray(rows) && rows.length > 0 && Array.isArray(rows[0].data)) {
-        return {
+        cachedMasterHistory = {
           records: rows[0].data,
           updatedAt: rows[0].updated_at
         };
+        cachedMasterHistoryTs = Date.now();
+        return cachedMasterHistory;
       }
     }
   } catch (e) {}
-  return null;
+  return cachedMasterHistory || null;
 }
 
 /**
@@ -147,6 +199,11 @@ async function getMasterHistory() {
  */
 async function saveMasterHistory(records) {
   if (!Array.isArray(records)) return false;
+  cachedMasterHistory = {
+    records,
+    updatedAt: new Date().toISOString()
+  };
+  cachedMasterHistoryTs = Date.now();
   return await upsertStoreKey('suite_history_v2', records);
 }
 
@@ -335,6 +392,8 @@ module.exports = {
   saveMasterConfig,
   getMasterHistory,
   saveMasterHistory,
+  getMasterWinnersVault,
+  saveMasterWinnersVault,
   getMasterMemory,
   saveMasterMemory,
   saveAutomationStatus,

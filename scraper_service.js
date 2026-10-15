@@ -12,11 +12,31 @@ try {
   animalDict = JSON.parse(dictRaw);
 } catch (e) {}
 
+function normalizeWinnerNumber(num, name = '') {
+  const s = String(num ?? '').trim();
+  const n = String(name ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (n.includes('delfin')) return '0';
+  if (n.includes('ballena')) return '00';
+  if (s === '00') return '00';
+  if (s === '0') return '0';
+  const parsed = parseInt(s, 10);
+  if (!isNaN(parsed)) return String(parsed).padStart(2, '0');
+  return s.padStart(2, '0');
+}
+
 function getAnimalName(num) {
-  const norm = String(num).padStart(2, '0');
-  const rawNum = String(parseInt(num, 10));
+  const s = String(num ?? '').trim();
+  if (s === '00') return 'Ballena';
+  if (s === '0') return 'Delfin';
+  const norm = s.padStart(2, '0');
+  const rawNum = String(parseInt(s, 10));
   return animalDict[norm] || animalDict[rawNum] || `Animal ${norm}`;
 }
+
+// Caché en memoria de corta duración (45s) para evitar múltiples peticiones repetidas
+// al mismo sorteo/fecha (reduce de 48 peticiones a solo 4 por día sincronizado)
+const scrape1000Cache = new Map();
+const SCRAPE_CACHE_TTL_MS = 45000;
 
 /**
  * Fetch HTTPS nativo con timeout y User-Agent de navegador
@@ -113,8 +133,8 @@ async function scrapeTuAzarAnimalitos() {
           if (!isPending) {
             const numM = m[3].match(/class="lc-tile-num">([^<]+)<\/span>/i);
             const nameM = m[3].match(/class="lc-tile-animal">([^<]+)<\/span>/i);
-            if (numM) number = numM[1].trim().padStart(2, '0');
             if (nameM) name = nameM[1].trim();
+            if (numM) number = normalizeWinnerNumber(numM[1].trim(), name);
             if (number && !name) name = getAnimalName(number);
           }
 
@@ -156,8 +176,8 @@ async function scrapeTuAzarAnimalitos() {
           let numStr = (!isPending && nameM) ? nameM[1].trim() : null;
           let animalName = (!isPending && nameM) ? nameM[2].trim() : null;
 
-          if (numStr) {
-            numStr = String(numStr).padStart(2, '0');
+          if (numStr !== null) {
+            numStr = normalizeWinnerNumber(numStr, animalName);
             if (!animalName || animalName.length < 2) animalName = getAnimalName(numStr);
           }
 
@@ -195,9 +215,9 @@ function normalizeDateToYYYYMMDD(dateStr) {
 }
 
 /**
- * Scraper 1000Resultados
+ * Scraper 1000Resultados con caché en memoria (45s) para ahorrar peticiones
  */
-async function scrape1000Resultados(gameSlug, targetDate = null) {
+async function scrape1000Resultados(gameSlug, targetDate = null, bypassCache = false) {
   if (!gameSlug) return [];
   try {
     const slugMap = {
@@ -205,12 +225,22 @@ async function scrape1000Resultados(gameSlug, targetDate = null) {
       'lotto-activo': 'lotto-activo',
       'la-granjita': 'la-granjita',
       'guacharito-millonario': 'guacharito-millonario',
+      'guacharo-millonario': 'guacharito-millonario',
       'selva-plus': 'selva-plus',
       'ruleta-activa': 'ruleta-activa'
     };
     const s = slugMap[gameSlug] || gameSlug.replace(/_/g, '-');
-    let url = `https://1000resultados.com/resultados/${s}`;
     const dateFormatted = normalizeDateToYYYYMMDD(targetDate);
+    const cacheKey = `${s}_${dateFormatted || 'today'}`;
+
+    if (!bypassCache && scrape1000Cache.has(cacheKey)) {
+      const cached = scrape1000Cache.get(cacheKey);
+      if (Date.now() - cached.ts < SCRAPE_CACHE_TTL_MS) {
+        return cached.draws;
+      }
+    }
+
+    let url = `https://1000resultados.com/resultados/${s}`;
     if (dateFormatted) {
       url += `?date=${dateFormatted}`;
     }
@@ -247,13 +277,17 @@ async function scrape1000Resultados(gameSlug, targetDate = null) {
         if (b64NameMatch) {
           try { name = Buffer.from(b64NameMatch[1], 'base64').toString('utf8').trim(); } catch(e){}
         }
-        if (number) {
-          number = String(number).padStart(2, '0');
+        if (number !== null && number !== '') {
+          number = normalizeWinnerNumber(number, name);
           if (!name) name = getAnimalName(number);
         }
       }
 
       draws.push({ time, isPending, number, name });
+    }
+
+    if (draws.length > 0) {
+      scrape1000Cache.set(cacheKey, { ts: Date.now(), draws });
     }
 
     return draws;
@@ -271,7 +305,7 @@ async function scrape1000Resultados(gameSlug, targetDate = null) {
  * - Selva Plus / Ruleta Activa: 00, 0..99
  */
 function isValidLotteryNumber(normKey, numStr) {
-  if (!numStr) return false;
+  if (numStr === null || numStr === undefined || numStr === '') return false;
   if (numStr === '00' || numStr === '0') return true;
   const val = parseInt(numStr, 10);
   if (isNaN(val)) return false;
@@ -302,15 +336,16 @@ async function lookupDrawResult(loteriaNameOrId, targetDrawTime, targetDate) {
     if (res1000Draws.length > 0) {
       const match = res1000Draws.find(d => {
         const dMins = parseTimeToMinutes(d.time);
-        return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 25;
+        return dMins !== null && targetMinutes !== null && Math.abs(dMins - targetMinutes) <= 5;
       });
 
       if (match) {
-        if (!match.isPending && match.number && isValidLotteryNumber(normKey, match.number)) {
+        if (!match.isPending && match.number !== null && isValidLotteryNumber(normKey, match.number)) {
+          const finalNum = normalizeWinnerNumber(match.number, match.name);
           return {
             found: true,
-            number: String(match.number).padStart(2, '0'),
-            name: match.name || getAnimalName(match.number),
+            number: finalNum,
+            name: match.name || getAnimalName(finalNum),
             drawTime: match.time,
             source: '1000Resultados Oficial'
           };

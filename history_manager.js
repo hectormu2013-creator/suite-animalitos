@@ -3,6 +3,7 @@ const path = require('path');
 
 const DB_PATH = path.join(__dirname, 'history_db.json');
 const CSV_PATH = path.join(__dirname, 'reportes_agotados.csv');
+const WINNERS_VAULT_PATH = path.join(__dirname, 'boveda_resultados.json');
 const VISUAL_FX_DIR = path.join('C:', 'Users', 'Hector', 'Fenix_2026_1', 'PROYECTO_VISUAL_FX', 'data');
 const VISUAL_FX_RESULTS_PATH = path.join(VISUAL_FX_DIR, 'lottery_results.json');
 const VISUAL_FX_HISTORY_PATH = path.join(VISUAL_FX_DIR, 'lottery_history.json');
@@ -17,10 +18,15 @@ try {
 /**
  * Normalizar clave de animal (00 vs 0 vs 01..99)
  */
-function normalizeAnimalKey(num) {
-  const s = String(num || '').trim();
+function normalizeAnimalKey(num, name = '') {
+  const s = String(num ?? '').trim();
+  const n = String(name ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (n.includes('delfin')) return '0';
+  if (n.includes('ballena')) return '00';
   if (s === '00') return '00';
   if (s === '0') return '0';
+  const parsed = parseInt(s, 10);
+  if (!isNaN(parsed)) return String(parsed).padStart(2, '0');
   return s.padStart(2, '0');
 }
 
@@ -36,13 +42,15 @@ function getAnimalName(num) {
 }
 
 /**
- * Normalizar ID de lotería para búsqueda en Visual-FX
+ * Normalizar ID de lotería para búsqueda en Visual-FX y Scrapers
  */
 function mapLoteriaToVisualFx(loteriaStr) {
   const clean = (loteriaStr || '').toLowerCase().trim();
+  if (clean.includes('millonario') || clean.includes('guacharito')) return 'guacharito-millonario';
   if (clean.includes('guacharo')) return 'guacharo-activo';
   if (clean.includes('granjita')) return 'la-granjita';
   if (clean.includes('lotto')) return 'lotto-activo';
+  if (clean.includes('selva')) return 'selva-plus';
   return clean;
 }
 
@@ -69,8 +77,9 @@ function normalizeDrawTime(t) {
  */
 function canonicalLotteryKey(lot) {
   const c = String(lot || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (c.includes('guacharo') && c.includes('millonario')) return 'guacharomillonario';
+  if (c.includes('millonario') || c.includes('guacharito')) return 'guacharomillonario';
   if (c.includes('guacharo')) return 'guacharoactivo';
+  if (c.includes('rey')) return 'lottorey';
   if (c.includes('granjita')) return 'lagranjita';
   if (c.includes('lotto')) return 'lottoactivo';
   if (c.includes('selva')) return 'laselvita';
@@ -86,6 +95,205 @@ function makeCanonicalDrawKey(r) {
   const l = canonicalLotteryKey(r.loteria);
   const s = normalizeDrawTime(r.sorteo || r.horaSorteo || '');
   return `${d}_${l}_${s}`;
+}
+
+/**
+ * Cargar Bóveda Inmutable de Resultados Oficiales (boveda_resultados.json)
+ */
+function loadWinnersVault() {
+  try {
+    if (fs.existsSync(WINNERS_VAULT_PATH)) {
+      const parsed = JSON.parse(fs.readFileSync(WINNERS_VAULT_PATH, 'utf8'));
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return {};
+}
+
+/**
+ * Guardar Bóveda Inmutable de Resultados Oficiales en disco y en Supabase
+ */
+function saveWinnersVault(vaultObj, syncCloud = true) {
+  if (!vaultObj || typeof vaultObj !== 'object') return {};
+  try {
+    const existing = loadWinnersVault();
+    const merged = { ...existing, ...vaultObj };
+    fs.writeFileSync(WINNERS_VAULT_PATH, JSON.stringify(merged, null, 2), 'utf8');
+    if (syncCloud) {
+      try {
+        const cloudStore = require('./cloud_store');
+        cloudStore.saveMasterWinnersVault(merged).catch(() => {});
+      } catch (eC) {}
+    }
+    return merged;
+  } catch (e) {
+    return vaultObj;
+  }
+}
+
+/**
+ * Consultar si un sorteo específico ya tiene resultado oficial en la Bóveda Inmutable
+ */
+function getWinnerFromVault(loteria, fecha, sorteo) {
+  const ckey = makeCanonicalDrawKey({ loteria, fecha, sorteo });
+  if (!ckey) return null;
+  const vault = loadWinnersVault();
+  return vault[ckey] || null;
+}
+
+/**
+ * Guardar un resultado oficial individual en la Bóveda Inmutable
+ */
+function saveWinnerToVault(loteria, fecha, sorteo, numero, nombre = null, syncCloud = false) {
+  const ckey = makeCanonicalDrawKey({ loteria, fecha, sorteo });
+  if (!ckey || numero === undefined || numero === null || numero === '') return null;
+  const normNum = normalizeAnimalKey(numero, nombre);
+  const normName = nombre || getAnimalName(normNum);
+  const entry = {
+    numero: normNum,
+    nombre: normName,
+    fecha,
+    loteria: canonicalLotteryKey(loteria),
+    sorteo: normalizeDrawTime(sorteo),
+    updatedAt: new Date().toISOString()
+  };
+  saveWinnersVault({ [ckey]: entry }, syncCloud);
+  return entry;
+}
+
+/**
+ * Calcular de forma determinista el objeto ganador y trofeo para un registro dado
+ */
+function computeGanadorObjectForRecord(rec, winnerNumber, winnerName = null, fechaVerif = null) {
+  const normWinner = normalizeAnimalKey(winnerNumber, winnerName);
+  const resolvedName = winnerName || getAnimalName(normWinner);
+
+  const normList = (arr) => (arr || []).map(x => normalizeAnimalKey(typeof x === 'object' ? x.numero : x));
+  const premierList = normList(rec.rojosPremier);
+  const fijoList = normList(rec.numFijos && rec.numFijos.length ? rec.numFijos : rec.fijosSeleccionados);
+  const predictivoList = normList(rec.numPredictivos && rec.numPredictivos.length ? rec.numPredictivos : rec.predictivosVisualFx);
+  const aleatorioList = normList(rec.numAleatorios && rec.numAleatorios.length ? rec.numAleatorios : rec.aleatoriosSistema);
+  const memoriaList = normList(rec.numMemoriaCupoCero && rec.numMemoriaCupoCero.length ? rec.numMemoriaCupoCero : rec.memoriaCupoCero);
+  const allBlocked = normList(rec.rojos);
+
+  const matchNum = (list) => list.some(n => n === normWinner);
+
+  const esPremier = matchNum(premierList);
+  const esFijo = matchNum(fijoList);
+  const esPredictivo = matchNum(predictivoList);
+  const esAleatorio = matchNum(aleatorioList);
+  const esMemoria = matchNum(memoriaList);
+  const salioBloqueado = esPremier || esFijo || esPredictivo || esAleatorio || esMemoria || matchNum(allBlocked);
+
+  let origenAcierto = 'NO_BLOQUEADO';
+  let mensaje = `El número ${normWinner} (${resolvedName}) salió premiado, pero no estaba en la lista de bloqueos.`;
+
+  const metodosAcierto = [];
+  if (esPremier) metodosAcierto.push({ id: 'PREMIER', nombre: 'Premier Pluss (Cupo 0)', tag: '🔴 Premier Cupo 0', icono: '🔴' });
+  if (esFijo) metodosAcierto.push({ id: 'FIJO', nombre: 'Número Fijo Permanente', tag: '📌 Número Fijo', icono: '📌' });
+  if (esPredictivo) metodosAcierto.push({ id: 'PREDICTIVO', nombre: 'Modelo Predictivo Visual-FX', tag: '🔮 Visual-FX Atrasados', icono: '🔮' });
+  if (esAleatorio) metodosAcierto.push({ id: 'ALEATORIO', nombre: 'Sistema Autónomo (Cobertura Aleatoria)', tag: '🎲 Cobertura Aleatoria', icono: '🎲' });
+  if (esMemoria) metodosAcierto.push({ id: 'MEMORIA_CUPO_0', nombre: 'Memoria Cupo Cero Premier', tag: '🧠 Memoria Cupo 0', icono: '🧠' });
+  if (metodosAcierto.length === 0 && salioBloqueado) {
+    metodosAcierto.push({ id: 'GENERAL', nombre: 'Lista de Bloqueo', tag: '🛡️ Bloqueo Blindado', icono: '🛡️' });
+  }
+
+  const origenTexto = metodosAcierto.map(m => m.tag).join(' • ') || 'No bloqueado';
+  const aciertosCount = metodosAcierto.length;
+
+  if (aciertosCount > 1) {
+    origenAcierto = 'AMBOS';
+    mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y coincidió en MÚLTIPLES modelos de bloqueo: ${origenTexto}.`;
+  } else if (esPremier) {
+    origenAcierto = 'PREMIER';
+    mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por Premier Pluss (Cupo 0).`;
+  } else if (esFijo) {
+    origenAcierto = 'FIJO';
+    mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por Número Fijo Permanente.`;
+  } else if (esPredictivo) {
+    origenAcierto = 'PREDICTIVO';
+    mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por el Modelo Predictivo Visual-FX (Atrasado).`;
+  } else if (esAleatorio) {
+    origenAcierto = 'ALEATORIO';
+    mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.`;
+  } else if (esMemoria) {
+    origenAcierto = 'MEMORIA_CUPO_0';
+    mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por la Memoria de Cupo Cero Premier (Arrastre Preventivo).`;
+  } else if (salioBloqueado) {
+    origenAcierto = 'GENERAL';
+    mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO (${origenTexto}).`;
+  }
+
+  return {
+    verificado: true,
+    numero: normWinner,
+    nombre: resolvedName,
+    bloqueoAcertado: salioBloqueado,
+    origenAcierto,
+    origenTexto,
+    metodosAcierto,
+    mensaje,
+    fechaVerificacion: fechaVerif || new Date().toISOString()
+  };
+}
+
+/**
+ * Hidratar registros con la Bóveda Inmutable de Resultados Oficiales.
+ * Si un registro perdió su campo `ganador` por sincronización externa pero el sorteo ya existe
+ * en la bóveda, lo restaura instantáneamente. También absorbe ganadores nuevos hacia la bóveda.
+ */
+function hydrateRecordsWithWinnersVault(records, externalVault = null) {
+  if (!Array.isArray(records)) return { records: [], healedCount: 0, vaultUpdated: false };
+  const vault = { ...loadWinnersVault(), ...(externalVault || {}) };
+  let vaultUpdated = !!(externalVault && Object.keys(externalVault).length > 0);
+  let healedCount = 0;
+
+  // 1. Absorber cualquier ganador ya verificado en los registros hacia la bóveda
+  for (const r of records) {
+    if (!r) continue;
+    const ckey = makeCanonicalDrawKey(r);
+    if (!ckey) continue;
+    if (r.ganador && r.ganador.verificado && r.ganador.numero !== undefined && r.ganador.numero !== null && r.ganador.numero !== '') {
+      const normNum = normalizeAnimalKey(r.ganador.numero, r.ganador.nombre);
+      const normName = r.ganador.nombre || getAnimalName(normNum);
+      if (!vault[ckey] || vault[ckey].numero !== normNum) {
+        vault[ckey] = {
+          numero: normNum,
+          nombre: normName,
+          fecha: r.fecha,
+          loteria: canonicalLotteryKey(r.loteria),
+          sorteo: normalizeDrawTime(r.sorteo || r.horaSorteo || ''),
+          updatedAt: r.ganador.fechaVerificacion || new Date().toISOString()
+        };
+        vaultUpdated = true;
+      }
+    }
+  }
+
+  // 2. Restaurar/hidratar cualquier registro cuyo sorteo esté en la bóveda pero no tenga ganador verificado
+  for (const r of records) {
+    if (!r) continue;
+    const ckey = makeCanonicalDrawKey(r);
+    if (!ckey || !vault[ckey]) continue;
+    const v = vault[ckey];
+    if (!r.ganador || !r.ganador.verificado || r.ganador.numero === null || r.ganador.numero === undefined || r.ganador.numero === '') {
+      r.ganador = computeGanadorObjectForRecord(r, v.numero, v.nombre, v.updatedAt);
+      r.revision = {
+        estado: 'RESUELTO',
+        intentos: (r.revision && r.revision.intentos) || 1,
+        fechaResolucion: v.updatedAt || new Date().toISOString()
+      };
+      healedCount++;
+    }
+  }
+
+  if (vaultUpdated) {
+    saveWinnersVault(vault, false);
+  }
+
+  return { records, healedCount, vaultUpdated, vault };
 }
 
 /**
@@ -116,12 +324,32 @@ function getVenezuelaCurrentMinutes() {
       minute: 'numeric',
       hour12: false
     }).formatToParts(new Date());
-    const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+    const h = parseInt(parts.find(p => p.type === 'hour').value, 10) % 24;
     const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
     return h * 60 + m;
   } catch (e) {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
+  }
+}
+
+/**
+ * Obtener fecha actual YYYY-MM-DD en la zona horaria oficial de Venezuela (America/Caracas)
+ */
+function getVenezuelaDateString() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Caracas',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const y = parts.find(p => p.type === 'year').value;
+    const m = parts.find(p => p.type === 'month').value;
+    const d = parts.find(p => p.type === 'day').value;
+    return `${y}-${m}-${d}`;
+  } catch (e) {
+    return new Date().toISOString().slice(0, 10);
   }
 }
 
@@ -154,13 +382,20 @@ function initCSV() {
 }
 
 /**
- * Obtener todos los registros históricos
+ * Obtener todos los registros históricos (siempre hidratados con la Bóveda Inmutable)
  */
 function getHistory(filters = {}) {
   try {
     if (!fs.existsSync(DB_PATH)) return [];
     const raw = fs.readFileSync(DB_PATH, 'utf8');
     let records = JSON.parse(raw);
+
+    const { healedCount } = hydrateRecordsWithWinnersVault(records);
+    if (healedCount > 0) {
+      try {
+        fs.writeFileSync(DB_PATH, JSON.stringify(records, null, 2), 'utf8');
+      } catch (eW) {}
+    }
 
     if (filters.loteria) {
       records = records.filter(r => r.loteria.toLowerCase().includes(filters.loteria.toLowerCase()));
@@ -388,13 +623,7 @@ function recordScan(scanData) {
 
     const existingIndex = history.findIndex(r => {
       if (r.fecha !== fecha) return false;
-      const rLotNorm = (r.loteria || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const lotMatch = rLotNorm === normLot || 
-        (normLot.includes('millonario') && rLotNorm.includes('millonario')) ||
-        (!normLot.includes('millonario') && !rLotNorm.includes('millonario') && normLot.includes('guacharo') && rLotNorm.includes('guacharo')) ||
-        (normLot.includes('granjita') && rLotNorm.includes('granjita')) ||
-        (normLot.includes('lotto') && rLotNorm.includes('lotto')) ||
-        (normLot.includes('selva') && rLotNorm.includes('selva'));
+      const lotMatch = canonicalLotteryKey(r.loteria) === canonicalLotteryKey(scanData.loteria);
       const timeMatch = normTime(r.sorteo) === normDraw || normTime(r.horaSorteo) === normDraw || (r.sorteo && r.sorteo === scanData.sorteo);
       return lotMatch && timeMatch;
     });
@@ -518,12 +747,14 @@ function recordScan(scanData) {
       if (scanData.t7Status) rec.t7Status = scanData.t7Status;
       if (scanData.t7Blocked !== undefined) rec.t7Blocked = rec.t7Blocked || scanData.t7Blocked;
 
+      hydrateRecordsWithWinnersVault(history);
       fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
       rewriteCSV(history);
       return rec;
     } else {
       history.push(newRecord);
       if (history.length > 1000) history.shift();
+      hydrateRecordsWithWinnersVault(history);
       fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
       appendRecordToCSV(newRecord);
       return newRecord;
@@ -577,6 +808,7 @@ function rewriteCSV(records) {
 
 /**
  * Verificar el número ganador de un sorteo y determinar si salvamos la banca (¡TROFEO!)
+ * Además sella el resultado en la Bóveda Inmutable (boveda_resultados.json + Supabase suite_verified_winners)
  */
 function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
   try {
@@ -588,64 +820,9 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
     }
     if (!rec) return { ok: false, message: 'Registro no encontrado' };
 
-    const normWinner = String(winnerNumber).padStart(2, '0');
-    const winnerInt = parseInt(winnerNumber, 10);
+    const normWinner = normalizeAnimalKey(winnerNumber, winnerName);
     const resolvedName = winnerName || getAnimalName(normWinner);
-
-    // Normalizar listas de bloqueados
-    const premierList = (rec.rojosPremier || []).map(n => String(n).padStart(2, '0'));
-    const fijoList = (rec.numFijos || (rec.fijosSeleccionados || []).map(f => String(typeof f === 'object' ? f.numero : f).padStart(2, '0')));
-    const predictivoList = (rec.numPredictivos || (rec.predictivosVisualFx || []).map(p => String(p.numero).padStart(2, '0')));
-    const aleatorioList = (rec.numAleatorios || (rec.aleatoriosSistema || []).map(a => String(a.numero).padStart(2, '0')));
-    const memoriaList = (rec.numMemoriaCupoCero || (rec.memoriaCupoCero || []).map(m => String(typeof m === 'object' ? m.numero : m).padStart(2, '0')));
-    const allBlocked = (rec.rojos || []).map(n => String(n).padStart(2, '0'));
-
-    const esPremier = premierList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
-    const esFijo = fijoList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
-    const esPredictivo = predictivoList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
-    const esAleatorio = aleatorioList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
-    const esMemoria = memoriaList.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
-    const salioBloqueado = esPremier || esFijo || esPredictivo || esAleatorio || esMemoria || allBlocked.some(n => n === normWinner || parseInt(n, 10) === winnerInt);
-
-    let origenAcierto = 'NO_BLOQUEADO';
-    let mensaje = `El número ${normWinner} (${resolvedName}) salió premiado, pero no estaba en la lista de bloqueos.`;
-
-    const metodosAcierto = [];
-    if (esPremier) metodosAcierto.push({ id: 'PREMIER', nombre: 'Premier Pluss (Cupo 0)', tag: '🔴 Premier Cupo 0', icono: '🔴' });
-    if (esFijo) metodosAcierto.push({ id: 'FIJO', nombre: 'Número Fijo Permanente', tag: '📌 Número Fijo', icono: '📌' });
-    if (esPredictivo) metodosAcierto.push({ id: 'PREDICTIVO', nombre: 'Modelo Predictivo Visual-FX', tag: '🔮 Visual-FX Atrasados', icono: '🔮' });
-    if (esAleatorio) metodosAcierto.push({ id: 'ALEATORIO', nombre: 'Sistema Autónomo (Cobertura Aleatoria)', tag: '🎲 Cobertura Aleatoria', icono: '🎲' });
-    if (esMemoria) metodosAcierto.push({ id: 'MEMORIA_CUPO_0', nombre: 'Memoria Cupo Cero Premier', tag: '🧠 Memoria Cupo 0', icono: '🧠' });
-    if (metodosAcierto.length === 0 && salioBloqueado) {
-      metodosAcierto.push({ id: 'GENERAL', nombre: 'Lista de Bloqueo', tag: '🛡️ Bloqueo Blindado', icono: '🛡️' });
-    }
-
-    const origenTexto = metodosAcierto.map(m => m.tag).join(' • ') || 'No bloqueado';
-
-    const aciertosCount = metodosAcierto.length;
-
-    if (aciertosCount > 1) {
-      origenAcierto = 'AMBOS';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y coincidió en MÚLTIPLES modelos de bloqueo: ${origenTexto}.`;
-    } else if (esPremier) {
-      origenAcierto = 'PREMIER';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por Premier Pluss (Cupo 0).`;
-    } else if (esFijo) {
-      origenAcierto = 'FIJO';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por Número Fijo Permanente.`;
-    } else if (esPredictivo) {
-      origenAcierto = 'PREDICTIVO';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por el Modelo Predictivo Visual-FX (Atrasado).`;
-    } else if (esAleatorio) {
-      origenAcierto = 'ALEATORIO';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por la Cobertura Aleatoria del Sistema Autónomo.`;
-    } else if (esMemoria) {
-      origenAcierto = 'MEMORIA_CUPO_0';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO por la Memoria de Cupo Cero Premier (Arrastre Preventivo).`;
-    } else if (salioBloqueado) {
-      origenAcierto = 'GENERAL';
-      mensaje = `🏆 ¡GOLPE DE BANCA EVITADO! El número ganador fue ${normWinner} (${resolvedName}) y estaba BLOQUEADO (${origenTexto}).`;
-    }
+    const nowIso = new Date().toISOString();
 
     // Auto-liberar de la memoria de cupo cero si este número estaba en persistencia
     try {
@@ -654,31 +831,45 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
       cupoMem.verificarYAutoLiberarPorGanador(gameKey, normWinner, resolvedName, rec.sorteo || rec.horaSorteo, rec.fecha);
     } catch (e) {}
 
-    const ganadorObj = {
-      verificado: true,
-      numero: normWinner,
-      nombre: resolvedName,
-      bloqueoAcertado: salioBloqueado,
-      origenAcierto,
-      origenTexto,
-      metodosAcierto,
-      mensaje,
-      fechaVerificacion: new Date().toISOString()
-    };
-
-    // Actualizar este registro y cualquier duplicado existente para el mismo sorteo canónico
     const targetCanonical = makeCanonicalDrawKey(rec);
+
+    // 1. Sellar en la Bóveda Inmutable de Resultados Oficiales
+    if (targetCanonical) {
+      saveWinnersVault({
+        [targetCanonical]: {
+          numero: normWinner,
+          nombre: resolvedName,
+          fecha: rec.fecha,
+          loteria: canonicalLotteryKey(rec.loteria),
+          sorteo: normalizeDrawTime(rec.sorteo || rec.horaSorteo || ''),
+          updatedAt: nowIso
+        }
+      }, true);
+    }
+
+    // 2. Actualizar este registro y cualquier duplicado existente para el mismo sorteo canónico
+    let mainGanadorObj = null;
     history.forEach(r => {
       if (r.id === rec.id || (targetCanonical && makeCanonicalDrawKey(r) === targetCanonical)) {
-        r.ganador = { ...ganadorObj };
+        const gObj = computeGanadorObjectForRecord(r, normWinner, resolvedName, nowIso);
+        r.ganador = gObj;
         r.revision = {
           estado: 'RESUELTO',
           intentos: ((r.revision && r.revision.intentos) || 0) + 1,
-          fechaResolucion: new Date().toISOString()
+          fechaResolucion: nowIso
         };
+        if (r.id === rec.id || !mainGanadorObj) {
+          mainGanadorObj = gObj;
+        }
       }
     });
 
+    if (!mainGanadorObj) {
+      mainGanadorObj = computeGanadorObjectForRecord(rec, normWinner, resolvedName, nowIso);
+      rec.ganador = mainGanadorObj;
+    }
+
+    hydrateRecordsWithWinnersVault(history);
     fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
     rewriteCSV(history);
 
@@ -690,10 +881,10 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
 
     return {
       ok: true,
-      bloqueoAcertado: salioBloqueado,
-      origenAcierto,
+      bloqueoAcertado: mainGanadorObj.bloqueoAcertado,
+      origenAcierto: mainGanadorObj.origenAcierto,
       record: rec,
-      mensaje
+      mensaje: mainGanadorObj.mensaje
     };
   } catch (err) {
     console.error(`[HISTORY VERIFY ERROR] ${err.message}`);
@@ -710,84 +901,111 @@ function verifyRecordWinner(recordId, winnerNumber, winnerName = null) {
 async function syncResultsWithVisualFx(forceReverify = false, targetDate = null) {
   try {
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Sin registros históricos', updatedCount: 0, trophiesCount: 0 };
-    
-    // Si la nube (Supabase) tiene registros, fusionar de forma inteligente sin perder ningún ganador verificado
+
+    const cloudStore = require('./cloud_store');
+    let cloudVault = {};
+
+    // 1. Fusionar historial y bóveda desde Supabase sin perder ningún ganador verificado
     try {
-      const cloudStore = require('./cloud_store');
-      const cloudRes = await cloudStore.getMasterHistory();
-      if (cloudRes && Array.isArray(cloudRes.records) && cloudRes.records.length > 0) {
-        const local = JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]');
-        const merged = mergeHistories(local, cloudRes.records);
-        fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
-        rewriteCSV(merged);
+      const [cloudRes, vaultRes] = await Promise.all([
+        cloudStore.getMasterHistory(true),
+        cloudStore.getMasterWinnersVault(true)
+      ]);
+      if (vaultRes && typeof vaultRes === 'object') {
+        cloudVault = vaultRes;
       }
+      const local = JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]');
+      const cloudRecs = (cloudRes && Array.isArray(cloudRes.records)) ? cloudRes.records : [];
+      const merged = mergeHistories(local, cloudRecs, cloudVault);
+      fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+      rewriteCSV(merged);
     } catch (eCloudMerge) {}
 
-    // Cargar bases de datos de Visual-FX si existen en disco
-    let fxResults = null;
-    let fxHistory = null;
-
-    if (fs.existsSync(VISUAL_FX_RESULTS_PATH)) {
-      try { fxResults = JSON.parse(fs.readFileSync(VISUAL_FX_RESULTS_PATH, 'utf8')); } catch (e) {}
-    }
-    if (fs.existsSync(VISUAL_FX_HISTORY_PATH)) {
-      try { fxHistory = JSON.parse(fs.readFileSync(VISUAL_FX_HISTORY_PATH, 'utf8')); } catch (e) {}
-    }
-
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    const vault = { ...loadWinnersVault(), ...cloudVault };
     let updatedCount = 0;
     let trophiesCount = 0;
+    let vaultDirty = false;
+    let historyDirty = false;
 
     const scraper = require('./scraper_service');
+    const todayVet = getVenezuelaDateString();
 
     for (const rec of history) {
       if (targetDate && rec.fecha !== targetDate) continue;
 
-      // Si ya está verificado y no se pide forzar reverificación, saltar
-      if (rec.ganador && rec.ganador.verificado && !forceReverify) continue;
+      const isAlreadyVerified = !!(rec.ganador && rec.ganador.verificado && rec.ganador.numero !== null && rec.ganador.numero !== undefined && rec.ganador.numero !== '');
+      if (isAlreadyVerified && !forceReverify) continue;
 
-      // Regla de los 2 intentos automáticos: si ya agotó sus 2 intentos y no es forzado, saltar
-      if (!forceReverify && rec.revision && rec.revision.estado === 'AGOTADO_2_INTENTOS') {
+      // Primero revisar si la Bóveda ya tiene el ganador de este sorteo
+      const ckey = makeCanonicalDrawKey(rec);
+      if (!forceReverify && ckey && vault[ckey] && vault[ckey].numero) {
+        const gObj = computeGanadorObjectForRecord(rec, vault[ckey].numero, vault[ckey].nombre, vault[ckey].updatedAt);
+        rec.ganador = gObj;
+        rec.revision = {
+          estado: 'RESUELTO',
+          intentos: (rec.revision && rec.revision.intentos) || 1,
+          fechaResolucion: vault[ckey].updatedAt || new Date().toISOString()
+        };
+        updatedCount++;
+        if (gObj.bloqueoAcertado) trophiesCount++;
+        historyDirty = true;
         continue;
       }
 
-      const recDate = rec.fecha; // ej: 2026-10-11
-      const gameKey = mapLoteriaToVisualFx(rec.loteria);
       const recTimeMinutes = parseTimeToMinutes(rec.sorteo || rec.horaSorteo);
 
-      // Si es automático, verificar ventana de tiempo con hora oficial de Venezuela
-      // Regla: Intento 1 a los +5m del sorteo. Intento 2 a los +10m del sorteo. Máximo 2 intentos.
-      if (!forceReverify && recTimeMinutes !== null) {
+      // Si es hoy en Venezuela, asegurar que ya hayan pasado al menos 5 minutos desde el sorteo
+      if (rec.fecha === todayVet && recTimeMinutes !== null) {
         const currentMins = getVenezuelaCurrentMinutes();
         const diff = currentMins - recTimeMinutes;
-        if (diff < 5) continue; // Aún no han pasado 5 minutos desde el sorteo
-        const intentosPrev = (rec.revision && rec.revision.intentos) || 0;
-        if (intentosPrev >= 2) continue; // Máximo 2 intentos automáticos agotados
-        if (diff < 10 && intentosPrev >= 1) continue; // Ya se hizo el intento 1 (+5m), esperar al +10m
+        if (diff < 5) continue;
       }
 
-      // Scraping en vivo DIRECTO Y EXCLUSIVO desde 1000Resultados
+      // Scraping en vivo desde 1000Resultados (usa caché en memoria de 45s por lotería/fecha)
       let matchedDraw = null;
       try {
         const liveLookup = await scraper.lookupDrawResult(rec.loteria, rec.sorteo || rec.horaSorteo, rec.fecha);
-        if (liveLookup && liveLookup.found && liveLookup.number) {
+        if (liveLookup && liveLookup.found && liveLookup.number !== null && liveLookup.number !== undefined) {
           matchedDraw = { number: liveLookup.number, name: liveLookup.name };
         }
       } catch (eScrap) {}
 
-      if (matchedDraw && matchedDraw.number) {
-        const res = verifyRecordWinner(rec.id, matchedDraw.number, matchedDraw.name);
+      if (matchedDraw && matchedDraw.number !== null && matchedDraw.number !== undefined) {
+        const nowIso = new Date().toISOString();
+        const normWinner = normalizeAnimalKey(matchedDraw.number, matchedDraw.name);
+        const resolvedName = matchedDraw.name || getAnimalName(normWinner);
+        const gObj = computeGanadorObjectForRecord(rec, normWinner, resolvedName, nowIso);
+
+        rec.ganador = gObj;
         rec.revision = {
           estado: 'RESUELTO',
           intentos: ((rec.revision && rec.revision.intentos) || 0) + 1,
-          fechaResolucion: new Date().toISOString()
+          fechaResolucion: nowIso
         };
-        if (res.ok) {
-          updatedCount++;
-          if (res.bloqueoAcertado) trophiesCount++;
+
+        if (ckey) {
+          vault[ckey] = {
+            numero: normWinner,
+            nombre: resolvedName,
+            fecha: rec.fecha,
+            loteria: canonicalLotteryKey(rec.loteria),
+            sorteo: normalizeDrawTime(rec.sorteo || rec.horaSorteo || ''),
+            updatedAt: nowIso
+          };
+          vaultDirty = true;
         }
+
+        try {
+          const cupoMem = require('./cupo_cero_memory');
+          const gameKey = mapLoteriaToVisualFx(rec.loteria);
+          cupoMem.verificarYAutoLiberarPorGanador(gameKey, normWinner, resolvedName, rec.sorteo || rec.horaSorteo, rec.fecha);
+        } catch (eMem) {}
+
+        updatedCount++;
+        if (gObj.bloqueoAcertado) trophiesCount++;
+        historyDirty = true;
       } else if (!forceReverify) {
-        // Registrar intento fallido (máximo 2 intentos)
         const intentosPrev = (rec.revision && rec.revision.intentos) || 0;
         const nuevosIntentos = intentosPrev + 1;
         rec.revision = {
@@ -795,13 +1013,23 @@ async function syncResultsWithVisualFx(forceReverify = false, targetDate = null)
           intentos: nuevosIntentos,
           ultimoIntento: new Date().toISOString()
         };
+        historyDirty = true;
       }
     }
 
-    if (updatedCount > 0) {
+    if (vaultDirty) {
+      saveWinnersVault(vault, false);
       try {
-        const cloudStore = require('./cloud_store');
-        await cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+        await cloudStore.saveMasterWinnersVault(vault);
+      } catch (eV) {}
+    }
+
+    if (historyDirty || updatedCount > 0) {
+      hydrateRecordsWithWinnersVault(history, vault);
+      fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
+      rewriteCSV(history);
+      try {
+        await cloudStore.saveMasterHistory(history);
       } catch (eCloud) {}
     }
 
@@ -835,19 +1063,16 @@ async function lookupAndUpdateRecord(recordId) {
     const drawTime = rec.sorteo || rec.horaSorteo;
     const lookup = await scraper.lookupDrawResult(rec.loteria, drawTime, rec.fecha);
 
-    if (lookup.found && lookup.number) {
+    if (lookup.found && lookup.number !== null && lookup.number !== undefined) {
       const verifyRes = verifyRecordWinner(rec.id, lookup.number, lookup.name);
-      rec.revision = {
-        estado: 'RESUELTO',
-        intentos: ((rec.revision && rec.revision.intentos) || 0) + 1,
-        fechaResolucion: new Date().toISOString(),
-        origen: 'MANUAL_USUARIO'
-      };
 
       try {
         const cloudStore = require('./cloud_store');
         const freshHistory = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-        await cloudStore.saveMasterHistory(freshHistory);
+        await Promise.all([
+          cloudStore.saveMasterHistory(freshHistory),
+          cloudStore.saveMasterWinnersVault(loadWinnersVault())
+        ]);
       } catch (eC) {}
 
       return {
@@ -879,7 +1104,7 @@ async function lookupAndUpdateRecord(recordId) {
 
 /**
  * Extraer resultado de un sorteo programado específico en 1000Resultados
- * Sigue la regla:
+ * Sigue la regla estricta:
  * - Intento 1: A los 5 minutos tras el sorteo (+5 min)
  * - Intento 2: A los 10 minutos tras el sorteo (+10 min, si el 1 no lo consiguió)
  * - Al segundo intento sin conseguirlo, PARA por completo (máximo 2 intentos automáticos).
@@ -893,23 +1118,25 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
     if (!fs.existsSync(DB_PATH)) return { ok: false, found: false, message: 'Sin registros históricos' };
 
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    const gameKey = mapLoteriaToVisualFx(loteriaKeyOrId);
+    hydrateRecordsWithWinnersVault(history);
+
+    const targetCanLot = canonicalLotteryKey(loteriaKeyOrId);
     const targetMinutes = parseTimeToMinutes(sorteoHora);
 
-    // Buscar registros en nuestra historia que correspondan a este sorteo y no estén verificados
+    // Buscar registros en nuestra historia que correspondan exactamente a esta lotería y hora y no estén verificados
     const matchingRecords = history.filter(rec => {
-      const matchGame = mapLoteriaToVisualFx(rec.loteria) === gameKey;
+      const matchGame = canonicalLotteryKey(rec.loteria) === targetCanLot;
       const recMins = parseTimeToMinutes(rec.sorteo || rec.horaSorteo);
-      const matchTime = targetMinutes !== null && recMins !== null 
-        ? Math.abs(recMins - targetMinutes) <= 25 
-        : (rec.sorteo && rec.sorteo.includes(sorteoHora));
+      const matchTime = targetMinutes !== null && recMins !== null
+        ? Math.abs(recMins - targetMinutes) <= 5
+        : (normalizeDrawTime(rec.sorteo || rec.horaSorteo) === normalizeDrawTime(sorteoHora));
       const matchDate = !fechaStr || rec.fecha === fechaStr;
       const pendiente = !rec.ganador || !rec.ganador.verificado;
       return matchGame && matchTime && matchDate && pendiente;
     });
 
     if (matchingRecords.length === 0) {
-      return { ok: true, found: false, message: 'No hay sorteos pendientes para verificar' };
+      return { ok: true, found: false, alreadyVerified: true, message: 'No hay sorteos pendientes para verificar' };
     }
 
     // 1. Scraping directo desde 1000Resultados
@@ -917,28 +1144,26 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
     let matchedDraw = null;
     try {
       const lookup = await scraper.lookupDrawResult(loteriaKeyOrId, sorteoHora, fechaStr);
-      if (lookup && lookup.found && lookup.number) {
+      if (lookup && lookup.found && lookup.number !== null && lookup.number !== undefined) {
         matchedDraw = { number: lookup.number, name: lookup.name };
       }
     } catch (eScrap) {}
 
-
-    if (matchedDraw && matchedDraw.number) {
+    if (matchedDraw && matchedDraw.number !== null && matchedDraw.number !== undefined) {
       let trophiesWon = 0;
-      matchingRecords.forEach(rec => {
+      for (const rec of matchingRecords) {
         const res = verifyRecordWinner(rec.id, matchedDraw.number, matchedDraw.name);
-        rec.revision = {
-          estado: 'RESUELTO',
-          intentos: intentoNum,
-          fechaResolucion: new Date().toISOString()
-        };
         if (res.ok && res.bloqueoAcertado) trophiesWon++;
-      });
+      }
 
-      fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
+      // IMPORTANTE: Leer DB_PATH recién actualizado por verifyRecordWinner (NUNCA sobrescribir con history viejo en memoria)
+      const freshHistory = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
       try {
         const cloudStore = require('./cloud_store');
-        await cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+        await Promise.all([
+          cloudStore.saveMasterHistory(freshHistory),
+          cloudStore.saveMasterWinnersVault(loadWinnersVault())
+        ]);
       } catch (eC) {}
 
       return {
@@ -959,10 +1184,11 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
           ultimoIntento: new Date().toISOString()
         };
       });
+      hydrateRecordsWithWinnersVault(history);
       fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
       try {
         const cloudStore = require('./cloud_store');
-        await cloudStore.saveMasterHistory(JSON.parse(fs.readFileSync(DB_PATH, 'utf8')));
+        await cloudStore.saveMasterHistory(history);
       } catch (eC) {}
 
       return {
@@ -970,7 +1196,7 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
         found: false,
         intentoNum,
         detenerIntentos: intentoNum >= 2,
-        message: intentoNum >= 2 
+        message: intentoNum >= 2
           ? `Resultado no publicado tras 2do intento (+10 min). Deteniendo revisiones automáticas.`
           : `Resultado no publicado en 1er intento (+5 min). Se reintentará al minuto +10.`
       };
@@ -1048,6 +1274,7 @@ function updateT7Status(recordId, t7Status, t7Blocked) {
     if (rec) {
       rec.t7Status = t7Status;
       rec.t7Blocked = t7Blocked;
+      hydrateRecordsWithWinnersVault(history);
       fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
       rewriteCSV(history);
       return true;
@@ -1057,11 +1284,11 @@ function updateT7Status(recordId, t7Status, t7Blocked) {
 }
 
 /**
- * Fusión Monotónica de Historiales:
+ * Fusión Monotónica de Historiales + Hidratación con Bóveda Inmutable:
  * Garantiza de forma estricta que NINGÚN resultado o ganador verificado sea revertido jamás.
- * Si un sorteo está verificado en A o en B, el resultado final SIEMPRE mantiene la verificación.
+ * Si un sorteo está verificado en A, en B, o en la Bóveda de Resultados, SIEMPRE mantiene la verificación.
  */
-function mergeHistories(baseRecords, incomingRecords) {
+function mergeHistories(baseRecords, incomingRecords, externalVault = null) {
   if (!Array.isArray(baseRecords)) baseRecords = [];
   if (!Array.isArray(incomingRecords)) incomingRecords = [];
 
@@ -1082,9 +1309,6 @@ function mergeHistories(baseRecords, incomingRecords) {
       let winnerToKeep = existing.ganador;
 
       // REGLA DE ORO DE INMUTABILIDAD DE GANADORES:
-      // Si existing está verificado y incoming NO, prevalece existing.
-      // Si incoming está verificado y existing NO, prevalece incoming.
-      // Si ambos están verificados, prevalece el que tenga mayor detalle o acierto.
       if (existing.ganador && existing.ganador.verificado && (!inc.ganador || !inc.ganador.verificado)) {
         winnerToKeep = existing.ganador;
       } else if (inc.ganador && inc.ganador.verificado && (!existing.ganador || !existing.ganador.verificado)) {
@@ -1095,9 +1319,9 @@ function mergeHistories(baseRecords, incomingRecords) {
         winnerToKeep = (existing.ganador && existing.ganador.numero) ? existing.ganador : ((inc.ganador && inc.ganador.numero) ? inc.ganador : (existing.ganador || inc.ganador || null));
       }
 
-      const revToKeep = (existing.revision && existing.revision.estado === 'RESUELTO')
+      const revToKeep = (existing.revision && existing.revision.estado === 'RESUELTO' && existing.ganador && existing.ganador.verificado)
         ? existing.revision
-        : ((inc.revision && inc.revision.estado === 'RESUELTO') ? inc.revision : (existing.revision || inc.revision || null));
+        : ((inc.revision && inc.revision.estado === 'RESUELTO' && inc.ganador && inc.ganador.verificado) ? inc.revision : (existing.revision || inc.revision || null));
 
       map.set(key, {
         ...inc,
@@ -1114,6 +1338,7 @@ function mergeHistories(baseRecords, incomingRecords) {
   }
 
   const result = Array.from(map.values());
+  hydrateRecordsWithWinnersVault(result, externalVault);
   result.sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
   return result;
 }
@@ -1123,6 +1348,11 @@ module.exports = {
   recordScan,
   verifyRecordWinner,
   mergeHistories,
+  hydrateRecordsWithWinnersVault,
+  loadWinnersVault,
+  saveWinnersVault,
+  getWinnerFromVault,
+  saveWinnerToVault,
   syncResultsWithVisualFx,
   syncScheduledDrawResult,
   lookupAndUpdateRecord,
@@ -1131,10 +1361,14 @@ module.exports = {
   rewriteCSV,
   getAnimalName,
   parseTimeToMinutes,
+  getVenezuelaCurrentMinutes,
+  getVenezuelaDateString,
   normalizeDrawTime,
+  canonicalLotteryKey,
   makeCanonicalDrawKey,
   CSV_PATH,
-  DB_PATH
+  DB_PATH,
+  WINNERS_VAULT_PATH
 };
 
 
