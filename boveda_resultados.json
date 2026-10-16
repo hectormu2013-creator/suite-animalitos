@@ -3632,379 +3632,771 @@
     "updatedAt": "2026-10-15T23:15:40.159Z"
   },
   "2026-10-15_guacharoactivo_10:00": {
-    "numero": "45",
-    "nombre": "Garza",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Garza",
+    "numero": "45",
     "sorteo": "10:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.793Z"
   },
   "2026-10-15_guacharoactivo_11:00": {
-    "numero": "26",
-    "nombre": "Vaca",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Vaca",
+    "numero": "26",
     "sorteo": "11:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.800Z"
   },
   "2026-10-15_guacharoactivo_12:00": {
-    "numero": "73",
-    "nombre": "Hipopótamo",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Hipopótamo",
+    "numero": "73",
     "sorteo": "12:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.808Z"
   },
   "2026-10-15_guacharoactivo_13:00": {
-    "numero": "19",
-    "nombre": "Chivo",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Chivo",
+    "numero": "19",
     "sorteo": "13:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.813Z"
   },
   "2026-10-15_guacharoactivo_14:00": {
-    "numero": "35",
-    "nombre": "Jirafa",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Jirafa",
+    "numero": "35",
     "sorteo": "14:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.820Z"
   },
   "2026-10-15_guacharoactivo_15:00": {
-    "numero": "18",
-    "nombre": "Burro",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Burro",
+    "numero": "18",
     "sorteo": "15:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.823Z"
   },
   "2026-10-15_guacharoactivo_16:00": {
-    "numero": "63",
-    "nombre": "Cangrejo",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Cangrejo",
+    "numero": "63",
     "sorteo": "16:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.825Z"
   },
   "2026-10-15_guacharoactivo_17:00": {
-    "numero": "41",
-    "nombre": "Canguro",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Canguro",
+    "numero": "41",
     "sorteo": "17:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.827Z"
   },
   "2026-10-15_guacharoactivo_18:00": {
-    "numero": "51",
-    "nombre": "Pelícano",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Pelícano",
+    "numero": "51",
     "sorteo": "18:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.831Z"
   },
   "2026-10-15_guacharoactivo_19:00": {
-    "numero": "35",
-    "nombre": "Jirafa",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Jirafa",
+    "numero": "35",
     "sorteo": "19:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:44.838Z"
   },
   "2026-10-15_guacharomillonario_09:30": {
-    "numero": "71",
-    "nombre": "Guacamaya",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Guacamaya",
+    "numero": "71",
     "sorteo": "09:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.126Z"
   },
   "2026-10-15_guacharomillonario_10:30": {
-    "numero": "15",
-    "nombre": "Zorro",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Zorro",
+    "numero": "15",
     "sorteo": "10:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.128Z"
   },
   "2026-10-15_guacharomillonario_11:30": {
-    "numero": "95",
-    "nombre": "Escarabajo",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Escarabajo",
+    "numero": "95",
     "sorteo": "11:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.130Z"
   },
   "2026-10-15_guacharomillonario_12:30": {
-    "numero": "88",
-    "nombre": "Erizo de Mar",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Erizo de Mar",
+    "numero": "88",
     "sorteo": "12:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.132Z"
   },
   "2026-10-15_guacharomillonario_13:30": {
-    "numero": "74",
-    "nombre": "Turpial",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Turpial",
+    "numero": "74",
     "sorteo": "13:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.134Z"
   },
   "2026-10-15_guacharomillonario_14:30": {
-    "numero": "46",
-    "nombre": "Puma",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Puma",
+    "numero": "46",
     "sorteo": "14:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.136Z"
   },
   "2026-10-15_guacharomillonario_15:30": {
-    "numero": "82",
-    "nombre": "Cucaracha",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Cucaracha",
+    "numero": "82",
     "sorteo": "15:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.138Z"
   },
   "2026-10-15_guacharomillonario_16:30": {
-    "numero": "22",
-    "nombre": "Camello",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Camello",
+    "numero": "22",
     "sorteo": "16:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.140Z"
   },
   "2026-10-15_guacharomillonario_17:30": {
-    "numero": "20",
-    "nombre": "Cerdo",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Cerdo",
+    "numero": "20",
     "sorteo": "17:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.142Z"
   },
   "2026-10-15_guacharomillonario_18:30": {
-    "numero": "00",
-    "nombre": "Ballena",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Ballena",
+    "numero": "00",
     "sorteo": "18:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.144Z"
   },
   "2026-10-15_guacharoactivo_08:00": {
-    "numero": "24",
-    "nombre": "Iguana",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Iguana",
+    "numero": "24",
     "sorteo": "08:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:45.147Z"
   },
   "2026-10-15_lagranjita_08:00": {
-    "numero": "00",
-    "nombre": "Ballena",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Ballena",
+    "numero": "00",
     "sorteo": "08:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.341Z"
   },
   "2026-10-15_lottoactivo_08:00": {
-    "numero": "31",
-    "nombre": "Lapa",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Lapa",
+    "numero": "31",
     "sorteo": "08:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.343Z"
   },
   "2026-10-15_guacharomillonario_08:30": {
-    "numero": "38",
-    "nombre": "Bufalo",
     "fecha": "2026-10-15",
-    "loteria": "guacharomillonario",
+    "nombre": "Bufalo",
+    "numero": "38",
     "sorteo": "08:30",
+    "loteria": "guacharomillonario",
     "updatedAt": "2026-10-15T23:15:45.348Z"
   },
   "2026-10-15_guacharoactivo_09:00": {
-    "numero": "22",
-    "nombre": "Camello",
     "fecha": "2026-10-15",
-    "loteria": "guacharoactivo",
+    "nombre": "Camello",
+    "numero": "22",
     "sorteo": "09:00",
+    "loteria": "guacharoactivo",
     "updatedAt": "2026-10-15T23:15:45.352Z"
   },
   "2026-10-15_lagranjita_09:00": {
-    "numero": "30",
-    "nombre": "Caiman",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Caiman",
+    "numero": "30",
     "sorteo": "09:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.355Z"
   },
   "2026-10-15_lottoactivo_09:00": {
-    "numero": "0",
-    "nombre": "Delfin",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Delfin",
+    "numero": "0",
     "sorteo": "09:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.358Z"
   },
   "2026-10-15_lagranjita_10:00": {
-    "numero": "14",
-    "nombre": "Paloma",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Paloma",
+    "numero": "14",
     "sorteo": "10:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.361Z"
   },
   "2026-10-15_lottoactivo_10:00": {
-    "numero": "25",
-    "nombre": "Gallina",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Gallina",
+    "numero": "25",
     "sorteo": "10:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.367Z"
   },
   "2026-10-15_lagranjita_11:00": {
-    "numero": "24",
-    "nombre": "Iguana",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Iguana",
+    "numero": "24",
     "sorteo": "11:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.372Z"
   },
   "2026-10-15_lottoactivo_11:00": {
-    "numero": "07",
-    "nombre": "Perico",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Perico",
+    "numero": "07",
     "sorteo": "11:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.377Z"
   },
   "2026-10-15_lagranjita_12:00": {
-    "numero": "06",
-    "nombre": "Rana",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Rana",
+    "numero": "06",
     "sorteo": "12:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.383Z"
   },
   "2026-10-15_lottoactivo_12:00": {
-    "numero": "33",
-    "nombre": "Pescado",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Pescado",
+    "numero": "33",
     "sorteo": "12:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.388Z"
   },
   "2026-10-15_lagranjita_13:00": {
-    "numero": "18",
-    "nombre": "Burro",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Burro",
+    "numero": "18",
     "sorteo": "13:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.392Z"
   },
   "2026-10-15_lottoactivo_13:00": {
-    "numero": "22",
-    "nombre": "Camello",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Camello",
+    "numero": "22",
     "sorteo": "13:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.397Z"
   },
   "2026-10-15_lagranjita_14:00": {
-    "numero": "13",
-    "nombre": "Mono",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Mono",
+    "numero": "13",
     "sorteo": "14:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.402Z"
   },
   "2026-10-15_lottoactivo_14:00": {
-    "numero": "30",
-    "nombre": "Caiman",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Caiman",
+    "numero": "30",
     "sorteo": "14:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.406Z"
   },
   "2026-10-15_lagranjita_15:00": {
-    "numero": "09",
-    "nombre": "Aguila",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Aguila",
+    "numero": "09",
     "sorteo": "15:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.409Z"
   },
   "2026-10-15_lottoactivo_15:00": {
-    "numero": "04",
-    "nombre": "Alacrán",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Alacrán",
+    "numero": "04",
     "sorteo": "15:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.411Z"
   },
   "2026-10-15_lagranjita_16:00": {
-    "numero": "34",
-    "nombre": "Venado",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Venado",
+    "numero": "34",
     "sorteo": "16:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.416Z"
   },
   "2026-10-15_lottoactivo_16:00": {
-    "numero": "34",
-    "nombre": "Venado",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Venado",
+    "numero": "34",
     "sorteo": "16:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.419Z"
   },
   "2026-10-15_lagranjita_17:00": {
-    "numero": "32",
-    "nombre": "Ardilla",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Ardilla",
+    "numero": "32",
     "sorteo": "17:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.421Z"
   },
   "2026-10-15_lottoactivo_17:00": {
-    "numero": "09",
-    "nombre": "Águila",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Águila",
+    "numero": "09",
     "sorteo": "17:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.423Z"
   },
   "2026-10-15_lagranjita_18:00": {
-    "numero": "15",
-    "nombre": "Zorro",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Zorro",
+    "numero": "15",
     "sorteo": "18:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.425Z"
   },
   "2026-10-15_lottoactivo_18:00": {
-    "numero": "06",
-    "nombre": "Rana",
     "fecha": "2026-10-15",
-    "loteria": "lottoactivo",
+    "nombre": "Rana",
+    "numero": "06",
     "sorteo": "18:00",
+    "loteria": "lottoactivo",
     "updatedAt": "2026-10-15T23:15:45.427Z"
   },
   "2026-10-15_lagranjita_19:00": {
-    "numero": "12",
-    "nombre": "Caballo",
     "fecha": "2026-10-15",
-    "loteria": "lagranjita",
+    "nombre": "Caballo",
+    "numero": "12",
     "sorteo": "19:00",
+    "loteria": "lagranjita",
     "updatedAt": "2026-10-15T23:15:45.433Z"
   },
   "2026-10-15_lottoactivo_19:00": {
+    "fecha": "2026-10-15",
+    "nombre": "Mono",
+    "numero": "13",
+    "sorteo": "19:00",
+    "loteria": "lottoactivo",
+    "updatedAt": "2026-10-15T23:15:45.437Z"
+  },
+  "2026-10-15_guacharomillonario_19:30": {
+    "fecha": "2026-10-15",
+    "nombre": "Calamar",
+    "numero": "79",
+    "sorteo": "19:30",
+    "loteria": "guacharomillonario",
+    "updatedAt": "2026-10-15T23:33:36.212Z"
+  },
+  "2026-10-16_guacharoactivo_08:00": {
+    "numero": "27",
+    "nombre": "Perro",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "08:00",
+    "updatedAt": "2026-10-16T23:40:37.607Z"
+  },
+  "2026-10-16_lottoactivo_08:00": {
+    "numero": "06",
+    "nombre": "Rana",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "08:00",
+    "updatedAt": "2026-10-16T23:40:37.609Z"
+  },
+  "2026-10-16_lagranjita_08:00": {
+    "numero": "26",
+    "nombre": "Vaca",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "08:00",
+    "updatedAt": "2026-10-16T23:40:37.608Z"
+  },
+  "2026-10-16_guacharomillonario_08:30": {
+    "numero": "29",
+    "nombre": "Elefante",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "08:30",
+    "updatedAt": "2026-10-16T23:40:37.610Z"
+  },
+  "2026-10-16_guacharoactivo_09:00": {
+    "numero": "14",
+    "nombre": "Paloma",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "09:00",
+    "updatedAt": "2026-10-16T23:40:37.611Z"
+  },
+  "2026-10-16_lottoactivo_09:00": {
+    "numero": "29",
+    "nombre": "Elefante",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "09:00",
+    "updatedAt": "2026-10-16T23:40:37.612Z"
+  },
+  "2026-10-16_lagranjita_09:00": {
+    "numero": "28",
+    "nombre": "Zamuro",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "09:00",
+    "updatedAt": "2026-10-16T23:40:37.612Z"
+  },
+  "2026-10-16_lagranjita_10:00": {
+    "numero": "36",
+    "nombre": "Culebra",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "10:00",
+    "updatedAt": "2026-10-16T23:40:37.621Z"
+  },
+  "2026-10-16_lagranjita_11:00": {
+    "numero": "09",
+    "nombre": "Aguila",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "11:00",
+    "updatedAt": "2026-10-16T23:40:37.622Z"
+  },
+  "2026-10-16_lagranjita_12:00": {
+    "numero": "18",
+    "nombre": "Burro",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "12:00",
+    "updatedAt": "2026-10-16T23:40:37.623Z"
+  },
+  "2026-10-16_lagranjita_13:00": {
+    "numero": "34",
+    "nombre": "Venado",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "13:00",
+    "updatedAt": "2026-10-16T23:40:37.626Z"
+  },
+  "2026-10-16_lagranjita_14:00": {
     "numero": "13",
     "nombre": "Mono",
-    "fecha": "2026-10-15",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "14:00",
+    "updatedAt": "2026-10-16T23:40:37.628Z"
+  },
+  "2026-10-16_lagranjita_15:00": {
+    "numero": "00",
+    "nombre": "Ballena",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "15:00",
+    "updatedAt": "2026-10-16T23:40:37.629Z"
+  },
+  "2026-10-16_lagranjita_16:00": {
+    "numero": "01",
+    "nombre": "Carnero",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "16:00",
+    "updatedAt": "2026-10-16T23:40:37.631Z"
+  },
+  "2026-10-16_lagranjita_17:00": {
+    "numero": "03",
+    "nombre": "Ciempies",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "17:00",
+    "updatedAt": "2026-10-16T23:40:37.632Z"
+  },
+  "2026-10-16_lagranjita_18:00": {
+    "numero": "07",
+    "nombre": "Perico",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "18:00",
+    "updatedAt": "2026-10-16T23:40:37.633Z"
+  },
+  "2026-10-16_lagranjita_19:00": {
+    "numero": "20",
+    "nombre": "Cochino",
+    "fecha": "2026-10-16",
+    "loteria": "lagranjita",
+    "sorteo": "19:00",
+    "updatedAt": "2026-10-16T23:40:37.634Z"
+  },
+  "2026-10-16_guacharoactivo_10:00": {
+    "numero": "51",
+    "nombre": "Pelícano",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "10:00",
+    "updatedAt": "2026-10-16T23:40:37.614Z"
+  },
+  "2026-10-16_guacharoactivo_11:00": {
+    "numero": "71",
+    "nombre": "Guacamaya",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "11:00",
+    "updatedAt": "2026-10-16T23:40:37.519Z"
+  },
+  "2026-10-16_guacharoactivo_12:00": {
+    "numero": "56",
+    "nombre": "Tiburón",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "12:00",
+    "updatedAt": "2026-10-16T23:40:37.590Z"
+  },
+  "2026-10-16_guacharoactivo_13:00": {
+    "numero": "67",
+    "nombre": "Avestruz",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "13:00",
+    "updatedAt": "2026-10-16T23:40:37.592Z"
+  },
+  "2026-10-16_guacharoactivo_14:00": {
+    "numero": "43",
+    "nombre": "Mariposa",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "14:00",
+    "updatedAt": "2026-10-16T23:40:37.593Z"
+  },
+  "2026-10-16_guacharoactivo_15:00": {
+    "numero": "50",
+    "nombre": "Canario",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "15:00",
+    "updatedAt": "2026-10-16T23:40:37.594Z"
+  },
+  "2026-10-16_guacharoactivo_16:00": {
+    "numero": "44",
+    "nombre": "Chigüire",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "16:00",
+    "updatedAt": "2026-10-16T23:40:37.595Z"
+  },
+  "2026-10-16_guacharoactivo_17:00": {
+    "numero": "64",
+    "nombre": "Gavilán",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "17:00",
+    "updatedAt": "2026-10-16T23:40:37.596Z"
+  },
+  "2026-10-16_guacharoactivo_18:00": {
+    "numero": "50",
+    "nombre": "Canario",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "18:00",
+    "updatedAt": "2026-10-16T23:40:37.596Z"
+  },
+  "2026-10-16_guacharoactivo_19:00": {
+    "numero": "29",
+    "nombre": "Elefante",
+    "fecha": "2026-10-16",
+    "loteria": "guacharoactivo",
+    "sorteo": "19:00",
+    "updatedAt": "2026-10-16T23:40:37.597Z"
+  },
+  "2026-10-16_lottoactivo_10:00": {
+    "numero": "26",
+    "nombre": "Vaca",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "10:00",
+    "updatedAt": "2026-10-16T23:40:37.619Z"
+  },
+  "2026-10-16_lottoactivo_11:00": {
+    "numero": "20",
+    "nombre": "Cochino",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "11:00",
+    "updatedAt": "2026-10-16T23:40:37.622Z"
+  },
+  "2026-10-16_lottoactivo_12:00": {
+    "numero": "33",
+    "nombre": "Pescado",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "12:00",
+    "updatedAt": "2026-10-16T23:40:37.625Z"
+  },
+  "2026-10-16_lottoactivo_13:00": {
+    "numero": "10",
+    "nombre": "Tigre",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "13:00",
+    "updatedAt": "2026-10-16T23:40:37.627Z"
+  },
+  "2026-10-16_lottoactivo_14:00": {
+    "numero": "21",
+    "nombre": "Gallo",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "14:00",
+    "updatedAt": "2026-10-16T23:40:37.629Z"
+  },
+  "2026-10-16_lottoactivo_15:00": {
+    "numero": "14",
+    "nombre": "Paloma",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "15:00",
+    "updatedAt": "2026-10-16T23:40:37.630Z"
+  },
+  "2026-10-16_lottoactivo_16:00": {
+    "numero": "22",
+    "nombre": "Camello",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "16:00",
+    "updatedAt": "2026-10-16T23:40:37.631Z"
+  },
+  "2026-10-16_lottoactivo_17:00": {
+    "numero": "09",
+    "nombre": "Águila",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "17:00",
+    "updatedAt": "2026-10-16T23:40:37.632Z"
+  },
+  "2026-10-16_lottoactivo_18:00": {
+    "numero": "06",
+    "nombre": "Rana",
+    "fecha": "2026-10-16",
+    "loteria": "lottoactivo",
+    "sorteo": "18:00",
+    "updatedAt": "2026-10-16T23:40:37.634Z"
+  },
+  "2026-10-16_lottoactivo_19:00": {
+    "numero": "19",
+    "nombre": "Chivo",
+    "fecha": "2026-10-16",
     "loteria": "lottoactivo",
     "sorteo": "19:00",
-    "updatedAt": "2026-10-15T23:15:45.437Z"
+    "updatedAt": "2026-10-16T23:40:37.635Z"
+  },
+  "2026-10-16_guacharomillonario_09:30": {
+    "numero": "16",
+    "nombre": "Oso",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "09:30",
+    "updatedAt": "2026-10-16T23:40:37.613Z"
+  },
+  "2026-10-16_guacharomillonario_10:30": {
+    "numero": "61",
+    "nombre": "Panda",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "10:30",
+    "updatedAt": "2026-10-16T23:40:37.598Z"
+  },
+  "2026-10-16_guacharomillonario_11:30": {
+    "numero": "50",
+    "nombre": "Canario",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "11:30",
+    "updatedAt": "2026-10-16T23:40:37.599Z"
+  },
+  "2026-10-16_guacharomillonario_12:30": {
+    "numero": "85",
+    "nombre": "Hamster",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "12:30",
+    "updatedAt": "2026-10-16T23:40:37.600Z"
+  },
+  "2026-10-16_guacharomillonario_13:30": {
+    "numero": "42",
+    "nombre": "Tucan",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "13:30",
+    "updatedAt": "2026-10-16T23:40:37.600Z"
+  },
+  "2026-10-16_guacharomillonario_14:30": {
+    "numero": "40",
+    "nombre": "Avispa",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "14:30",
+    "updatedAt": "2026-10-16T23:40:37.601Z"
+  },
+  "2026-10-16_guacharomillonario_15:30": {
+    "numero": "30",
+    "nombre": "Caiman",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "15:30",
+    "updatedAt": "2026-10-16T23:40:37.602Z"
+  },
+  "2026-10-16_guacharomillonario_16:30": {
+    "numero": "48",
+    "nombre": "Puercoespin",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "16:30",
+    "updatedAt": "2026-10-16T23:40:37.603Z"
+  },
+  "2026-10-16_guacharomillonario_17:30": {
+    "numero": "14",
+    "nombre": "Paloma",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "17:30",
+    "updatedAt": "2026-10-16T23:40:37.603Z"
+  },
+  "2026-10-16_guacharomillonario_18:30": {
+    "numero": "53",
+    "nombre": "Caracol",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "18:30",
+    "updatedAt": "2026-10-16T23:40:37.604Z"
+  },
+  "2026-10-16_guacharomillonario_19:30": {
+    "numero": "67",
+    "nombre": "Avestruz",
+    "fecha": "2026-10-16",
+    "loteria": "guacharomillonario",
+    "sorteo": "19:30",
+    "updatedAt": "2026-10-16T23:40:37.605Z"
   }
 }

@@ -1051,6 +1051,19 @@ async function syncResultsWithVisualFx(forceReverify = false, targetDate = null)
  */
 async function lookupAndUpdateRecord(recordId) {
   try {
+    const cloudStore = require('./cloud_store');
+    try {
+      const [cloudHist, cloudVault] = await Promise.all([
+        cloudStore.getMasterHistory(true),
+        cloudStore.getMasterWinnersVault(true)
+      ]);
+      const localRecs = fs.existsSync(DB_PATH) ? JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]') : [];
+      if ((cloudHist && Array.isArray(cloudHist.records)) || (cloudVault && Object.keys(cloudVault).length > 0)) {
+        const merged = mergeHistories(localRecs, (cloudHist && cloudHist.records) || [], cloudVault || {});
+        fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+      }
+    } catch (ePull) {}
+
     if (!fs.existsSync(DB_PATH)) return { ok: false, message: 'Base de datos no encontrada' };
     const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     let rec = history.find(r => r.id === recordId);
@@ -1067,7 +1080,6 @@ async function lookupAndUpdateRecord(recordId) {
       const verifyRes = verifyRecordWinner(rec.id, lookup.number, lookup.name);
 
       try {
-        const cloudStore = require('./cloud_store');
         const freshHistory = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
         await Promise.all([
           cloudStore.saveMasterHistory(freshHistory),
@@ -1115,9 +1127,21 @@ async function lookupAndUpdateRecord(recordId) {
  */
 async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, intentoNum = 1) {
   try {
-    if (!fs.existsSync(DB_PATH)) return { ok: false, found: false, message: 'Sin registros históricos' };
+    const cloudStore = require('./cloud_store');
+    // 0. Descargar primero los registros más recientes subidos por la taquilla (Máquina 3 / Máquina 1) a Supabase
+    try {
+      const [cloudHist, cloudVault] = await Promise.all([
+        cloudStore.getMasterHistory(true),
+        cloudStore.getMasterWinnersVault(true)
+      ]);
+      const localRecs = fs.existsSync(DB_PATH) ? JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]') : [];
+      if ((cloudHist && Array.isArray(cloudHist.records)) || (cloudVault && Object.keys(cloudVault).length > 0)) {
+        const merged = mergeHistories(localRecs, (cloudHist && cloudHist.records) || [], cloudVault || {});
+        fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2), 'utf8');
+      }
+    } catch (ePull) {}
 
-    const history = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    let history = fs.existsSync(DB_PATH) ? JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]') : [];
     hydrateRecordsWithWinnersVault(history);
 
     const targetCanLot = canonicalLotteryKey(loteriaKeyOrId);
@@ -1135,11 +1159,20 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
       return matchGame && matchTime && matchDate && pendiente;
     });
 
-    if (matchingRecords.length === 0) {
-      return { ok: true, found: false, alreadyVerified: true, message: 'No hay sorteos pendientes para verificar' };
+    const existingVaultWinner = getWinnerFromVault(loteriaKeyOrId, fechaStr, sorteoHora);
+    if (matchingRecords.length === 0 && existingVaultWinner && existingVaultWinner.numero) {
+      return {
+        ok: true,
+        found: true,
+        alreadyVerified: true,
+        winnerNumber: existingVaultWinner.numero,
+        winnerName: existingVaultWinner.nombre,
+        trophiesWon: 0,
+        message: 'Sorteo ya verificado en la Bóveda Inmutable'
+      };
     }
 
-    // 1. Scraping directo desde 1000Resultados
+    // 1. Scraping directo desde 1000Resultados (incluso si el registro de sondeo aún no llegó, para sellarlo en Bóveda)
     const scraper = require('./scraper_service');
     let matchedDraw = null;
     try {
@@ -1150,16 +1183,21 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
     } catch (eScrap) {}
 
     if (matchedDraw && matchedDraw.number !== null && matchedDraw.number !== undefined) {
+      // Sellar siempre en la Bóveda Inmutable aunque matchingRecords sea 0
+      saveWinnerToVault(loteriaKeyOrId, fechaStr, sorteoHora, matchedDraw.number, matchedDraw.name, false);
+
       let trophiesWon = 0;
       for (const rec of matchingRecords) {
         const res = verifyRecordWinner(rec.id, matchedDraw.number, matchedDraw.name);
         if (res.ok && res.bloqueoAcertado) trophiesWon++;
       }
 
-      // IMPORTANTE: Leer DB_PATH recién actualizado por verifyRecordWinner (NUNCA sobrescribir con history viejo en memoria)
-      const freshHistory = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      // IMPORTANTE: Leer DB_PATH recién actualizado por verifyRecordWinner e hidratar con Bóveda
+      const freshHistory = fs.existsSync(DB_PATH) ? JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '[]') : [];
+      hydrateRecordsWithWinnersVault(freshHistory);
+      fs.writeFileSync(DB_PATH, JSON.stringify(freshHistory, null, 2), 'utf8');
+
       try {
-        const cloudStore = require('./cloud_store');
         await Promise.all([
           cloudStore.saveMasterHistory(freshHistory),
           cloudStore.saveMasterWinnersVault(loadWinnersVault())
@@ -1177,19 +1215,20 @@ async function syncScheduledDrawResult(loteriaKeyOrId, sorteoHora, fechaStr, int
         message: `Resultado obtenido en Intento ${intentoNum}: ${matchedDraw.number} (${matchedDraw.name})`
       };
     } else {
-      matchingRecords.forEach(rec => {
-        rec.revision = {
-          estado: intentoNum >= 2 ? 'AGOTADO_2_INTENTOS' : 'INTENTO_1_PENDIENTE',
-          intentos: intentoNum,
-          ultimoIntento: new Date().toISOString()
-        };
-      });
-      hydrateRecordsWithWinnersVault(history);
-      fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
-      try {
-        const cloudStore = require('./cloud_store');
-        await cloudStore.saveMasterHistory(history);
-      } catch (eC) {}
+      if (matchingRecords.length > 0) {
+        matchingRecords.forEach(rec => {
+          rec.revision = {
+            estado: intentoNum >= 2 ? 'AGOTADO_2_INTENTOS' : 'INTENTO_1_PENDIENTE',
+            intentos: intentoNum,
+            ultimoIntento: new Date().toISOString()
+          };
+        });
+        hydrateRecordsWithWinnersVault(history);
+        fs.writeFileSync(DB_PATH, JSON.stringify(history, null, 2), 'utf8');
+        try {
+          await cloudStore.saveMasterHistory(history);
+        } catch (eC) {}
+      }
 
       return {
         ok: true,

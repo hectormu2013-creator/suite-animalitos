@@ -2430,6 +2430,15 @@ if (!process.env.RENDER && !process.env.IS_RENDER) {
   }, 300000);
 }
 
+// Keep-alive diurno (7 AM a 9 PM VET, cada 10 min) para que Render no se duerma en horario de sorteos
+// y ejecute puntualmente las 2 consultas automáticas (+5m y +10m) de cada sorteo.
+setInterval(() => {
+  if (isHorarioNocturnoVET()) return;
+  try {
+    fetch('https://suite-animalitos.onrender.com/api/tunnel/info').catch(() => {});
+  } catch (e) {}
+}, 600000);
+
 // Worker de recepción de órdenes remotas desde la Web (Render) vía Supabase
 let isProcessingCloudCommand = false;
 function startCloudCommandWorker() {
