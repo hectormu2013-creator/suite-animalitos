@@ -30,6 +30,9 @@ if %errorLevel% equ 0 (
 :: Cerrar cualquier proceso residual o ventana emergente de cloudflared
 taskkill /F /IM cloudflared.exe >nul 2>&1
 
+:: Desactivar QuickEdit en consola CMD para evitar que un clic en la ventana negra congele Node.js
+reg add HKCU\Console /v QuickEdit /t REG_DWORD /d 0 /f >nul 2>&1
+
 echo Iniciando servidor local en puerto 4500...
 start "" "http://localhost:4500"
 node server.js
