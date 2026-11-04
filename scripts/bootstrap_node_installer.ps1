@@ -87,19 +87,20 @@ try {
     Write-Host " -> Sincronizando configuracion oficial desde la nube..." -ForegroundColor Gray
     $cloudCfg = Invoke-RestMethod -Uri "$masterUrl/api/config" -TimeoutSec 8
     if ($cloudCfg -and $cloudCfg.general) {
-        $cloudCfg.general.maquinaLocalId = "maquina_1"
-        $cloudCfg.general.maquinaEncargadaVerificacionesId = "maquina_1"
+        $cloudCfg.general.maquinaLocalId = "maquina_2"
+        $cloudCfg.general.maquinaEncargadaVerificacionesId = "maquina_2"
         if ($cloudCfg.general.maquinas) {
             foreach ($m in $cloudCfg.general.maquinas) {
-                if ($m.id -eq "maquina_1") {
+                if ($m.id -eq "maquina_2") {
                     $m.activa = $true
                     $m.prioridad = 1
                     $m.esEncargadaVerificaciones = $true
-                    $m.nombre = "Nodo Taquilla Dedicado (Producción)"
+                    $m.nombre = "Maquina 2 Laptop celeron"
                 }
-                if ($m.id -eq "maquina_2") {
+                if ($m.id -eq "maquina_1") {
                     $m.esEncargadaVerificaciones = $false
                     $m.prioridad = 2
+                    $m.nombre = "maquina Laptop Hector"
                 }
             }
         }

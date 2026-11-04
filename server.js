@@ -115,10 +115,18 @@ async function syncConfigFromCloudLive() {
 
     if (!lastAdoptedCloudUpdatedAt || new Date(cloudRes.updatedAt) > new Date(lastAdoptedCloudUpdatedAt)) {
       const currentDiskCfg = getConfig();
-      const cloudCfgJson = JSON.stringify(cloudRes.config.loterias);
-      const localCfgJson = currentDiskCfg ? JSON.stringify(currentDiskCfg.loterias) : '';
+      const cloudCfgJson = JSON.stringify({
+        loterias: cloudRes.config.loterias,
+        maquinas: cloudRes.config.general && cloudRes.config.general.maquinas,
+        verifId: cloudRes.config.general && cloudRes.config.general.maquinaEncargadaVerificacionesId
+      });
+      const localCfgJson = currentDiskCfg ? JSON.stringify({
+        loterias: currentDiskCfg.loterias,
+        maquinas: currentDiskCfg.general && currentDiskCfg.general.maquinas,
+        verifId: currentDiskCfg.general && currentDiskCfg.general.maquinaEncargadaVerificacionesId
+      }) : '';
 
-      // Comprobar si hay cambios reales en las loterías o parámetros
+      // Comprobar si hay cambios reales en las loterías, máquinas o parámetros
       if (cloudCfgJson !== localCfgJson) {
         log(`🌐 [SINCRONIZACIÓN EN VIVO] Nueva configuración detectada desde la Web (${new Date(cloudRes.updatedAt).toLocaleTimeString()}). Aplicando cambios a la automatización local...`, 'log-success');
         adoptCloudConfigLocally(cloudRes.config);
@@ -626,7 +634,7 @@ function startCloudflareTunnel(force = false) {
             const payload = JSON.stringify({
               machineId: localId,
               tunnelUrl: currentTunnelUrl,
-              nombre: localId === 'maquina_3' ? 'Máquina 3 (Taquilla Principal)' : (localId === 'maquina_1' ? 'Nodo Taquilla Dedicado (Producción)' : 'Taquilla Local (Hector)')
+              nombre: localId === 'maquina_2' ? 'Maquina 2 Laptop celeron' : 'maquina Laptop Hector'
             });
             const rReq = https.request({
               hostname: 'suite-animalitos.onrender.com',
@@ -721,13 +729,20 @@ function syncToCloudImmediate(resetAll = false, force = false) {
       return; // No hubo cambios reales, ahorrar ancho de banda completamente
     }
 
+    // Persistencia directa en Supabase para no depender del arranque en frío de Render
+    try {
+      const cloudStore = require('./cloud_store');
+      cloudStore.saveMasterHistory(records).catch(() => {});
+      if (memory) cloudStore.saveMasterMemory(memory).catch(() => {});
+    } catch (eDirect) {}
+
     const payload = JSON.stringify({
       records,
       memory,
       resetAll,
       machineId: localId,
       tunnelUrl: currentTunnelUrl,
-      machineName: 'Nodo Taquilla (Hector Local)'
+      machineName: localId === 'maquina_2' ? 'Maquina 2 Laptop celeron' : 'maquina Laptop Hector'
     });
 
     const https = require('https');

@@ -9,47 +9,32 @@
     },
     "maquinas": [
       {
-        "id": "maquina_3",
-        "notas": "Taquilla de pesca principal 24/7 (Opción 1)",
+        "id": "maquina_2",
+        "notas": "Taquilla de pesca principal (Opción 1)",
         "activa": true,
         "ipOUrl": "",
-        "nombre": "Máquina 3 (Opción 1 - Principal)",
+        "nombre": "Maquina 2 Laptop celeron",
         "keepOpen": true,
         "prioridad": 1,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
         "usuarioPremier": "TCOP101",
-        "esEncargadaVerificaciones": false
+        "esEncargadaVerificaciones": true
       },
       {
         "id": "maquina_1",
-        "notas": "Taquilla de pesca secundaria (Opción 2)",
+        "notas": "Laptop principal de Hector (Opción 2 - Respaldo)",
         "activa": true,
         "ipOUrl": "",
-        "nombre": "Máquina 1 (Opción 2 - Secundaria)",
+        "nombre": "maquina Laptop Hector",
         "keepOpen": true,
         "prioridad": 2,
         "clavePremier": "123",
         "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
         "tipoPlataforma": "PREMIER_PLUS_20",
-        "usuarioPremier": "TCOP101",
-        "esEncargadaVerificaciones": false
-      },
-      {
-        "id": "maquina_2",
-        "notas": "Túnel en vivo: 11:00:19 AM",
-        "activa": true,
-        "ipOUrl": "https://intervals-prince-sticker-structured.trycloudflare.com",
-        "nombre": "Laptop de Hector (Opción 3 - Respaldo)",
-        "keepOpen": true,
-        "prioridad": 3,
-        "clavePremier": "123",
-        "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
-        "tipoPlataforma": "PREMIER_PLUS_20",
-        "ultimaConexion": "2026-10-12T11:36:15.331Z",
         "usuarioPremier": "TCOP102",
-        "esEncargadaVerificaciones": true
+        "esEncargadaVerificaciones": false
       }
     ],
     "telegram": {
@@ -65,7 +50,7 @@
       "executablePath": "C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe",
       "cerrarAlFinalizarDia": true
     },
-    "maquinaLocalId": "maquina_2",
+    "maquinaLocalId": "maquina_1",
     "autoStartScheduler": true,
     "mantenimientoVentas": {
       "activo": true,
@@ -79,12 +64,13 @@
     },
     "horaActivacionDiaria": "07:00",
     "activacionDiariaActiva": true,
-    "maquinaEncargadaSondeoId": "maquina_3",
+    "maquinaEncargadaSondeoId": "maquina_2",
     "maquinaEncargadaVerificacionesId": "maquina_2"
   },
   "loterias": [
     {
       "id": "guacharo_activo",
+      "syncStamp": "2026-11-04_v2",
       "activo": true,
       "nombre": "GUACHARO ACTIVO",
       "horarios": [

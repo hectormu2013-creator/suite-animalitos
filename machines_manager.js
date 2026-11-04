@@ -20,12 +20,12 @@ function getMachinesList(config) {
   const maquinas = (cfg.general && cfg.general.maquinas) || [];
 
   if (maquinas.length === 0) {
-    // Si no existen máquinas configuradas, inicializar con Máquina 1 (Primaria) y Máquina 2 (Secundaria)
+    // Si no existen máquinas configuradas, inicializar con Maquina 2 Laptop celeron (Primaria) y maquina Laptop Hector (Secundaria)
     const premierDefault = (cfg.general && cfg.general.premierPluss) || {};
     return [
       {
-        id: 'maquina_1',
-        nombre: 'Máquina 1 (Primera Opción / Taquilla Principal)',
+        id: 'maquina_2',
+        nombre: 'Maquina 2 Laptop celeron',
         activa: true,
         prioridad: 1,
         esEncargadaVerificaciones: true,
@@ -34,12 +34,12 @@ function getMachinesList(config) {
         clavePremier: '123',
         executablePath: premierDefault.executablePath || 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe',
         keepOpen: true,
-        ipOUrl: 'http://192.168.1.100:4500',
-        notas: 'Taquilla designada como primera opción de pesca'
+        ipOUrl: '',
+        notas: 'Taquilla de pesca principal (Opción 1)'
       },
       {
-        id: 'maquina_2',
-        nombre: 'Máquina 2 (Segunda Opción / Taquilla Actual)',
+        id: 'maquina_1',
+        nombre: 'maquina Laptop Hector',
         activa: true,
         prioridad: 2,
         esEncargadaVerificaciones: false,
@@ -48,8 +48,8 @@ function getMachinesList(config) {
         clavePremier: premierDefault.password || '123',
         executablePath: premierDefault.executablePath || 'C:\\Program Files (x86)\\Premier Pluss 2.0\\PremierPlussPC20.exe',
         keepOpen: true,
-        ipOUrl: 'http://127.0.0.1:4500',
-        notas: 'Taquilla de respaldo / failover en este equipo'
+        ipOUrl: '',
+        notas: 'Laptop principal de Hector (Opción 2 - Respaldo)'
       }
     ];
   }
@@ -261,6 +261,7 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, ho
 
   const localId = (config.general && config.general.maquinaLocalId) || 'maquina_2';
   let intento = 0;
+  let localTried = false;
 
   for (const maquina of list) {
     intento++;
@@ -268,6 +269,7 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, ho
     logFn(`🎣 [CASCADA PESCA: INTENTO ${intento}/${list.length}] Evaluando ${maquina.nombre} (Prioridad ${maquina.prioridad || intento}, Modo: ${esLocal ? 'Local' : 'Remoto'})...`, 'log-info');
 
     if (esLocal) {
+      localTried = true;
       // 1. Ejecutar en taquilla local en esta computadora
       try {
         const robot = require('./premier_robot');
@@ -330,6 +332,29 @@ async function ejecutarPescaEnCascada(config, loteriaId, logFn = console.log, ho
       } catch (remErr) {
         logFn(`⚠️ [ERROR NODO REMOTO] ${maquina.nombre}: ${remErr.message}. Pasando a la siguiente máquina...`, 'log-warn');
       }
+    }
+  }
+
+  // 2.5 Respaldo de Autonomía Local: Si estamos en Windows y el ID local estaba desalineado en la nube,
+  // intentar pescar directamente en la taquilla local antes de dar por agotada la cascada.
+  if (!localTried && process.platform === 'win32') {
+    try {
+      const localMachineObj = getLocalMachine(config) || list[0] || {};
+      logFn(`🛡️ [RESPALDO LOCAL] Ningún nodo remoto respondió; ejecutando pesca directamente en la taquilla local de este equipo (${localMachineObj.nombre || localId})...`, 'log-info');
+      const robot = require('./premier_robot');
+      const result = await robot.ejecutarSondeoPremier(config, loteriaId, horaSorteo, cerrarAlFinalizar, modoHibrido);
+      if (result && !result.cancelado && result.ok !== false && !result.error) {
+        logFn(`✅ [PESCA EXITOSA] Taquilla local completó el sondeo. Cupo 0 detectados: [${(result.rojos || []).join(', ') || 'Ninguno'}]`, 'log-success');
+        return {
+          ...result,
+          maquinaUsadaId: localMachineObj.id || localId,
+          maquinaUsadaNombre: localMachineObj.nombre || 'Taquilla Local',
+          intentoCascada: intento + 1,
+          failoverActivado: true
+        };
+      }
+    } catch (eLocalFallback) {
+      logFn(`⚠️ [FALLO RESPALDO LOCAL] ${eLocalFallback.message}`, 'log-warn');
     }
   }
 
