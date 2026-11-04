@@ -25,7 +25,7 @@
       {
         "id": "maquina_1",
         "notas": "Laptop principal de Hector (Opción 2 - Respaldo)",
-        "activa": true,
+        "activa": false,
         "ipOUrl": "",
         "nombre": "maquina Laptop Hector",
         "keepOpen": true,
@@ -70,7 +70,7 @@
   "loterias": [
     {
       "id": "guacharo_activo",
-      "syncStamp": "2026-11-04_v2",
+      "syncStamp": "2026-11-04_v3",
       "activo": true,
       "nombre": "GUACHARO ACTIVO",
       "horarios": [

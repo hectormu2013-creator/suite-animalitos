@@ -65,8 +65,24 @@ async function saveConfig(cfg) {
 }
 
 const IS_CLOUD = !!(process.env.RENDER || process.env.IS_RENDER);
+const IS_HECTOR_LAPTOP = !IS_CLOUD && __dirname.toLowerCase().includes('users\\hector\\.gemini');
 // Token compartido para que solo la Web (Render) pueda empujar configuración a los nodos locales
 const SYNC_TOKEN = process.env.SUITE_SYNC_TOKEN || 'fenix-suite-sync-2026';
+
+function getHardwareLocalMachineId(cfg) {
+  if (IS_CLOUD) return (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_2';
+  return IS_HECTOR_LAPTOP ? 'maquina_1' : 'maquina_2';
+}
+
+function isThisLocalMachineActiveForFishing(cfg) {
+  if (IS_CLOUD) return false;
+  if (!cfg || !cfg.general) return true;
+  const localId = getHardwareLocalMachineId(cfg);
+  const maquinas = Array.isArray(cfg.general.maquinas) ? cfg.general.maquinas : [];
+  const localM = maquinas.find(m => m.id === localId);
+  if (!localM) return !IS_HECTOR_LAPTOP;
+  return localM.activa !== false;
+}
 
 // Comprobación de horario nocturno en Venezuela (UTC-4)
 // Entre 9:00 PM (21:00) y 7:00 AM (07:00), no hay sorteos ni actividad de loterías en Venezuela.
@@ -94,10 +110,8 @@ let lastAdoptedCloudUpdatedAt = null;
 function adoptCloudConfigLocally(cloudCfg) {
   const localCfg = getConfig();
   const merged = JSON.parse(JSON.stringify(cloudCfg));
-  if (localCfg && localCfg.general && localCfg.general.maquinaLocalId) {
-    if (!merged.general) merged.general = {};
-    merged.general.maquinaLocalId = localCfg.general.maquinaLocalId;
-  }
+  if (!merged.general) merged.general = {};
+  merged.general.maquinaLocalId = getHardwareLocalMachineId(localCfg || merged);
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf8');
   return { localCfg, merged };
 }
@@ -296,8 +310,12 @@ const { execFile } = require('child_process');
 // Helper para sincronizar la tarea programada de Windows
 function syncScheduledTask(hora, activo = true) {
   return new Promise((resolve) => {
+    if (IS_CLOUD || process.platform !== 'win32') return resolve({ ok: true, skipped: true });
+    // En la laptop personal de Hector (maquina_1), mantener la tarea 7AM desactivada a menos que maquina_1 esté activa para pesca
+    const cfgNow = getConfig();
+    const effectiveActivo = IS_HECTOR_LAPTOP ? (activo && isThisLocalMachineActiveForFishing(cfgNow)) : activo;
     const psScript = path.join(__dirname, 'update_task_time.ps1');
-    execFile('powershell', ['-ExecutionPolicy', 'Bypass', '-File', psScript, '-Hora', hora || '07:00', '-Activo', activo ? 'true' : 'false'], (err, stdout, stderr) => {
+    execFile('powershell', ['-ExecutionPolicy', 'Bypass', '-File', psScript, '-Hora', hora || '07:00', '-Activo', effectiveActivo ? 'true' : 'false'], (err, stdout, stderr) => {
       if (err) {
         log(`Aviso al sincronizar tarea de Windows: ${err.message}`, 'log-warn');
         return resolve({ ok: false, message: err.message });
@@ -1853,12 +1871,9 @@ function enviarTelegram(cfg, texto, cb) {
   req.end();
 }
 
-function esUltimoSorteoDelDia(cfg, currentTotalMinutes) {
-  if (cfg.general && cfg.general.premierPluss && cfg.general.premierPluss.cerrarAlFinalizarDia === false) {
-    return false;
-  }
+function getMaxDrawMinutesOfDay(cfg) {
   let maxDrawMinutes = 0;
-  for (const l of (cfg.loterias || [])) {
+  for (const l of ((cfg && cfg.loterias) || [])) {
     if (!l.activo) continue;
     for (const h of (l.horarios || [])) {
       const match = h.match(/(\d{1,2}):(\d{2})/);
@@ -1873,7 +1888,42 @@ function esUltimoSorteoDelDia(cfg, currentTotalMinutes) {
       }
     }
   }
+  return maxDrawMinutes;
+}
+
+function esUltimoSorteoDelDia(cfg, currentTotalMinutes) {
+  if (cfg.general && cfg.general.premierPluss && cfg.general.premierPluss.cerrarAlFinalizarDia === false) {
+    return false;
+  }
+  const maxDrawMinutes = getMaxDrawMinutesOfDay(cfg);
   return maxDrawMinutes > 0 && currentTotalMinutes >= (maxDrawMinutes - 35);
+}
+
+let isClosingEndOfDay = false;
+async function cerrarPescadorYTaquillaFinDeDia(cfg) {
+  if (isClosingEndOfDay || IS_CLOUD) return;
+  isClosingEndOfDay = true;
+  log('🌙 [CIERRE DE FIN DE DÍA] Último sorteo de la jornada completado. Cerrando Premier Pluss y apagando el Pescador hasta mañana...', 'log-warn');
+
+  try {
+    if (process.platform === 'win32') {
+      exec('taskkill /F /IM PremierPlussPC20.exe >nul 2>&1 & taskkill /F /IM cloudflared.exe >nul 2>&1', () => {});
+    }
+    const cloudStore = require('./cloud_store');
+    await cloudStore.saveAutomationStatus({
+      status: 'IDLE',
+      requestedAction: 'NONE',
+      details: 'Jornada diaria finalizada - Premier Pluss y Pescador cerrados automáticamente',
+      loteria: '',
+      isRunning: false,
+      colaPendientes: 0,
+      updatedAt: new Date().toLocaleString()
+    });
+  } catch (e) {}
+
+  setTimeout(() => {
+    process.exit(0);
+  }, 2500);
 }
 
 // Registro de tareas ejecutadas y revisiones de resultados realizadas
@@ -1892,6 +1942,15 @@ setInterval(async () => {
   const todayStr = historyMgr.getVenezuelaDateString();
   const isCloudRender = !!(process.env.RENDER || process.env.IS_RENDER);
 
+  // Cierre automático de fin de día (Premier Pluss + Pescador) tras finalizar el último sorteo y su desincorporación (-3 min del último sorteo)
+  if (!isCloudRender && isThisLocalMachineActiveForFishing(cfg)) {
+    const maxDrawDay = getMaxDrawMinutesOfDay(cfg);
+    if (maxDrawDay > 0 && currentTotalMinutes >= (maxDrawDay - 2) && (!cfg.general || !cfg.general.premierPluss || cfg.general.premierPluss.cerrarAlFinalizarDia !== false)) {
+      await cerrarPescadorYTaquillaFinDeDia(cfg);
+      return;
+    }
+  }
+
   for (const lot of cfg.loterias) {
     if (!lot.activo) continue;
 
@@ -1899,9 +1958,10 @@ setInterval(async () => {
       const [h, m] = hStr.split(':').map(Number);
       const drawMinutes = h * 60 + m;
 
-      // CRÍTICO: Si estamos en la nube (Render), NO ejecutar tareas de escaneo de escritorio (Pasos 1 al 5).
-      // Render corre en Linux sin GUI/Playwright de escritorio; solo ejecuta el Paso 6 (+5m y +10m) de resultados oficiales.
-      if (!isCloudRender) {
+      // CRÍTICO: Si estamos en la nube (Render) o si esta máquina local está desactivada para pesca (ej. Laptop de Hector),
+      // NO ejecutar tareas automáticas de escaneo de escritorio ni bloqueos (Pasos 1 al 5).
+      const localMachineActive = isThisLocalMachineActiveForFishing(cfg);
+      if (!isCloudRender && localMachineActive) {
       // =========================================================================
       // 1. DISPARO DE BLOQUEO DE NÚMEROS FIJOS (100% Independiente)
       // =========================================================================
@@ -2277,6 +2337,13 @@ setInterval(async () => {
           } catch (eClean) {
             log(`Error en desincorporación a -4 min: ${eClean.message}`, 'log-danger');
           }
+
+          // Si este sorteo que acabamos de desincorporar era el último sorteo del día, cerrar tanto Premier Pluss como el Pescador
+          const maxDrawOfDay = getMaxDrawMinutesOfDay(cfg);
+          if (maxDrawOfDay > 0 && drawMinutes >= maxDrawOfDay && (!cfg.general || !cfg.general.premierPluss || cfg.general.premierPluss.cerrarAlFinalizarDia !== false)) {
+            cerrarPescadorYTaquillaFinDeDia(cfg);
+            return;
+          }
         }
       }
 
@@ -2544,14 +2611,29 @@ function startCloudCommandWorker() {
 
 app.listen(PORT, () => {
   log(`🚀 Servidor de la Suite activo en http://localhost:${PORT}`, 'log-success');
+  try {
+    const c = getConfig();
+    if (c && c.general) {
+      const hwId = getHardwareLocalMachineId(c);
+      if (c.general.maquinaLocalId !== hwId) {
+        c.general.maquinaLocalId = hwId;
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(c, null, 2), 'utf8');
+      }
+      if (IS_HECTOR_LAPTOP && !isThisLocalMachineActiveForFishing(c)) {
+        syncScheduledTask('07:00', false).catch(() => {});
+        log(`🛡️ [MODO SUPERVISIÓN] Esta máquina (maquina Laptop Hector) tiene la pesca automática desactivada. No ejecutará sondeos ni tarea 7 AM.`, 'log-info');
+      }
+    }
+  } catch (e) {}
+
   startCloudflareTunnel();
   startCloudCommandWorker();
 
-  // Asegurar números fijos en Triple 7 para todos los sorteos del día al arrancar
+  // Asegurar números fijos en Triple 7 para todos los sorteos del día al arrancar (solo si la máquina local está activa para pesca)
   setTimeout(() => {
     try {
       const cfg = getConfig();
-      if (cfg && (!cfg.general || !cfg.general.triple7 || cfg.general.triple7.enabled !== false)) {
+      if (cfg && isThisLocalMachineActiveForFishing(cfg) && (!cfg.general || !cfg.general.triple7 || cfg.general.triple7.enabled !== false)) {
         delete require.cache[require.resolve('./triple7_robot')];
         const t7 = require('./triple7_robot');
         t7.bloquearFijosEnTodosLosSorteos(cfg).then(res => {

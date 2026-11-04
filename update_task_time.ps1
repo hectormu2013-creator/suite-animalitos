@@ -4,8 +4,8 @@ param (
 )
 
 $TaskName = "Suite_Bloqueador_Animalitos_7AM"
-$BatPath = "C:\Users\Hector\.gemini\antigravity-ide\scratch\pronosticador_de_animalitos\INICIAR_SUITE.bat"
-$WorkDir = "C:\Users\Hector\.gemini\antigravity-ide\scratch\pronosticador_de_animalitos"
+$WorkDir = $PSScriptRoot
+$BatPath = Join-Path $PSScriptRoot "INICIAR_SUITE.bat"
 
 try {
     $isActivo = ($Activo -eq "true" -or $Activo -eq "1" -or $Activo -eq "$true" -or $Activo -eq "True")

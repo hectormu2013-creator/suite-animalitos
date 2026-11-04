@@ -1335,6 +1335,7 @@ if ($CerrarAlFinalizar) {
         if ($p) {
             $p.CloseMainWindow() | Out-Null
             Start-Sleep -Seconds 2
+            Stop-Process -Name "PremierPlussPC20" -Force -ErrorAction SilentlyContinue
         }
     } catch {}
 } else {

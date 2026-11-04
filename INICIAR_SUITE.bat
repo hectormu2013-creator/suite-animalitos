@@ -36,4 +36,5 @@ reg add HKCU\Console /v QuickEdit /t REG_DWORD /d 0 /f >nul 2>&1
 echo Iniciando servidor local en puerto 4500...
 start "" "http://localhost:4500"
 node server.js
+if %errorLevel% equ 0 exit
 pause

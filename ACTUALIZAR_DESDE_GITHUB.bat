@@ -24,6 +24,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$u='https://github.com/h
 
 :FIN
 echo.
+echo Ajustando identidad automatica del equipo local y tarea programada...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$c='config.json'; $isHector = $PWD.Path.ToLower().Contains('users\hector\.gemini'); if (Test-Path $c) { $j=Get-Content $c -Raw | ConvertFrom-Json; if ($j.general) { $j.general.maquinaLocalId = if ($isHector) { 'maquina_1' } else { 'maquina_2' }; $j | ConvertTo-Json -Depth 10 | Set-Content $c -Encoding UTF8 } }; if ($isHector) { & '.\update_task_time.ps1' -Hora '07:00' -Activo 'false' | Out-Null } else { & '.\update_task_time.ps1' -Hora '07:00' -Activo 'true' | Out-Null }"
 echo Limpiando procesos residuales y cerrando ventanas de tunel previas...
 taskkill /F /IM cloudflared.exe >nul 2>&1
 echo ======================================================================
