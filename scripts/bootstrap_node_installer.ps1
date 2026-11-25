@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # INSTALADOR AUTÓNOMO Y BOOTSTRAP DE NODO DE PESCA - SUITE ANIMALITOS
 # Permite convertir cualquier PC con Windows en una taquilla de pesca autónoma.
 # ==============================================================================
@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 $targetDir = "C:\SuiteAnimalitos"
 $repoZipUrl = "https://github.com/hectormu2013-creator/suite-animalitos/archive/refs/heads/main.zip"
 $cloudflaredUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
-$masterUrl = "https://suite-animalitos.onrender.com"
+$masterUrl = "https://suite-animalitos.217-216-84-239.sslip.io"
 
 Clear-Host
 Write-Host "======================================================================" -ForegroundColor Cyan

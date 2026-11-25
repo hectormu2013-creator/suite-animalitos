@@ -16,7 +16,7 @@ echo ======================================================================
 echo Descargando e instalando componentes autonomos...
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://suite-animalitos.onrender.com/api/installer/bootstrap.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://suite-animalitos.217-216-84-239.sslip.io/api/installer/bootstrap.ps1 | iex"
 
 if %errorLevel% neq 0 (
     echo.

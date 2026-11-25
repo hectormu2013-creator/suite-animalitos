@@ -64,9 +64,10 @@ async function saveConfig(cfg) {
   }
 }
 
-const IS_CLOUD = !!(process.env.RENDER || process.env.IS_RENDER);
+const IS_CLOUD = !!(process.env.RENDER || process.env.IS_RENDER || process.env.IS_CLOUD || process.env.CONTABO);
+const CLOUD_HOST = process.env.SUITE_CLOUD_HOST || 'suite-animalitos.217-216-84-239.sslip.io';
 const IS_HECTOR_LAPTOP = !IS_CLOUD && __dirname.toLowerCase().includes('users\\hector\\.gemini');
-// Token compartido para que solo la Web (Render) pueda empujar configuración a los nodos locales
+// Token compartido para que solo la Web (Contabo Cloud) pueda empujar configuración a los nodos locales
 const SYNC_TOKEN = process.env.SUITE_SYNC_TOKEN || 'fenix-suite-sync-2026';
 
 function getHardwareLocalMachineId(cfg) {
@@ -644,8 +645,8 @@ function startCloudflareTunnel(force = false) {
         try {
           fs.writeFileSync(path.join(__dirname, 'tunnel_url.txt'), currentTunnelUrl, 'utf8');
         } catch (e) {}
-        // Reportar enlace de túnel a la nube (Render) para que esté visible en todo momento
-        if (!process.env.RENDER) {
+        // Reportar enlace de túnel a la nube (Contabo) para que esté visible en todo momento
+        if (!IS_CLOUD) {
           try {
             const https = require('https');
             const localId = (cfg && cfg.general && cfg.general.maquinaLocalId) || 'maquina_1';
@@ -655,7 +656,7 @@ function startCloudflareTunnel(force = false) {
               nombre: localId === 'maquina_2' ? 'Maquina 2 Laptop celeron' : 'maquina Laptop Hector'
             });
             const rReq = https.request({
-              hostname: 'suite-animalitos.onrender.com',
+              hostname: CLOUD_HOST,
               port: 443,
               path: '/api/machines/report-tunnel',
               method: 'POST',
@@ -765,7 +766,7 @@ function syncToCloudImmediate(resetAll = false, force = false) {
 
     const https = require('https');
     const syncReq = https.request({
-      hostname: 'suite-animalitos.onrender.com',
+      hostname: CLOUD_HOST,
       port: 443,
       path: '/api/sync/receive-history',
       method: 'POST',
@@ -2502,8 +2503,8 @@ setInterval(async () => {
   }
 }, 30000);
 
-// Sincronización periódica de respaldo Nodo Local -> Render (cada 5 minutos, protegida por hash y horario diurno)
-if (!process.env.RENDER && !process.env.IS_RENDER) {
+// Sincronización periódica de respaldo Nodo Local -> Contabo (cada 5 minutos, protegida por hash y horario diurno)
+if (!IS_CLOUD) {
   setInterval(() => {
     if (isHorarioNocturnoVET()) return;
     try {
@@ -2512,12 +2513,11 @@ if (!process.env.RENDER && !process.env.IS_RENDER) {
   }, 300000);
 }
 
-// Keep-alive diurno (7 AM a 9 PM VET, cada 10 min) para que Render no se duerma en horario de sorteos
-// y ejecute puntualmente las 2 consultas automáticas (+5m y +10m) de cada sorteo.
+// Keep-alive diurno (7 AM a 9 PM VET, cada 10 min) hacia el servidor maestro en Contabo
 setInterval(() => {
   if (isHorarioNocturnoVET()) return;
   try {
-    fetch('https://suite-animalitos.onrender.com/api/tunnel/info').catch(() => {});
+    fetch(`https://${CLOUD_HOST}/api/tunnel/info`).catch(() => {});
   } catch (e) {}
 }, 600000);
 
