@@ -1,4 +1,4 @@
-param (
+﻿param (
     [string]$Hora = "07:00",
     [string]$Activo = "true"
 )
@@ -30,10 +30,18 @@ try {
     $Action = New-ScheduledTaskAction -Execute $BatPath -WorkingDirectory $WorkDir
     $TriggerDaily = New-ScheduledTaskTrigger -Daily -At $triggerTime
     $TriggerLogon = New-ScheduledTaskTrigger -AtLogon -User $env:USERNAME
-    $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -WakeToRun
+    $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
 
-    Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger @($TriggerDaily, $TriggerLogon) -Settings $Settings -User $env:USERNAME -Force | Out-Null
+    Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger @($TriggerDaily, $TriggerLogon) -Settings $Settings -Principal $Principal -Force | Out-Null
     Enable-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue | Out-Null
+
+    # Evitar que Windows entre en suspensión o apague el sistema mientras está conectado a corriente (Modo Viaje 24/7)
+    try {
+        & powercfg.exe /change standby-timeout-ac 0 | Out-Null
+        & powercfg.exe /change hibernate-timeout-ac 0 | Out-Null
+        & powercfg.exe /change monitor-timeout-ac 0 | Out-Null
+    } catch {}
 
     $task = Get-ScheduledTask -TaskName $TaskName
     $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName

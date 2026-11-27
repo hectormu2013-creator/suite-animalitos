@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Loteria = "GUACHARO ACTIVO",
     [int]$MontoSondeo = 3000,
     [string]$HoraSorteo = "",
@@ -773,8 +773,28 @@ Write-Output "  SONDEO Y EXTRACCION DE AGOTADOS - $Loteria"
 Write-Output "  SEGURIDAD ACTIVA: [ESC/F8] Detener | [F7] Pausar/Continuar"
 Write-Output "=========================================================="
 
-# Deteccion directa de la taquilla abierta por el usuario en el escritorio
+# Deteccion directa de la taquilla abierta en el escritorio (con Auto-Apertura y Auto-Login 24/7 si está cerrada)
 $hwnd = [PremierFullProbe]::FindPremier()
+$needAutoOpen = ($hwnd -eq [IntPtr]::Zero)
+if (-not $needAutoOpen) {
+    $rCheck = New-Object PremierFullProbe+RECT
+    [PremierFullProbe]::GetWindowRect($hwnd, [ref]$rCheck) | Out-Null
+    if (($rCheck.Right - $rCheck.Left) -lt 800 -and -not [PremierFullProbe]::IsIconic($hwnd)) {
+        # Está en la ventana pequeña de Login; ejecutar auto-login
+        $needAutoOpen = $true
+    }
+}
+
+if ($needAutoOpen) {
+    Write-Output "[AUTO-INICIO 24/7] Premier Pluss está cerrado o en pantalla de Login. Ejecutando auto-apertura y auto-login..."
+    Set-ControlState "RUNNING" "Abriendo e iniciando sesion automaticamente en Premier Pluss..."
+    $autoOpenScript = Join-Path $PSScriptRoot "auto_open_premier.ps1"
+    if (Test-Path $autoOpenScript) {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $autoOpenScript
+        Start-Sleep -Seconds 2
+        $hwnd = [PremierFullProbe]::FindPremier()
+    }
+}
 
 if ($hwnd -eq [IntPtr]::Zero) {
     Write-Output "[ERROR] Premier Pluss 2.0 no esta abierto en el escritorio."

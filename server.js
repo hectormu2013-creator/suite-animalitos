@@ -1893,38 +1893,35 @@ function getMaxDrawMinutesOfDay(cfg) {
 }
 
 function esUltimoSorteoDelDia(cfg, currentTotalMinutes) {
-  if (cfg.general && cfg.general.premierPluss && cfg.general.premierPluss.cerrarAlFinalizarDia === false) {
+  // En Modo Viaje 24/7 por defecto NO cerramos Premier Pluss al finalizar el día
+  // a menos que cerrarAlFinalizarDia esté explícitamente en true.
+  if (!cfg.general || !cfg.general.premierPluss || cfg.general.premierPluss.cerrarAlFinalizarDia !== true) {
     return false;
   }
   const maxDrawMinutes = getMaxDrawMinutesOfDay(cfg);
   return maxDrawMinutes > 0 && currentTotalMinutes >= (maxDrawMinutes - 35);
 }
 
-let isClosingEndOfDay = false;
-async function cerrarPescadorYTaquillaFinDeDia(cfg) {
-  if (isClosingEndOfDay || IS_CLOUD) return;
-  isClosingEndOfDay = true;
-  log('🌙 [CIERRE DE FIN DE DÍA] Último sorteo de la jornada completado. Cerrando Premier Pluss y apagando el Pescador hasta mañana...', 'log-warn');
+let closedForDayStr = null;
+let lastActiveDayStr = null;
+
+async function cerrarPescadorYTaquillaFinDeDia(cfg, todayStr) {
+  if (IS_CLOUD || closedForDayStr === todayStr) return;
+  closedForDayStr = todayStr;
+  log('🌙 [FIN DE JORNADA - MODO VIAJE 24/7] Último sorteo de la jornada completado. Premier Pluss y el Pescador entran en Reposo Nocturno activo y despertarán solos mañana a las 07:00 AM...', 'log-info');
 
   try {
-    if (process.platform === 'win32') {
-      exec('taskkill /F /IM PremierPlussPC20.exe >nul 2>&1 & taskkill /F /IM cloudflared.exe >nul 2>&1', () => {});
-    }
     const cloudStore = require('./cloud_store');
     await cloudStore.saveAutomationStatus({
       status: 'IDLE',
       requestedAction: 'NONE',
-      details: 'Jornada diaria finalizada - Premier Pluss y Pescador cerrados automáticamente',
+      details: 'Jornada diaria finalizada - En reposo nocturno 24/7 hasta las 07:00 AM',
       loteria: '',
       isRunning: false,
       colaPendientes: 0,
       updatedAt: new Date().toLocaleString()
     });
   } catch (e) {}
-
-  setTimeout(() => {
-    process.exit(0);
-  }, 2500);
 }
 
 // Registro de tareas ejecutadas y revisiones de resultados realizadas
@@ -1941,14 +1938,41 @@ setInterval(async () => {
   const historyMgr = require('./history_manager');
   const currentTotalMinutes = historyMgr.getVenezuelaCurrentMinutes();
   const todayStr = historyMgr.getVenezuelaDateString();
-  const isCloudRender = !!(process.env.RENDER || process.env.IS_RENDER);
+  const isCloudRender = IS_CLOUD;
 
-  // Cierre automático de fin de día (Premier Pluss + Pescador) tras finalizar el último sorteo y su desincorporación (-3 min del último sorteo)
+  // DESPERTADOR AUTOMÁTICO DE NUEVO DÍA (07:00 AM VET - Modo Viaje 24/7 sin intervención humana)
+  if (lastActiveDayStr !== todayStr) {
+    const isInitialBoot = (lastActiveDayStr === null);
+    lastActiveDayStr = todayStr;
+    closedForDayStr = null;
+    tareasEjecutadas.clear();
+    revisionesRealizadas.clear();
+
+    if (!isCloudRender && isThisLocalMachineActiveForFishing(cfg)) {
+      log(`☀️ [DESPERTADOR DIARIO 24/7] Iniciando jornada autónoma (${todayStr}). Verificando apertura/login de Premier Pluss...`, 'log-success');
+      const autoOpenPs = path.join(__dirname, 'scripts', 'auto_open_premier.ps1');
+      if (fs.existsSync(autoOpenPs)) {
+        exec(`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${autoOpenPs}"`, () => {});
+      }
+      if (!isInitialBoot && (!cfg.general || !cfg.general.triple7 || cfg.general.triple7.enabled !== false)) {
+        try {
+          delete require.cache[require.resolve('./triple7_robot')];
+          const t7 = require('./triple7_robot');
+          t7.bloquearFijosEnTodosLosSorteos(cfg).then(res => {
+            if (res.ok && res.totalSorteosProcesados > 0) {
+              log(`📌 [APERTURA MATUTINA] ${res.totalSorteosProcesados} sorteos asegurados con números fijos en Triple 7 para hoy (${todayStr}).`, 'log-success');
+            }
+          }).catch(() => {});
+        } catch (eT7) {}
+      }
+    }
+  }
+
+  // Transición a reposo nocturno de fin de día (-2 min del último sorteo) SIN apagar el servidor ni cerrar Premier Pluss
   if (!isCloudRender && isThisLocalMachineActiveForFishing(cfg)) {
     const maxDrawDay = getMaxDrawMinutesOfDay(cfg);
-    if (maxDrawDay > 0 && currentTotalMinutes >= (maxDrawDay - 2) && (!cfg.general || !cfg.general.premierPluss || cfg.general.premierPluss.cerrarAlFinalizarDia !== false)) {
-      await cerrarPescadorYTaquillaFinDeDia(cfg);
-      return;
+    if (maxDrawDay > 0 && currentTotalMinutes >= (maxDrawDay - 2) && closedForDayStr !== todayStr) {
+      await cerrarPescadorYTaquillaFinDeDia(cfg, todayStr);
     }
   }
 
@@ -2339,11 +2363,10 @@ setInterval(async () => {
             log(`Error en desincorporación a -4 min: ${eClean.message}`, 'log-danger');
           }
 
-          // Si este sorteo que acabamos de desincorporar era el último sorteo del día, cerrar tanto Premier Pluss como el Pescador
+          // Si este sorteo que acabamos de desincorporar era el último sorteo del día, registrar reposo nocturno 24/7
           const maxDrawOfDay = getMaxDrawMinutesOfDay(cfg);
-          if (maxDrawOfDay > 0 && drawMinutes >= maxDrawOfDay && (!cfg.general || !cfg.general.premierPluss || cfg.general.premierPluss.cerrarAlFinalizarDia !== false)) {
-            cerrarPescadorYTaquillaFinDeDia(cfg);
-            return;
+          if (maxDrawOfDay > 0 && drawMinutes >= maxDrawOfDay) {
+            cerrarPescadorYTaquillaFinDeDia(cfg, todayStr);
           }
         }
       }
@@ -2622,6 +2645,15 @@ app.listen(PORT, () => {
       if (IS_HECTOR_LAPTOP && !isThisLocalMachineActiveForFishing(c)) {
         syncScheduledTask('07:00', false).catch(() => {});
         log(`🛡️ [MODO SUPERVISIÓN] Esta máquina (maquina Laptop Hector) tiene la pesca automática desactivada. No ejecutará sondeos ni tarea 7 AM.`, 'log-info');
+      } else if (!IS_CLOUD && isThisLocalMachineActiveForFishing(c)) {
+        // Nodo de pesca activo (Modo Viaje 24/7): impedir suspensión de Windows y auto-abrir Premier Pluss si está cerrado
+        if (process.platform === 'win32') {
+          exec('powercfg /change standby-timeout-ac 0 >nul 2>&1 & powercfg /change hibernate-timeout-ac 0 >nul 2>&1 & powercfg /change monitor-timeout-ac 0 >nul 2>&1', () => {});
+          const autoOpenPs = path.join(__dirname, 'scripts', 'auto_open_premier.ps1');
+          if (fs.existsSync(autoOpenPs)) {
+            exec(`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${autoOpenPs}"`, () => {});
+          }
+        }
       }
     }
   } catch (e) {}
